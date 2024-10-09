@@ -1,0 +1,25 @@
+syntax="proto3";
+package RaftV1;
+option go_package="github.com/sjy-dv/vemoo/proto/gen/v1/raftV1";
+
+
+import "core.proto";
+
+
+service RaftTransport {
+    rpc Receive(RaftLog) returns (coreV1.EmptyMessage);
+}
+
+message RaftLog {
+    bytes group_id = 1;
+    bytes message = 2;
+}
+
+message GroupProxyAction {
+    string proxy_name = 1;
+    bytes data = 2;
+}
+
+message GroupStateSnapshot {
+    map<string,bytes> proxy_snapshots = 1;
+}
