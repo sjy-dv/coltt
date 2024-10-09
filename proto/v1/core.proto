@@ -1,0 +1,10 @@
+syntax="proto3";
+package coreV1;
+option go_package="github.com/sjy-dv/vemoo/proto/gen/v1/coreV1";
+
+message EmptyMessage {}
+
+
+message UUIDRequest {
+    bytes id=1;
+}
