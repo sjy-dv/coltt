@@ -15,24 +15,13 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package internal
+package storage
 
-import (
-	"os"
-	"os/signal"
-	"syscall"
+import "errors"
+
+const snapshotOffset uint64 = 5000
+
+var (
+	ErrProcessFnAlreadyRegist  error = errors.New("ProcessFn already registerd")
+	ErrShapshotFnAlreadyRegist error = errors.New("SnapshotFn already registerd")
 )
-
-func InterruptSignal() <-chan os.Signal {
-	wait := make(chan os.Signal, 1)
-	signal.Notify(wait, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
-	return wait
-}
-
-func GetenvDefault(key, defaultVal string) string {
-	val := os.Getenv(key)
-	if val == "" {
-		return defaultVal
-	}
-	return val
-}

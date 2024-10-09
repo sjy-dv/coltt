@@ -16,4 +16,5 @@ clean:
 	rm -rf $(PROTO_OUT_DIR)
 
 
-.PHONY: compile clean
+add-license:
+	- go-licenser -license ASL2 -licensor sjy-dv
