@@ -15,7 +15,7 @@ message RaftLog {
     bytes message = 2;
 }
 
-message GroupProxyAction {
+message GroupProposalAction {
     string proxy_name = 1;
     bytes data = 2;
 }

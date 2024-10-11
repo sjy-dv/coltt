@@ -5,7 +5,7 @@ option go_package="github.com/sjy-dv/vemoo/proto/gen/v1/clusterV1";
 import "core.proto";
 
 
-service NodesCtrl {
+service NodesCoordinator {
     rpc ListNodes(coreV1.EmptyMessage) returns (stream Node);
     rpc AddNode(Node) returns (stream Node);
     rpc RemoveNode(Node) returns (coreV1.EmptyMessage);
