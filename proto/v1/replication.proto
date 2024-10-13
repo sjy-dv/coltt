@@ -1,6 +1,6 @@
 syntax="proto3";
-package RaftV1;
-option go_package="github.com/sjy-dv/vemoo/proto/gen/v1/raftV1";
+package replicationV1;
+option go_package="github.com/sjy-dv/vemoo/proto/gen/v1/replicationV1";
 
 
 import "core.proto";
