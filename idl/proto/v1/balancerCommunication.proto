@@ -1,0 +1,111 @@
+syntax="proto3";
+package balancerCommunicationV1;
+option go_package="./balancerCommunicationV1";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/any.proto";
+
+service LBCoordinator {
+    // check health
+    rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+    // collection service
+    rpc CreateCollection(Collection) returns (CollectionResponse) {}
+    rpc DropCollection(CollectionName) returns (Response) {}
+    rpc GetCollection(CollectionName) returns (Collection) {}
+    rpc ListCollection(google.protobuf.Empty) returns (CollectionList) {}
+    // vector data communication
+    rpc Insert(ModifyDataset) returns (Response) {}
+    rpc Update(ModifyDataset) returns (Response) {}
+    rpc Delete(DeleteDataset) returns (Response) {}
+    rpc BatchInsert(stream ModifyDataset) returns (stream Response) {}
+    rpc BatchUpdate(stream ModifyDataset) returns (stream Response) {}
+    rpc BatchDelete(stream DeleteDataset) returns (stream Response) {} 
+    rpc Search(SearchReq) returns (SearchResponse) {}
+
+    // sync
+    rpc DataLoader(stream ModifyDataset) returns (stream Response) {}
+}
+
+// modify(insert or update)
+message ModifyDataset {
+    string id = 1;
+    string collection_name=2;
+    repeated float vector=3;
+    map<string,google.protobuf.Any> metadata = 4;
+}
+
+// only delete
+message DeleteDataset {
+    string id = 1;
+    string collection_name=2;
+}
+
+message Response {
+    bool result = 1;
+    string error_message = 2;
+    ErrorCode error_code=3;
+}
+
+enum ErrorCode {
+    UNDEFINED=0; // check error message
+    RPC_ERROR=1;
+    COMMUNICATION_SHARD_RPC_ERROR=2;
+    COMMUNICATION_SHARD_ERROR=3;
+    MARSHAL_ERROR=4;
+}
+
+message SearchReq {
+    string collection_name=2;
+    repeated float vector=3;
+    map<string, google.protobuf.Any> metadata=4;
+    uint64 topK=5;
+    float min_score=6;
+    bytes search_options=7;
+}
+
+message SearchResponse {
+    bool result = 1;
+    string error_message = 2;
+    ErrorCode error_code=3;
+    repeated Row response=4;
+    string latency=5;
+}
+
+message Row {
+    string id = 1;
+    map<string,google.protobuf.Any> metadata = 2;
+    repeated float vector=3;
+    float score=4;
+}
+
+
+enum VectorIndex {
+    FLAT_INDEX=0;
+    HNSW_INDEX=1;
+    VAMANA_INDEX=2;
+}
+
+message Collection {
+    string collection_name=1;
+    uint64 dimension=2;
+    repeated string inverted_index=3;
+    VectorIndex vector_index=4;
+    uint64 collection_size=5;
+    uint64 disk_size=6;
+    string create_timestamp=7;
+}
+
+message CollectionList {
+    repeated Collection collections=1;
+    uint64 count = 2;
+    uint64 total_size = 3;
+}
+
+message CollectionName {
+    string collection_name = 1;
+}
+
+message CollectionResponse {
+    Response response=1;
+    Collection collection=2;
+}
