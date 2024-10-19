@@ -1,6 +1,44 @@
 package storage
 
+import (
+	"errors"
+	"fmt"
+	"time"
+
+	"go.etcd.io/bbolt"
+)
+
 const defaultPath = "./.vcache"
+
+type nullReadOnlyStorage struct{}
+
+func (nullReadOnlyStorage) IsReadOnly() bool {
+	return true
+}
+
+func (nullReadOnlyStorage) Get(k []byte) []byte {
+	return nil
+}
+
+func (nullReadOnlyStorage) ForEach(f func(k, v []byte) error) error {
+	return nil
+}
+
+func (nullReadOnlyStorage) PrefixScan(prefix []byte, f func(k, v []byte) error) error {
+	return nil
+}
+
+func (nullReadOnlyStorage) RangeScan(start, end []byte, inclusive bool, f func(k, v []byte) error) error {
+	return nil
+}
+
+func (nullReadOnlyStorage) Put(k, v []byte) error {
+	return errors.New("cannot put into empty read-only storage")
+}
+
+func (nullReadOnlyStorage) Delete(k []byte) error {
+	return errors.New("cannot delete from empty read-only storage")
+}
 
 type ReadOnlyStorage interface {
 	Get([]byte) []byte
@@ -30,6 +68,14 @@ type StorageLayer interface {
 	Close() error
 }
 
-func Open(path string) (StorageLayer, error) {
-	return newCompressionCDat(path)
+func Open(path string, stable bool) (StorageLayer, error) {
+	if stable {
+		db, err := bbolt.Open(path, 0644, &bbolt.Options{Timeout: 1 * time.Minute})
+		if err != nil {
+			return nil, fmt.Errorf("open db failed %s: %w", path, err)
+		}
+		return openDiskStore{db: db}, nil
+	} else {
+		return newCompressionCDat(path)
+	}
 }
