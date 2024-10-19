@@ -214,9 +214,19 @@ func (self *compressionCdat) BackupToFile(path string) error {
 	return nil
 }
 
+func (self *compressionCdat) Flush() error {
+	return self.syncDisk()
+}
+
 func (self *compressionCdat) loadFromCache(path string) error {
 	file, err := os.Open(path)
 	if err != nil {
+		if os.IsNotExist(err) {
+			err = self.syncDisk()
+			if err != nil {
+				return fmt.Errorf("failed to create new cache file: %v", err)
+			}
+		}
 		return fmt.Errorf("failed to open cache file: %v", err)
 	}
 	defer file.Close()

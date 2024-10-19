@@ -24,3 +24,8 @@ clean:
 
 add-license:
 	- go-licenser -license ASL2 -licensor sjy-dv
+
+
+test:
+	- go test -v --count=1 ./pkg/sharding
+	- go test -v --count=1 ./storage

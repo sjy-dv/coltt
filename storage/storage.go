@@ -8,8 +8,6 @@ import (
 	"go.etcd.io/bbolt"
 )
 
-const defaultPath = "./.vcache"
-
 type nullReadOnlyStorage struct{}
 
 func (nullReadOnlyStorage) IsReadOnly() bool {
@@ -65,6 +63,7 @@ type StorageLayer interface {
 	Write(f func(StorageCoordinator) error) error
 	BackupToFile(path string) error
 	SizeInBytes() (int64, error)
+	Flush() error
 	Close() error
 }
 

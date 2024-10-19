@@ -149,3 +149,7 @@ func (self openDiskStore) SizeInBytes() (int64, error) {
 func (self openDiskStore) Close() error {
 	return self.db.Close()
 }
+
+func (self openDiskStore) Flush() error {
+	return nil
+}
