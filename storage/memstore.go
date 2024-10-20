@@ -1,67 +1,43 @@
-// Licensed to sjy-dv under one or more contributor
-// license agreements. See the NOTICE file distributed with
-// this work for additional information regarding copyright
-// ownership. sjy-dv licenses this file to you under
-// the Apache License, Version 2.0 (the "License"); you may
-// not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing,
-// software distributed under the License is distributed on an
-// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-// KIND, either express or implied.  See the License for the
-// specific language governing permissions and limitations
-// under the License.
-
 package storage
 
 import (
 	"bytes"
 	"cmp"
-	"encoding/gob"
-	"errors"
 	"fmt"
-	"os"
 	"slices"
 	"sync"
-
-	"github.com/sjy-dv/nnv/pkg/flate"
 )
 
-var readOnlyConstraints error = errors.New("shard is read-only")
-
-type compressionMemStore struct {
+type memeStorage struct {
 	data       map[string][]byte
 	isReadOnly bool
 }
 
-func NewCompressionMemStore(isReadOnly bool) Storage {
-	return &compressionMemStore{
+func NewMemStorage(isReadOnly bool) Storage {
+	return &memeStorage{
 		data:       make(map[string][]byte),
 		isReadOnly: isReadOnly,
 	}
 }
 
-func (self *compressionMemStore) IsReadOnly() bool {
-	return self.isReadOnly
+func (b *memeStorage) IsReadOnly() bool {
+	return b.isReadOnly
 }
 
-func (self *compressionMemStore) Get(k []byte) []byte {
-	return self.data[string(k)]
+func (b *memeStorage) Get(k []byte) []byte {
+	return b.data[string(k)]
 }
 
-func (self *compressionMemStore) Put(k, v []byte) error {
-	if self.isReadOnly {
-		return readOnlyConstraints
+func (b *memeStorage) Put(k, v []byte) error {
+	if b.isReadOnly {
+		return fmt.Errorf("cannot put into read-only memory bucket")
 	}
-	self.data[string(k)] = v
+	b.data[string(k)] = v
 	return nil
 }
 
-func (self *compressionMemStore) ForEach(f func(k, v []byte) error) error {
-	for k, v := range self.data {
+func (b *memeStorage) ForEach(f func(k, v []byte) error) error {
+	for k, v := range b.data {
 		if err := f([]byte(k), v); err != nil {
 			return err
 		}
@@ -69,8 +45,8 @@ func (self *compressionMemStore) ForEach(f func(k, v []byte) error) error {
 	return nil
 }
 
-func (self *compressionMemStore) PrefixScan(prefix []byte, f func(k, v []byte) error) error {
-	for k, v := range self.data {
+func (b *memeStorage) PrefixScan(prefix []byte, f func(k, v []byte) error) error {
+	for k, v := range b.data {
 		if len(k) < len(prefix) {
 			continue
 		}
@@ -83,19 +59,20 @@ func (self *compressionMemStore) PrefixScan(prefix []byte, f func(k, v []byte) e
 	return nil
 }
 
-func (self *compressionMemStore) RangeScan(start, end []byte, inclusive bool, f func(k, v []byte) error) error {
-	type row struct {
+func (b *memeStorage) RangeScan(start, end []byte, inclusive bool, f func(k, v []byte) error) error {
+	// The data neeself to be ordered first
+	type pair struct {
 		k string
 		v []byte
 	}
-	aggregates := make([]row, 0, len(self.data))
-	for k, v := range self.data {
-		aggregates = append(aggregates, row{k, v})
+	orderedData := make([]pair, 0, len(b.data))
+	for k, v := range b.data {
+		orderedData = append(orderedData, pair{k, v})
 	}
-	slices.SortFunc(aggregates, func(x, y row) int {
-		return cmp.Compare(x.k, y.k)
+	slices.SortFunc(orderedData, func(a, b pair) int {
+		return cmp.Compare(a.k, b.k)
 	})
-	for _, p := range aggregates {
+	for _, p := range orderedData {
 		if start != nil {
 			if inclusive {
 				if bytes.Compare([]byte(p.k), start) < 0 {
@@ -125,169 +102,91 @@ func (self *compressionMemStore) RangeScan(start, end []byte, inclusive bool, f 
 	return nil
 }
 
-func (self *compressionMemStore) Delete(k []byte) error {
-	if self.isReadOnly {
-		return readOnlyConstraints
+func (b *memeStorage) Delete(k []byte) error {
+	if b.isReadOnly {
+		return fmt.Errorf("cannot delete in a read-only memory bucket")
 	}
-	delete(self.data, string(k))
+	delete(b.data, string(k))
 	return nil
 }
 
-type compressionMemStoreCoordinator struct {
+type memeStorageManager struct {
 	storages   map[string]map[string][]byte
 	isReadOnly bool
-	mu         sync.RWMutex
+	mu         sync.Mutex
 }
 
-func (self *compressionMemStoreCoordinator) Get(storageName string) (Storage, error) {
+func (self *memeStorageManager) Get(storageName string) (Storage, error) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
-	storage, ok := self.storages[storageName]
+	b, ok := self.storages[storageName]
 	if !ok {
-		storage = make(map[string][]byte)
-		self.storages[storageName] = storage
+		b = make(map[string][]byte)
+		self.storages[storageName] = b
 	}
-	cm := &compressionMemStore{
-		data:       storage,
+	mb := &memeStorage{
+		data:       b,
 		isReadOnly: self.isReadOnly,
 	}
-	return cm, nil
+	return mb, nil
 }
 
-func (self *compressionMemStoreCoordinator) Delete(storageName string) error {
+func (self *memeStorageManager) Delete(storageName string) error {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	if self.isReadOnly {
-		return fmt.Errorf("coordinator is readonly constraints, delete failed %s", storageName)
+		return fmt.Errorf("cannot delete %s in a read-only memory bucket manager", storageName)
 	}
 	delete(self.storages, storageName)
 	return nil
 }
 
-type compressionCdat struct {
+type memDiskStore struct {
 	storages map[string]map[string][]byte
-	mu       sync.RWMutex
-	path     string
+	// This lock is used to give a consistent view of the store such that Write
+	// does not interleave with any Read.
+	mu sync.RWMutex
 }
 
-func newCompressionCDat(path string) (*compressionCdat, error) {
-	instance := &compressionCdat{
+func newMemDiskStore() *memDiskStore {
+	return &memDiskStore{
 		storages: make(map[string]map[string][]byte),
-		path:     path,
 	}
-	if path != "" {
-		err := instance.loadFromCache(path)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return instance, nil
 }
 
-func (self *compressionCdat) Path() string {
-	return self.path
+func (self *memDiskStore) Path() string {
+	return "memory"
 }
 
-func (self *compressionCdat) Read(f func(StorageCoordinator) error) error {
-	self.mu.Lock()
-	defer self.mu.Unlock()
-	cooridnator := &compressionMemStoreCoordinator{
+func (self *memDiskStore) Read(f func(StorageCoordinator) error) error {
+	self.mu.RLock()
+	defer self.mu.RUnlock()
+	ms := &memeStorageManager{
 		storages:   self.storages,
 		isReadOnly: true,
 	}
-	return f(cooridnator)
+	return f(ms)
 }
 
-func (self *compressionCdat) Write(f func(StorageCoordinator) error) error {
+func (self *memDiskStore) Write(f func(StorageCoordinator) error) error {
 	self.mu.Lock()
 	defer self.mu.Unlock()
-	coordinator := &compressionMemStoreCoordinator{
+	ms := &memeStorageManager{
 		storages:   self.storages,
 		isReadOnly: false,
 	}
-	return f(coordinator)
+	return f(ms)
 }
 
-func (self *compressionCdat) BackupToFile(path string) error {
-	self.mu.RLock()
-	defer self.mu.RUnlock()
-
-	file, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	compressor, err := flate.NewWriter(file, flate.BestCompression, nil)
-	if err != nil {
-		return err
-	}
-	defer compressor.Close()
-
-	encoder := gob.NewEncoder(compressor)
-	if err := encoder.Encode(self.storages); err != nil {
-		return err
-	}
-	return nil
+func (self *memDiskStore) BackupToFile(path string) error {
+	return fmt.Errorf("not supported")
 }
 
-func (self *compressionCdat) Flush() error {
-	return self.syncDisk()
+func (self *memDiskStore) SizeInBytes() (int64, error) {
+	return 0, nil
 }
 
-func (self *compressionCdat) loadFromCache(path string) error {
-	file, err := os.Open(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			err = self.syncDisk()
-			if err != nil {
-				return fmt.Errorf("failed to create new cache file: %v", err)
-			}
-		}
-		return fmt.Errorf("failed to open cache file: %v", err)
-	}
-	defer file.Close()
-
-	decompressor := flate.NewReader(file, nil)
-	defer decompressor.Close()
-
-	decoder := gob.NewDecoder(decompressor)
-	if err := decoder.Decode(&self.storages); err != nil {
-		return fmt.Errorf("failed to decode cache data: %v", err)
-	}
-	return nil
-}
-
-func (self *compressionCdat) SizeInBytes() (int64, error) {
-	info, err := os.Stat(self.path)
-	if err != nil {
-		return 0, errors.New("SizeInBytes os.Stat function error : " + err.Error())
-	}
-	return info.Size(), nil
-}
-
-func (self *compressionCdat) Close() error {
-	return self.syncDisk()
-}
-
-func (self *compressionCdat) syncDisk() error {
-	if self.path == "" {
-		return nil
-	}
-	file, err := os.Create(self.path)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	compressor, err := flate.NewWriter(file, flate.BestCompression, nil)
-	if err != nil {
-		return err
-	}
-	defer compressor.Close()
-
-	encoder := gob.NewEncoder(compressor)
-	if err := encoder.Encode(self.storages); err != nil {
-		return err
-	}
+func (self *memDiskStore) Close() error {
+	clear(self.storages)
 	return nil
 }

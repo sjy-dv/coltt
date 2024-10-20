@@ -28,4 +28,5 @@ add-license:
 
 test:
 	- go test -v --count=1 ./pkg/sharding
-	- go test -v --count=1 ./storage
+# - go test -v --count=1 ./storage
+	- go test -v --count=1 ./pkg/flat

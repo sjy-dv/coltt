@@ -17,7 +17,7 @@ type IndexFlat struct {
 	vecStore vectorspace.VectorStore
 }
 
-func NewIndexFlat(params models.IndexVectorParameters, storage storage.Storage) (inf IndexFlat, err error) {
+func NewIndexFlat(params models.IndexVectorFlatParameters, storage storage.Storage) (inf IndexFlat, err error) {
 	// ---------------------------
 	vstore, err := vectorspace.New(params.Quantizer, storage, params.DistanceMetric, int(params.VectorSize))
 	if err != nil {

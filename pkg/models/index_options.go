@@ -21,17 +21,26 @@ type IndexSchema map[string]IndexOptions
 
 type IndexOptions struct {
 	Type        string                      `json:"type" binding:"required,oneof=vectorFlat vectorVamana vectorHnsw text string integer float stringArray"`
-	VectorFlat  *IndexVectorParameters      `json:"vectorFlat,omitempty"`
-	VectorHnsw  *IndexVectorParameters      `json:"vectorHnsw,omitempty"`
+	VectorFlat  *IndexVectorFlatParameters  `json:"vectorFlat,omitempty"`
+	VectorHnsw  *IndexVectorHnswParameters  `json:"vectorHnsw,omitempty"`
 	Text        *IndexTextParameters        `json:"text,omitempty"`
 	String      *IndexStringParameters      `json:"string,omitempty"`
 	StringArray *IndexStringArrayParameters `json:"stringArray,omitempty"`
 }
 
-type IndexVectorParameters struct {
+type IndexVectorFlatParameters struct {
 	VectorSize     uint       `json:"vectorSize" binding:"required,min=1,max=4096"`
 	DistanceMetric string     `json:"distanceMetric" binding:"required,oneof=euclidean cosine dot hamming jaccard haversine"`
 	Quantizer      *Quantizer `json:"quantizer,omitempty"`
+}
+
+type IndexVectorHnswParameters struct {
+	VectorSize     uint       `json:"vectorSize" binding:"required,min=1,max=4096"`
+	DistanceMetric string     `json:"distanceMetric" binding:"required,oneof=euclidean cosine"`
+	Quantizer      *Quantizer `json:"quantizer,omitempty"`
+	//Maximum Number of Connections per Node
+	M              uint `json:"m" binding:"required,min=1,max=100"`
+	EfConstruction uint `json:"efConstruction" binding:"required,min=1,max=1000"`
 }
 
 type IndexTextParameters struct {
