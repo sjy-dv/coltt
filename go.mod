@@ -1,4 +1,4 @@
-module github.com/sjy-dv/vemoo
+module github.com/sjy-dv/nnv
 
 go 1.23.1
 

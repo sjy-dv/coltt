@@ -82,7 +82,6 @@ message Row {
 enum VectorIndex {
     FLAT_INDEX=0;
     HNSW_INDEX=1;
-    VAMANA_INDEX=2;
 }
 
 message Collection {

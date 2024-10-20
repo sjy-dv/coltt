@@ -15,20 +15,4 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package index
-
-import (
-	"github.com/sjy-dv/nnv/pkg/models"
-	"github.com/sjy-dv/nnv/storage"
-)
-
-type IndexInvertedString struct {
-	inner  *IndexInverted[string]
-	params models.IndexStringParameters
-}
-
-func NewIndexInvertedString(storg storage.Storage,
-	params models.IndexStringParameters) *IndexInvertedString {
-	inv := NewIndexInverted[string](storg)
-	return &IndexInvertedString{inner: inv, params: params}
-}
+package vectorspace
