@@ -49,7 +49,7 @@ func (self *ItemCache[K, T]) SizeInMemory() int64 {
 	return 0
 }
 
-func (self *ItemCache[K, T]) UpdateBucket(storage storage.Storage) {
+func (self *ItemCache[K, T]) UpdateStorage(storage storage.Storage) {
 	self.storage = storage
 }
 

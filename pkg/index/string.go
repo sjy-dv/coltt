@@ -15,3 +15,4 @@ func NewIndexInvertedString(storg storage.Storage,
 	inv := NewIndexInverted[string](storg)
 	return &IndexInvertedString{inner: inv, params: params}
 }
+
