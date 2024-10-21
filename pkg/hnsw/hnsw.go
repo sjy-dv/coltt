@@ -196,7 +196,9 @@ func (h *HNSW) AddNodeToGraph(node *Node) {
 func (h *HNSW) findMostSimilar(target *Node, current *Node, level int) (*Node, float32) {
 	var bestNode *Node
 	maxSim := float32(-math.MaxFloat32)
-
+	if level >= len(current.Neighbors) {
+		return nil, maxSim
+	}
 	neighbors := current.Neighbors[level]
 	for _, neighborID := range neighbors {
 		if neighborID == 0 {
@@ -240,12 +242,12 @@ func (h *HNSW) removeFarthest(node *Node, level int, referenceVector []float32) 
 }
 
 // AddPoint adds a new point to the HNSW graph with an automatically assigned ID.
-func (h *HNSW) AddPoint(vector []float32) (uint64, error) {
+func (h *HNSW) AddPoint(vector []float32, id uint64) (uint64, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-
-	id := h.nextID
-	h.nextID++
+	// id := uint64(1)
+	// id := h.nextID
+	// h.nextID++
 
 	if h.D != 0 && len(vector) != h.D {
 		return 0, fmt.Errorf("all vectors must be of the same dimension")
@@ -307,7 +309,7 @@ func (h *HNSW) DeletePoint(id uint64) error {
 }
 
 // SearchKNN searches for the k nearest neighbors to the query vector, excluding nodes in the filter.
-func (h *HNSW) SearchKNN(query []float32, k int, filter *roaring64.Bitmap) ([]SearchResult, error) {
+func (h *HNSW) Search(query []float32, k int, filter *roaring64.Bitmap) ([]SearchResult, error) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 

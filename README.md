@@ -2,7 +2,7 @@
 
 ![logo](./examples/assets/logo.png)
 
-NNV (No-Named.V) is a production vector database project by a developer aspiring to gain recognition. Internally, it supports FLAT and HNSW indexing, as well as bitmap-based indexing, with quantization available for vector indexes.
+NNV (No-Named.V) is a production vector database project by a developer aspiring to gain recognition. It primarily supports DiskANN but aims to support FLAT (already supported) and HNSW indexing in the long term. Bitmap-based indexing is also possible. Quantization for vector indexes is available (already supported).
 
 Additionally, its flexible and innovative cluster architecture presents a new vision.
 
