@@ -1,8 +1,9 @@
 package hnsw
 
 var (
-	BucketPrefix       = []byte("bucket_")
-	BucketConfigPrefix = []byte("_cfg")
-	BucketColPrefix    = []byte("bcol_")
-	BucketBitmapIndex  = []byte("_bidx_")
+	BucketPrefix          = "bucket_"
+	BucketConfigPrefix    = "_cfg"
+	BucketColPrefix       = "bcol_"
+	BucketBitmapIndex     = "_bidx_"
+	BucketEmptyNodePrefix = "_empty"
 )

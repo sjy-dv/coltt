@@ -18,6 +18,7 @@ type Node struct {
 	Id        uint32
 	Timestamp uint64 // check node put order
 	Metadata  map[string]interface{}
+	IsEmpty   bool
 }
 
 type NodeList struct {
@@ -55,6 +56,7 @@ type Hnsw struct {
 	BucketName     string // using seperate vector or find prefix kv
 	Filter         []string
 	Index          map[string]*roaring.Bitmap
+	EmptyNodes     []uint32 // restore empty node link
 	rmu            sync.RWMutex
 	Wg             sync.WaitGroup
 }

@@ -33,7 +33,7 @@ func (self *HnswBucket) Start(opts *kv.Options) error {
 	// reload hnsw config & node data
 	iter, err := kvstore.NewIterator(kv.IteratorOptions{
 		Reverse: false,
-		Prefix:  BucketPrefix,
+		Prefix:  []byte(BucketPrefix),
 	})
 	if err != nil {
 		log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(30) kv iterator failed error")
@@ -63,6 +63,17 @@ func (self *HnswBucket) dataloader(bucketName string) error {
 	err = msgpack.Unmarshal(cfgbytes, &cfg)
 	if err != nil {
 		log.Warn().Err(err).Msg(fmt.Sprintf("pkg.hnsw.hnsw.go(62) bucket %s config data msgpack.Unmarshal failed error", bucketName))
+		return err
+	}
+	emptyNodebytes, err := self.Storage.Get([]byte(fmt.Sprintf("%s%s", bucketName, BucketEmptyNodePrefix)))
+	if err != nil {
+		log.Warn().Err(err).Msg(fmt.Sprintf("pkg.hnsw.hnsw.go(70) bucket %s empty node data load failed error", bucketName))
+		return err
+	}
+	var emptyNodes []uint32
+	err = msgpack.Unmarshal(emptyNodebytes, &emptyNodes)
+	if err != nil {
+		log.Warn().Err(err).Msg(fmt.Sprintf("pkg.hnsw.hnsw.go(76) bucket %s empty node data msgpack.Unmarshal failed error", bucketName))
 		return err
 	}
 	iter, err := self.Storage.NewIterator(kv.IteratorOptions{
@@ -113,11 +124,12 @@ func (self *HnswBucket) dataloader(bucketName string) error {
 		Space:          cfg.Space,
 		NodeList:       NodeList{Nodes: nodes},
 		BucketName:     cfg.BucketName,
+		EmptyNodes:     emptyNodes,
 	}
 	return nil
 }
 
-func (self *HnswBucket) NewHnswBucket(bucketName string, config *HnswConfig) error {
+func (self *HnswBucket) NewHnswBucket(bucketName string, config HnswConfig) error {
 	self.rmu.RLock()
 	defer self.rmu.RUnlock()
 	if ok := self.BucketGroup[bucketName]; ok {
@@ -126,6 +138,16 @@ func (self *HnswBucket) NewHnswBucket(bucketName string, config *HnswConfig) err
 	err := self.Storage.Put([]byte(fmt.Sprintf("bucket_%s", bucketName)), []byte(bucketName))
 	if err != nil {
 		log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(17) saved new hnsw bucket failed error")
+		return err
+	}
+	cfgbytes, err := msgpack.Marshal(config)
+	if err != nil {
+		log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(145) msgpack.Marshal.Fn failed error")
+		return err
+	}
+	err = self.Storage.Put([]byte(fmt.Sprintf("%s%s", bucketName, BucketConfigPrefix)), cfgbytes)
+	if err != nil {
+		log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(150) saved new hnsw bucket config failed error")
 		return err
 	}
 	self.BucketGroup[bucketName] = true
@@ -174,8 +196,8 @@ func (self *Hnsw) getConnection(ep *Node, level int) []uint32 {
 
 func (self *Hnsw) removeConnection(nodeId uint32) error {
 	node := &self.NodeList.Nodes[nodeId]
-	if node.Id == 0 {
-		return nil
+	if node.Id == 0 && !node.IsEmpty {
+		return errors.New("node not found")
 	}
 
 	for level := 0; level <= self.MaxLevel; level++ {
@@ -195,8 +217,14 @@ func (self *Hnsw) removeConnection(nodeId uint32) error {
 	}
 
 	self.NodeList.rmu.Lock()
-	self.NodeList.Nodes[nodeId] = Node{}
+	self.NodeList.Nodes[nodeId] = Node{
+		Id:      nodeId,
+		IsEmpty: true,
+	}
 	self.NodeList.rmu.Unlock()
+	self.rmu.Lock()
+	self.EmptyNodes = append(self.EmptyNodes, nodeId)
+	self.rmu.Unlock()
 	return nil
 }
 

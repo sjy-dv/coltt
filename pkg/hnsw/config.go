@@ -6,8 +6,8 @@ import (
 	"github.com/sjy-dv/nnv/pkg/distance"
 )
 
-func DefaultConfig(dim uint32, bucketName string) *HnswConfig {
-	return &HnswConfig{
+func DefaultConfig(dim uint32, bucketName string) HnswConfig {
+	return HnswConfig{
 		Efconstruction: 200,
 		M:              16,
 		Mmax:           16,

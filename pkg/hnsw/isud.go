@@ -36,7 +36,15 @@ func (self *HnswBucket) Insert(bucketName string, userNodeId string, vec gomath.
 	node.Layer = int(math.Floor(-math.Log(rand.Float64()) * self.Buckets[bucketName].Ml))
 	node.Id = uint32(len(self.Buckets[bucketName].NodeList.Nodes))
 	node.LinkNodes = make([][]uint32, self.Buckets[bucketName].M+1)
-
+	if len(self.Buckets[bucketName].EmptyNodes) != 0 {
+		emptyNodeId := self.Buckets[bucketName].EmptyNodes[len(self.Buckets[bucketName].EmptyNodes)-1]
+		self.Buckets[bucketName].EmptyNodes = self.Buckets[bucketName].
+			EmptyNodes[:len(self.Buckets[bucketName].EmptyNodes)-1]
+		node.Id = emptyNodeId
+		self.Buckets[bucketName].NodeList.Nodes[emptyNodeId] = node
+	} else {
+		self.Buckets[bucketName].NodeList.Nodes = append(self.Buckets[bucketName].NodeList.Nodes, node)
+	}
 	self.Buckets[bucketName].NodeList.rmu.Unlock()
 
 	pq := &PriorityQueue{}
@@ -159,4 +167,46 @@ func (self *HnswBucket) Update(bucketName string, nodeId string, vec gomath.Vect
 		return err
 	}
 	return self.Insert(bucketName, nodeId, vec, metadata)
+}
+
+func (self *HnswBucket) Delete(bucketName string, nodeId string) error {
+	val, err := self.Storage.Get([]byte(nodeId))
+	if err != nil {
+		return err
+	}
+	node := Node{}
+	err = msgpack.Unmarshal(val, &node)
+	if err != nil {
+		return err
+	}
+	err = self.Storage.Delete([]byte(nodeId))
+	if err != nil {
+		return err
+	}
+	err = self.Buckets[bucketName].removeConnection(node.Id)
+	return err
+}
+
+func (self *HnswBucket) Search(bucketName string, vec gomath.Vector, topCandidates *PriorityQueue, K int, efSearch int) (err error) {
+	curObj := &self.Buckets[bucketName].NodeList.Nodes[self.Buckets[bucketName].Ep]
+
+	match, curDist, err := self.Buckets[bucketName].findEp(vec, curObj, 0)
+	if err != nil {
+		return err
+	}
+
+	err = self.Buckets[bucketName].searchLayer(
+		vec,
+		&Item{Distance: curDist, Node: match.Id},
+		topCandidates,
+		efSearch,
+		0,
+	)
+	if err != nil {
+		return err
+	}
+	for topCandidates.Len() > K {
+		_ = heap.Pop(topCandidates).(*Item)
+	}
+	return nil
 }
