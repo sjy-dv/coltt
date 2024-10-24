@@ -27,7 +27,7 @@ Therefore, as of today (2024-10-20), I am considering two architectural approach
 
 The architecture is divided into two approaches.
 
-### LoadBlancer & Database Integration
+### LoadBalancer & Database Integration
 
 First, a load balancer is placed at the front, supporting both sharding and integration of the data. The internal database exists in a pure state.
 
