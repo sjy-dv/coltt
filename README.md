@@ -2,7 +2,7 @@
 
 ![logo](./examples/assets/logo.png)
 
-NNV (No-Named.V) is a production vector database project by a developer aspiring to gain recognition. It primarily supports DiskANN but aims to support FLAT (already supported) and HNSW indexing in the long term. Bitmap-based indexing is also possible. Quantization for vector indexes is available (already supported).
+NNV (No-Named.V) is a production database project by a developer aspiring to gain recognition. The project is designed as a KV database, aiming to support FLAT (already supported) and HNSW indexing in the long term. Bitmap-based indexing and quantization for vector indexes are supported (quantization already supported). Additionally, it aims to incorporate real-time streaming functionality to enable versatile use cases.
 
 Additionally, its flexible and innovative cluster architecture presents a new vision.
 
@@ -40,6 +40,8 @@ Therefore, for managing large volumes of data, the shard balancer is slightly mo
 
 ### JetStream(Nats) Multi-Leader
 
+![arch4](./examples/assets/arch4.png)
+
 The second approach utilizes JetStream for the configuration.
 
 While this is architecturally simpler than the previous approach, from the user's perspective, the setup is not significantly different from RAFT.
@@ -48,6 +50,7 @@ However, the key difference is that, unlike RAFT, it supports multi-write and mu
 
 In this approach, the database is configured in a replication format, and JetStream is used to enable multi-leader configurations.
 
+![arch5](./examples/assets/arch5.png)
 Each database contains its own JetStream, and these JetStreams join the same group of topics and clusters. In this case, whenever all nodes attempt to publish changes to a row, they pass through the same JetStream. If two nodes attempt to modify the same data in parallel, they will compete to publish their changes. While it's possible to prevent changes from being propagated, this could lead to data loss. According to the RAFT quorum constraint in JetStream, only one writer can publish the change. Therefore, we designed the system to allow the last writer to win. This is not an issue for vector databases because, compared to traditional databases, the data structure is simpler (this doesn't imply that the system itself is simple, but rather that there are fewer complex transactions and procedures, such as transaction serialization). This also avoids global locks and performance bottlenecks.
 
 ![summary](./examples/assets/summary.png)
