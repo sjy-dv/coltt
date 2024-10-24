@@ -28,6 +28,7 @@ require (
 
 require (
 	github.com/RoaringBitmap/roaring v1.9.4
+	github.com/klauspost/cpuid v1.3.1
 	github.com/rs/zerolog v1.33.0
 	github.com/stretchr/testify v1.9.0
 	github.com/vmihailenco/msgpack/v5 v5.4.1
