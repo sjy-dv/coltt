@@ -2,9 +2,13 @@
 
 ![logo](./examples/assets/logo.png)
 
-NNV (No-Named.V) is a production database project by a developer aspiring to gain recognition. The project is designed as a KV database, aiming to support FLAT (already supported) and HNSW indexing in the long term. Bitmap-based indexing and quantization for vector indexes are supported (quantization already supported). Additionally, it aims to incorporate real-time streaming functionality to enable versatile use cases.
+NNV (No-Named.V) is a production database project by a developer aspiring to gain recognition. The project is designed as a KV database, aiming to support FLAT (already supported => cancel) and HNSW indexing in the long term. Bitmap-based indexing and quantization for vector indexes are supported (quantization already supported => cancel). Additionally, it aims to incorporate real-time streaming functionality to enable versatile use cases.
 
 Additionally, its flexible and innovative cluster architecture presents a new vision.
+
+### ⚠️ Warning
+
+The hybrid search method using bitmap indexing within metadata is scheduled to be added after the initial release.
 
 ## Features
 
