@@ -1,0 +1,117 @@
+syntax="proto3";
+package dataCoordinatorV1;
+option go_package="./dataCoordinatorV1";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/any.proto";
+
+// dataset coordinator is managing kv data or vector data
+service DatasetCoordinator {
+    rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+    // vector rpc
+    rpc Insert(ModifyDataset) returns (Response) {}
+    rpc Update(ModifyDataset) returns (Response) {}
+    rpc Delete(DeleteDataset) returns (Response) {}
+    rpc Search(SearchReq) returns (SearchResponse) {}
+
+    rpc BatchInsert(stream StreamModifyDataset) returns (stream Response) {}
+    rpc BatchUpdate(stream StreamModifyDataset) returns (stream Response) {}
+    rpc BatchDelete(BatchDeleteIds) returns (Response) {}
+    // kv rpc
+    rpc Put(ModifyKV) returns (Response) {}
+    rpc Get(Key) returns (GetValue) {}
+    rpc Iterator(Key) returns (GetValues) {}
+    rpc Del(Key) returns (Response) {}
+    //It may conflict with multiple tasks, so we recommend avoiding it during busy times and running it during idle times.
+    rpc PerformanceCompaction(google.protobuf.Empty) returns (Response) {}
+}
+
+message ModifyKV {
+    bytes key=1;
+    bytes value=2;
+}
+
+message Key {
+    bytes key=1;
+}
+
+message GetValues {
+    bool status=1;
+    Error error=2;
+    repeated Value values=3;
+}
+
+message Value {
+    bytes value=1;
+}
+
+message GetValue {
+    bool status=1;
+    Error error=2;
+    Value value=3;
+}
+
+message BatchDeleteIds {
+    repeated string ids = 1;
+}
+
+message StreamModifyDataset {
+    ModifyDataset dataset=1;
+    bool final=2;
+}
+
+message ModifyDataset {
+    string id=1;
+    string bucket_name=2;
+    repeated float vector=3;
+    map<string, google.protobuf.Any> metadata=4;
+}
+
+message DeleteDataset {
+    string id=1;
+    string bucket_name=2;
+}
+
+message Response {
+    bool status=1;
+    Error error=2;
+}
+
+message Error {
+    string error_message=1;
+    ErrorCode error_code=2;
+}
+
+
+enum ErrorCode {
+    UNDEFINED=0; // check error message
+    RPC_ERROR=1;
+    COMMUNICATION_SHARD_RPC_ERROR=2;
+    COMMUNICATION_SHARD_ERROR=3;
+    MARSHAL_ERROR=4;
+}
+
+message SearchReq {
+    string bucket_name=1;
+    repeated float vector=2;
+    map<string, google.protobuf.Any> metadata=3;
+    uint64 topK=5;
+    float min_score=6;
+    int32 efSearch=7;
+    bytes search_options=8;
+    bool with_latency=9;
+}
+
+message SearchResponse {
+    bool status = 1;
+    Error error=2;
+    repeated Candidates candidates=3;
+    string latency=4;
+}
+
+message Candidates {
+    string id = 1;
+    map<string, google.protobuf.Any> metadata = 2;
+    repeated float vector=3;
+    float score=4;
+}

@@ -1,0 +1,112 @@
+syntax="proto3";
+package resourceCoordinatorV1;
+option go_package="./resourceCoordinatorV1";
+
+import "google/protobuf/empty.proto";
+
+// resource coordinator is using managed resource, vector bucket managing
+service ResourceCoordinator {
+    rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+    rpc CreateBucket(Bucket) returns (BucketResponse) {}
+    rpc DeleteBucket(BucketName) returns (DeleteBucketResponse) {}
+    rpc GetBucket(BucketName) returns (BucketDetail) {}
+    rpc GetAllBuckets(GetBuckets) returns(BucketsList) {}
+    rpc LoadResourceInfo(google.protobuf.Empty) returns(SystemInfo) {}
+     //storage performance compaction
+     // There may not be much change in memory usage. Because its main purpose is to reorder disk hashes.
+     //It may conflict with multiple tasks, so we recommend avoiding it during busy times and running it during idle times.
+     rpc PerformanceCompaction(google.protobuf.Empty) returns(Response) {}
+}
+
+message Bucket {
+    int32 efconstruction=1;
+    int32 m=2;
+    int32 mmax=3;
+    int32 mmax0=4;
+    double ml=5;
+    int64 ep=6;
+    int32 max_level=7;
+    uint32 dim=8;
+    bool heuristic=9;
+    Space space=10;
+    string bucket_name=11;
+    repeated string filter=12;
+}
+
+message BucketResponse {
+    Bucket bucket=1;
+    bool status=2;
+    Error error=3;
+}
+
+message BucketDetail {
+    Bucket bucket=1;
+    uint32 bucket_size=2;
+    uint64 bucket_memory=3;
+    bool status=4;
+    Error error=5;
+}
+
+message BucketList {
+    Bucket bucket=1;
+    uint32 bucket_size=2;
+    uint64 bucket_memory=3;
+}
+
+message BucketsList {
+    repeated BucketList buckets=1;
+    bool status=2;
+    Error error=3;
+}
+
+message Response {
+    bool status=1;
+    Error error=2;
+}
+
+message DeleteBucketResponse {
+    bool status=1;
+    Error error=2;
+}
+
+message BucketName {
+    string bucket_name=1;
+    bool with_size=2;
+}
+
+// get all buckets data
+message GetBuckets {
+    bool with_size=1;
+}
+
+message Error {
+    string error_message=1;
+    ErrorCode error_code=2;
+}
+
+enum Space {
+    Euclidean=0;
+    Cosine=1;
+    Manhattan=2;
+}
+
+enum ErrorCode {
+    UNDEFINED=0; // check error message
+    RPC_ERROR=1;
+    COMMUNICATION_SHARD_RPC_ERROR=2;
+    COMMUNICATION_SHARD_ERROR=3;
+    MARSHAL_ERROR=4;
+    INTERNAL_FUNC_ERROR=5;
+}
+
+message SystemInfo {
+    uint64 uptime=1;
+    double cpu_load1=2;
+    double cpu_load5=3;
+    double cpu_load15=4;
+    uint64 mem_total=5;
+    uint64 mem_available=6;
+    uint64 mem_used=7;
+    uint64 mem_free=8;
+    double mem_used_percent=9;
+}

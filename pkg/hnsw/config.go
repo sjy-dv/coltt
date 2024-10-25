@@ -6,7 +6,7 @@ import (
 	"github.com/sjy-dv/nnv/pkg/distance"
 )
 
-func DefaultConfig(dim uint32, bucketName string) HnswConfig {
+func DefaultConfig(dim uint32, bucketName string, dist distance.Space) HnswConfig {
 	return HnswConfig{
 		Efconstruction: 200,
 		M:              16,
@@ -16,7 +16,7 @@ func DefaultConfig(dim uint32, bucketName string) HnswConfig {
 		Ep:             0,
 		MaxLevel:       0,
 		Heuristic:      true,
-		Space:          distance.NewEuclidean(),
+		Space:          dist,
 		Dim:            dim,
 		BucketName:     bucketName,
 	}

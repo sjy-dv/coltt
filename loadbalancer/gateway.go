@@ -16,15 +16,3 @@
 // under the License.
 
 package loadbalancer
-
-type GateWay struct {
-	Host        string
-	Port        string
-	ServerAddrs []string
-
-	Balancer BalancerType
-	Infra    Infra
-
-	// when k8s
-	ServiceName string
-}

@@ -20,6 +20,7 @@ type ConfigMap struct {
 	// use single instance, must standalone=true
 	Standalone bool      `toml:"standalone"`
 	JetStream  JetStream `toml:"jetstream"`
+	RootLayer  RootLayer `toml:"rootlayer"`
 }
 
 type JetStream struct {
@@ -38,6 +39,17 @@ type JetStream struct {
 	ReconnectWaitSeconds int      `toml:"reconnect_wait_seconds"`
 }
 
+type RootLayer struct {
+	BindAddress              string `toml:"bind_address"`
+	KeepAliveTimeOut         int    `toml:"keep_alive_time_out"`
+	KeepAliveTime            int    `toml:"keep_alive_time"`
+	EnforcementPolicyMinTime int    `toml:"enforcement_policy_min_time"`
+	PemFile                  string `toml:"pem_file"`
+	KeyFile                  string `toml:"key_file"`
+	MaxRecvMsgSize           int    `toml:"max_recv_msg_size"`
+	MaxSendMsgSize           int    `toml:"max_send_msg_size"`
+}
+
 var Config = &ConfigMap{
 	NodeID: 0,
 	JetStream: JetStream{
@@ -51,6 +63,16 @@ var Config = &ConfigMap{
 		BindAddress:          ":-1",
 		ConnectRetries:       5,
 		ReconnectWaitSeconds: 2,
+	},
+	RootLayer: RootLayer{
+		BindAddress:              ":50051",
+		KeepAliveTimeOut:         0,
+		KeepAliveTime:            0,
+		EnforcementPolicyMinTime: 0,
+		PemFile:                  "",
+		KeyFile:                  "",
+		MaxRecvMsgSize:           0,
+		MaxSendMsgSize:           0,
 	},
 }
 

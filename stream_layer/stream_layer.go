@@ -25,7 +25,7 @@ func Connect() (*nats.Conn, error) {
 	opts = append(opts, creds...)
 	opts = append(opts, tls...)
 	if len(config.Config.JetStream.URLs) == 0 {
-		embedded, err := startEmbeddedServer(config.Config.NodeName())
+		embedded, err := startStreamLayer(config.Config.NodeName())
 		if err != nil {
 			return nil, err
 		}
