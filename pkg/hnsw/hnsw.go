@@ -19,6 +19,7 @@ import (
 )
 
 func (self *HnswBucket) Start(opts *kv.Options) error {
+
 	self.rmu.Lock()
 	self.BucketGroup = make(map[string]bool)
 	self.Buckets = make(map[string]*Hnsw)
@@ -27,11 +28,13 @@ func (self *HnswBucket) Start(opts *kv.Options) error {
 		opts = &kv.DefaultOptions
 		opts.DirPath = "./data_dir/ann"
 	}
+
 	kvstore, err := kv.Open(*opts)
 	if err != nil {
 		log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(20) open kv file failed error")
 		return err
 	}
+
 	self.Storage = kvstore
 	// reload hnsw config & node data
 	iter, err := kvstore.NewIterator(kv.IteratorOptions{
@@ -42,13 +45,17 @@ func (self *HnswBucket) Start(opts *kv.Options) error {
 		log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(30) kv iterator failed error")
 		return err
 	}
+
 	for iter.Valid() {
+		fmt.Println(iter.Value())
 		err := self.dataloader(string(iter.Value()))
 		if err != nil {
 			log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(38) dataloader.Fn failed error")
 			return err
 		}
+		iter.Next()
 	}
+
 	if err := iter.Close(); err != nil {
 		log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(38) kv iterator closed error")
 		return err
@@ -100,6 +107,7 @@ func (self *HnswBucket) dataloader(bucketName string) error {
 			return err
 		}
 		nodes = append(nodes, node)
+		iter.Next()
 	}
 	if err := iter.Close(); err != nil {
 		log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(38) kv iterator closed error")
