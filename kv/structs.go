@@ -3,7 +3,6 @@ package kv
 import (
 	"encoding/binary"
 
-	"github.com/google/uuid"
 	"github.com/sjy-dv/nnv/kv/wal"
 )
 
@@ -99,56 +98,34 @@ func decodeLogRecord(buf []byte) *LogRecord {
 type KeyPosition struct {
 	key       []byte
 	partition uint32
-	uid       uuid.UUID
 	position  *wal.ChunkPosition
 }
 
 // ValueLogRecord is the record of the key/value pair in the value log.
 type ValueLogRecord struct {
-	uid   uuid.UUID
 	key   []byte
 	value []byte
 }
 
 func encodeValueLogRecord(record *ValueLogRecord) []byte {
+	buf := make([]byte, 4+len(record.key)+len(record.value))
 	keySize := 4
 	index := 0
-	uidBytes, _ := record.uid.MarshalBinary()
-	buf := make([]byte, len(uidBytes)+4+len(record.key)+len(record.value))
-
-	copy(buf[index:], uidBytes)
-	index += len(uidBytes)
-
-	binary.LittleEndian.PutUint32(buf[index:index+keySize], uint32(len(record.key)))
+	binary.LittleEndian.PutUint32(buf[index:keySize], uint32(len(record.key)))
 	index += keySize
 
 	copy(buf[index:index+len(record.key)], record.key)
 	index += len(record.key)
-
 	copy(buf[index:], record.value)
 	return buf
 }
 
 func decodeValueLogRecord(buf []byte) *ValueLogRecord {
-	keySize := 4
-	index := 0
-	var uid uuid.UUID
-	uidBytes := buf[:len(uid)]
-	err := uid.UnmarshalBinary(uidBytes)
-	if err != nil {
-		return nil
-	}
-	index += len(uid)
-
-	keyLen := (int)(binary.LittleEndian.Uint32(buf[index : index+keySize]))
-	index += keySize
-
+	var keySize uint32 = 4
+	keyLen := binary.LittleEndian.Uint32(buf[:keySize])
 	key := make([]byte, keyLen)
-	copy(key, buf[index:index+keyLen])
-	index += keyLen
-
-	value := make([]byte, len(buf)-len(uid)-keyLen-keySize)
-	copy(value, buf[index:])
-
-	return &ValueLogRecord{uid: uid, key: key, value: value}
+	copy(key, buf[keySize:keySize+keyLen])
+	value := make([]byte, uint32(len(buf))-keyLen-keySize)
+	copy(value, buf[keySize+keyLen:])
+	return &ValueLogRecord{key: key, value: value}
 }

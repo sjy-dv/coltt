@@ -15,13 +15,13 @@ const (
 // But you can implement your own index if you want.
 type Index interface {
 	// PutBatch put batch records to index
-	PutBatch(keyPositions []*KeyPosition, matchKeyFunc ...diskhash.MatchKeyFunc) ([]*KeyPosition, error)
+	PutBatch(keyPositions []*KeyPosition, matchKeyFunc ...diskhash.MatchKeyFunc) error
 
 	// Get chunk position by key
 	Get(key []byte, matchKeyFunc ...diskhash.MatchKeyFunc) (*KeyPosition, error)
 
 	// DeleteBatch delete batch records from index
-	DeleteBatch(keys [][]byte, matchKeyFunc ...diskhash.MatchKeyFunc) ([]*KeyPosition, error)
+	DeleteBatch(keys [][]byte, matchKeyFunc ...diskhash.MatchKeyFunc) error
 
 	// Sync sync index data to disk
 	Sync() error
@@ -30,6 +30,9 @@ type Index interface {
 	Close() error
 }
 
+// open the specified index according to the index type
+// currently, we support two index types: BTree and Hash,
+// both of them are disk-based index.
 func openIndex(options indexOptions) (Index, error) {
 	switch options.indexType {
 	case BTree:

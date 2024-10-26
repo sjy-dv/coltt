@@ -47,7 +47,7 @@ func (self *resourceCoordinator) CreateBucket(
 		}
 
 		config := hnsw.DefaultConfig(req.GetDim(), req.GetBucketName(), dist)
-		if err := self.rootClone.VBucket.NewHnswBucket(req.GetBucketName(), config); err != nil {
+		if err := roots.VBucket.NewHnswBucket(req.GetBucketName(), config); err != nil {
 			c <- reply{
 				Result: &resourceCoordinatorV1.BucketResponse{
 					Bucket: nil,
@@ -58,6 +58,7 @@ func (self *resourceCoordinator) CreateBucket(
 					},
 				},
 			}
+			return
 		}
 		c <- reply{
 			Result: &resourceCoordinatorV1.BucketResponse{

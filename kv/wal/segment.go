@@ -9,6 +9,7 @@ import (
 	"os"
 	"sync"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/sjy-dv/nnv/pkg/bytebufferpool"
 )
 
@@ -52,9 +53,9 @@ type segment struct {
 	currentBlockNumber uint32
 	currentBlockSize   uint32
 	closed             bool
+	cache              *lru.Cache[uint64, []byte]
 	header             []byte
-	startupBlock       *startupBlock
-	isStartupTraversal bool
+	blockPool          sync.Pool
 }
 
 // segmentReader is used to iterate all the data from the segment file.
@@ -66,12 +67,10 @@ type segmentReader struct {
 	chunkOffset int64
 }
 
-// There is only one reader(single goroutine) for startup traversal,
-// so we can use one block to finish the whole traversal
-// to avoid memory allocation.
-type startupBlock struct {
-	block       []byte
-	blockNumber int64
+// block and chunk header, saved in pool.
+type blockAndHeader struct {
+	block  []byte
+	header []byte
 }
 
 // ChunkPosition represents the position of a chunk in a segment file.
@@ -86,22 +85,8 @@ type ChunkPosition struct {
 	ChunkSize uint32
 }
 
-var blockPool = sync.Pool{
-	New: func() interface{} {
-		return make([]byte, blockSize)
-	},
-}
-
-func getBuffer() []byte {
-	return blockPool.Get().([]byte)
-}
-
-func putBuffer(buf []byte) {
-	blockPool.Put(buf)
-}
-
 // openSegmentFile a new segment file.
-func openSegmentFile(dirPath, extName string, id uint32) (*segment, error) {
+func openSegmentFile(dirPath, extName string, id uint32, cache *lru.Cache[uint64, []byte]) (*segment, error) {
 	fd, err := os.OpenFile(
 		SegmentFileName(dirPath, extName, id),
 		os.O_CREATE|os.O_RDWR|os.O_APPEND,
@@ -115,21 +100,25 @@ func openSegmentFile(dirPath, extName string, id uint32) (*segment, error) {
 	// set the current block number and block size.
 	offset, err := fd.Seek(0, io.SeekEnd)
 	if err != nil {
-		return nil, fmt.Errorf("seek to the end of segment file %d%s failed: %v", id, extName, err)
+		panic(fmt.Errorf("seek to the end of segment file %d%s failed: %v", id, extName, err))
 	}
 
 	return &segment{
 		id:                 id,
 		fd:                 fd,
+		cache:              cache,
 		header:             make([]byte, chunkHeaderSize),
+		blockPool:          sync.Pool{New: newBlockAndHeader},
 		currentBlockNumber: uint32(offset / blockSize),
 		currentBlockSize:   uint32(offset % blockSize),
-		startupBlock: &startupBlock{
-			block:       make([]byte, blockSize),
-			blockNumber: -1,
-		},
-		isStartupTraversal: false,
 	}, nil
+}
+
+func newBlockAndHeader() interface{} {
+	return &blockAndHeader{
+		block:  make([]byte, blockSize),
+		header: make([]byte, chunkHeaderSize),
+	}
 }
 
 // NewReader creates a new segment reader.
@@ -155,9 +144,7 @@ func (seg *segment) Sync() error {
 func (seg *segment) Remove() error {
 	if !seg.closed {
 		seg.closed = true
-		if err := seg.fd.Close(); err != nil {
-			return err
-		}
+		_ = seg.fd.Close()
 	}
 
 	return os.Remove(seg.fd.Name())
@@ -261,8 +248,8 @@ func (seg *segment) writeToBuffer(data []byte, chunkBuffer *bytebufferpool.ByteB
 	// the buffer length must be equal to chunkSize+padding length
 	endBufferLen := chunkBuffer.Len()
 	if position.ChunkSize+padding != uint32(endBufferLen-startBufferLen) {
-		return nil, fmt.Errorf("wrong!!! the chunk size %d is not equal to the buffer len %d",
-			position.ChunkSize+padding, endBufferLen-startBufferLen)
+		panic(fmt.Sprintf("wrong!!! the chunk size %d is not equal to the buffer len %d",
+			position.ChunkSize+padding, endBufferLen-startBufferLen))
 	}
 
 	// update segment status
@@ -364,7 +351,7 @@ func (seg *segment) appendChunkBuffer(buf *bytebufferpool.ByteBuffer, data []byt
 // write the pending chunk buffer to the segment file
 func (seg *segment) writeChunkBuffer(buf *bytebufferpool.ByteBuffer) error {
 	if seg.currentBlockSize > blockSize {
-		return errors.New("the current block size exceeds the maximum block size")
+		panic("wrong! can not exceed the block size")
 	}
 
 	// write the data into underlying file
@@ -372,8 +359,6 @@ func (seg *segment) writeChunkBuffer(buf *bytebufferpool.ByteBuffer) error {
 		return err
 	}
 
-	// the cached block can not be reused again after writes.
-	seg.startupBlock.blockNumber = -1
 	return nil
 }
 
@@ -390,20 +375,13 @@ func (seg *segment) readInternal(blockNumber uint32, chunkOffset int64) ([]byte,
 
 	var (
 		result    []byte
-		block     []byte
+		bh        = seg.blockPool.Get().(*blockAndHeader)
 		segSize   = seg.Size()
 		nextChunk = &ChunkPosition{SegmentId: seg.id}
 	)
-
-	if seg.isStartupTraversal {
-		block = seg.startupBlock.block
-	} else {
-		block = getBuffer()
-		if len(block) != blockSize {
-			block = make([]byte, blockSize)
-		}
-		defer putBuffer(block)
-	}
+	defer func() {
+		seg.blockPool.Put(bh)
+	}()
 
 	for {
 		size := int64(blockSize)
@@ -416,46 +394,51 @@ func (seg *segment) readInternal(blockNumber uint32, chunkOffset int64) ([]byte,
 			return nil, nil, io.EOF
 		}
 
-		if seg.isStartupTraversal {
-			// There are two cases that we should read block from file:
-			// 1. the acquired block is not the cached one
-			// 2. new writes appended to the block, and the block
-			// is still smaller than 32KB, we must read it again because of the new writes.
-			if seg.startupBlock.blockNumber != int64(blockNumber) || size != blockSize {
-				// read block from segment file at the specified offset.
-				_, err := seg.fd.ReadAt(block[0:size], offset)
-				if err != nil {
-					return nil, nil, err
-				}
-				// remember the block
-				seg.startupBlock.blockNumber = int64(blockNumber)
-			}
+		var ok bool
+		var cachedBlock []byte
+		// try to read from the cache if it is enabled
+		if seg.cache != nil {
+			cachedBlock, ok = seg.cache.Get(seg.getCacheKey(blockNumber))
+		}
+		// cache hit, get block from the cache
+		if ok {
+			copy(bh.block, cachedBlock)
 		} else {
-			if _, err := seg.fd.ReadAt(block[0:size], offset); err != nil {
+			// cache miss, read block from the segment file
+			_, err := seg.fd.ReadAt(bh.block[0:size], offset)
+			if err != nil {
 				return nil, nil, err
+			}
+			// cache the block, so that the next time it can be read from the cache.
+			// if the block size is smaller than blockSize, it means that the block is not full,
+			// so we will not cache it.
+			if seg.cache != nil && size == blockSize && len(cachedBlock) == 0 {
+				cacheBlock := make([]byte, blockSize)
+				copy(cacheBlock, bh.block)
+				seg.cache.Add(seg.getCacheKey(blockNumber), cacheBlock)
 			}
 		}
 
 		// header
-		header := block[chunkOffset : chunkOffset+chunkHeaderSize]
+		copy(bh.header, bh.block[chunkOffset:chunkOffset+chunkHeaderSize])
 
 		// length
-		length := binary.LittleEndian.Uint16(header[4:6])
+		length := binary.LittleEndian.Uint16(bh.header[4:6])
 
 		// copy data
 		start := chunkOffset + chunkHeaderSize
-		result = append(result, block[start:start+int64(length)]...)
+		result = append(result, bh.block[start:start+int64(length)]...)
 
 		// check sum
 		checksumEnd := chunkOffset + chunkHeaderSize + int64(length)
-		checksum := crc32.ChecksumIEEE(block[chunkOffset+4 : checksumEnd])
-		savedSum := binary.LittleEndian.Uint32(header[:4])
+		checksum := crc32.ChecksumIEEE(bh.block[chunkOffset+4 : checksumEnd])
+		savedSum := binary.LittleEndian.Uint32(bh.header[:4])
 		if savedSum != checksum {
 			return nil, nil, ErrInvalidCRC
 		}
 
 		// type
-		chunkType := header[6]
+		chunkType := bh.header[6]
 
 		if chunkType == ChunkTypeFull || chunkType == ChunkTypeLast {
 			nextChunk.BlockNumber = blockNumber
@@ -472,6 +455,10 @@ func (seg *segment) readInternal(blockNumber uint32, chunkOffset int64) ([]byte,
 		chunkOffset = 0
 	}
 	return result, nextChunk, nil
+}
+
+func (seg *segment) getCacheKey(blockNumber uint32) uint64 {
+	return uint64(seg.id)<<32 | uint64(blockNumber)
 }
 
 // Next returns the Next chunk data.

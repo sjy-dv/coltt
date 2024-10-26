@@ -174,6 +174,12 @@ func (mi *Iterator) Close() error {
 	return nil
 }
 
+// NewIterator returns a new iterator.
+// The iterator will iterate all the keys in DB.
+// It's the caller's responsibility to call Close when iterator is no longer
+// used, otherwise resources will be leaked.
+// The iterator is not goroutine-safe, you should not use the same iterator
+// concurrently from multiple goroutines.
 func (db *DB) NewIterator(options IteratorOptions) (*Iterator, error) {
 	if db.options.IndexType == Hash {
 		return nil, ErrDBIteratorUnsupportedTypeHASH

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/nats-io/nats.go"
-	"github.com/rs/zerolog"
 	"github.com/sjy-dv/nnv/gen/protoc/v1/dataCoordinatorV1"
 	"github.com/sjy-dv/nnv/gen/protoc/v1/resourceCoordinatorV1"
 	"github.com/sjy-dv/nnv/kv"
@@ -22,14 +21,13 @@ type RootLayer struct {
 
 	VBucket *hnsw.HnswBucket // vector store
 	Bucket  *kv.DB           //key-value store
-	Log     zerolog.Logger
 	S       *grpc.Server
 }
 
 type rpcLayer struct {
-	X1        *datasetCoordinator
-	X2        *resourceCoordinator
-	rootClone *RootLayer
+	X1 *datasetCoordinator
+	X2 *resourceCoordinator
+	// rootClone *RootLayer
 }
 
 type datasetCoordinator struct {

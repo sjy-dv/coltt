@@ -2,22 +2,20 @@ package kv
 
 import (
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
+
 	"os"
 	"os/signal"
 	"path/filepath"
 	"reflect"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
 
 	"github.com/dgraph-io/badger/v4/y"
 	"github.com/gofrs/flock"
-	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"github.com/sjy-dv/nnv/kv/wal"
 	"github.com/sjy-dv/nnv/pkg/diskhash"
@@ -25,26 +23,22 @@ import (
 )
 
 const (
-	fileLockName       = "FLOCK"
-	deprecatedMetaName = "DEPMETA"
+	fileLockName = "FLOCK"
 )
 
 type DB struct {
-	activeMem        *memtable            // Active memtable for writing.
-	immuMems         []*memtable          // Immutable memtables, waiting to be flushed to disk.
-	index            Index                // index is multi-partition indexes to store key and chunk position.
-	vlog             *valueLog            // vlog is the value log.
-	fileLock         *flock.Flock         // fileLock to prevent multiple processes from using the same database directory.
-	flushChan        chan *memtable       // flushChan is used to notify the flush goroutine to flush memtable to disk.
-	flushLock        sync.Mutex           // flushLock is to prevent flush running while compaction doesn't occur.
-	compactChan      chan deprecatedState // compactChan is used to notify the shard need to compact.
-	diskIO           *DiskIO              // monitoring the IO status of disks and allowing autoCompact when appropriate.
-	mu               sync.RWMutex
-	closed           bool
-	closeflushChan   chan struct{} // used to elegantly close flush listening coroutines.
-	closeCompactChan chan struct{} // used to elegantly close autoCompact listening coroutines.
-	options          Options
-	batchPool        sync.Pool // batchPool is a pool of batch, to reduce the cost of memory allocation.
+	activeMem *memtable      // Active memtable for writing.
+	immuMems  []*memtable    // Immutable memtables, waiting to be flushed to disk.
+	index     Index          // index is multi-partition indexes to store key and chunk position.
+	vlog      *valueLog      // vlog is the value log.
+	fileLock  *flock.Flock   // fileLock to prevent multiple processes from using the same database directory.
+	flushChan chan *memtable // flushChan is used to notify the flush goroutine to flush memtable to disk.
+	flushLock sync.Mutex     // flushLock is to prevent flush running while compaction doesn't occur
+	mu        sync.RWMutex
+	closed    bool
+	closeChan chan struct{}
+	options   Options
+	batchPool sync.Pool // batchPool is a pool of batch, to reduce the cost of memory allocation.
 }
 
 func Open(options Options) (*DB, error) {
@@ -60,6 +54,7 @@ func Open(options Options) (*DB, error) {
 		}
 	}
 
+	// create file lock, prevent multiple processes from using the same database directory
 	fileLock := flock.New(filepath.Join(options.DirPath, fileLockName))
 	hold, err := fileLock.TryLock()
 	if err != nil {
@@ -67,13 +62,6 @@ func Open(options Options) (*DB, error) {
 	}
 	if !hold {
 		return nil, ErrDatabaseIsUsing
-	}
-
-	// create deprecatedMeta file if not exist, read deprecatedNumber
-	deprecatedMetaPath := filepath.Join(options.DirPath, deprecatedMetaName)
-	deprecatedNumber, totalEntryNumber, err := loadDeprecatedEntryMeta(deprecatedMetaPath)
-	if err != nil {
-		return nil, err
 	}
 
 	// open all memtables
@@ -95,39 +83,27 @@ func Open(options Options) (*DB, error) {
 
 	// open value log
 	vlog, err := openValueLog(valueLogOptions{
-		dirPath:               options.DirPath,
-		segmentSize:           options.ValueLogFileSize,
-		partitionNum:          uint32(options.PartitionNum),
-		hashKeyFunction:       options.KeyHashFunction,
-		compactBatchCapacity:  options.CompactBatchCapacity,
-		deprecatedtableNumber: deprecatedNumber,
-		totalNumber:           totalEntryNumber,
+		dirPath:           options.DirPath,
+		segmentSize:       options.ValueLogFileSize,
+		blockCache:        options.BlockCache,
+		partitionNum:      uint32(options.PartitionNum),
+		hashKeyFunction:   options.KeyHashFunction,
+		compactBatchCount: options.CompactBatchCount,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	// init diskIO
-	diskIO := new(DiskIO)
-	diskIO.targetPath = options.DirPath
-	diskIO.samplingInterval = options.DiskIOSamplingInterval
-	diskIO.windowSize = options.DiskIOSamplingWindow
-	diskIO.busyRate = options.DiskIOBusyRate
-	diskIO.Init()
-
 	db := &DB{
-		activeMem:        memtables[len(memtables)-1],
-		immuMems:         memtables[:len(memtables)-1],
-		index:            index,
-		vlog:             vlog,
-		fileLock:         fileLock,
-		flushChan:        make(chan *memtable, options.MemtableNums-1),
-		closeflushChan:   make(chan struct{}),
-		closeCompactChan: make(chan struct{}),
-		compactChan:      make(chan deprecatedState),
-		diskIO:           diskIO,
-		options:          options,
-		batchPool:        sync.Pool{New: makeBatch},
+		activeMem: memtables[len(memtables)-1],
+		immuMems:  memtables[:len(memtables)-1],
+		index:     index,
+		vlog:      vlog,
+		fileLock:  fileLock,
+		flushChan: make(chan *memtable, options.MemtableNums-1),
+		closeChan: make(chan struct{}),
+		options:   options,
+		batchPool: sync.Pool{New: makeBatch},
 	}
 
 	// if there are some immutable memtables when opening the database, flush them to disk
@@ -141,16 +117,6 @@ func Open(options Options) (*DB, error) {
 	// memtables with new coming writes will be flushed to disk if the active memtable is full.
 	go db.listenMemtableFlush()
 
-	if options.AutoCompactSupport {
-		// start autoCompact goroutine asynchronously,
-		// listen deprecatedtable state, and compact automatically.
-		go db.listenAutoCompact()
-
-		// start disk IO monitoring,
-		// blocking low threshold compact operations when busy.
-		go db.listenDiskIOState()
-	}
-
 	return db, nil
 }
 
@@ -158,48 +124,70 @@ func Open(options Options) (*DB, error) {
 // Set the closed flag to true.
 // The DB instance cannot be used after closing.
 func (db *DB) Close() error {
-	close(db.flushChan)
-	<-db.closeflushChan
-	if db.options.AutoCompactSupport {
-		close(db.compactChan)
-		<-db.closeCompactChan
-	}
+	log.Debug().Msg("Attempting to acquire lock for closing DB")
 	db.mu.Lock()
 	defer db.mu.Unlock()
+	log.Debug().Msg("Lock acquired, starting close process for DB")
 
-	// close all memtables
-	for _, table := range db.immuMems {
+	log.Debug().Msg("Closing flush channel")
+
+	close(db.flushChan)
+
+	closeTimeout := time.After(5 * time.Second)
+
+	log.Debug().Msg("Waiting for close channel to signal")
+	select {
+	case <-db.closeChan:
+		log.Debug().Msg("Close channel signaled successfully")
+	case <-closeTimeout:
+		log.Warn().Msg("Timeout reached while waiting for close channel signal")
+	}
+	log.Debug().Msg("Close channel signaled")
+
+	// Close all immutable memtables
+	for i, table := range db.immuMems {
+		log.Debug().Msgf("Closing immutable memtable #%d", i)
 		if err := table.close(); err != nil {
+			log.Warn().Err(err).Msgf("Failed to close immutable memtable #%d", i)
 			return err
 		}
 	}
+	log.Debug().Msg("All immutable memtables closed successfully")
+
+	// Close active memtable
+	log.Debug().Msg("Closing active memtable")
 	if err := db.activeMem.close(); err != nil {
+		log.Warn().Err(err).Msg("Failed to close active memtable")
 		return err
 	}
-	// close index
+	log.Debug().Msg("Active memtable closed successfully")
+
+	// Close index
+	log.Debug().Msg("Closing index")
 	if err := db.index.Close(); err != nil {
+		log.Warn().Err(err).Msg("Failed to close index")
 		return err
 	}
+	log.Debug().Msg("Index closed successfully")
 
-	db.flushLock.Lock()
-	// persist deprecated number and total entry number
-	deprecatedMetaPath := filepath.Join(db.options.DirPath, deprecatedMetaName)
-	err := storeDeprecatedEntryMeta(deprecatedMetaPath, db.vlog.deprecatedNumber, db.vlog.totalNumber)
-	if err != nil {
+	// Close value log
+	log.Debug().Msg("Closing value log")
+	if err := db.vlog.close(); err != nil {
+		log.Warn().Err(err).Msg("Failed to close value log")
 		return err
 	}
-	defer db.flushLock.Unlock()
+	log.Debug().Msg("Value log closed successfully")
 
-	// close value log
-	if err = db.vlog.close(); err != nil {
+	// Release file lock
+	log.Debug().Msg("Releasing file lock")
+	if err := db.fileLock.Unlock(); err != nil {
+		log.Warn().Err(err).Msg("Failed to release file lock")
 		return err
 	}
-	// release file lock
-	if err = db.fileLock.Unlock(); err != nil {
-		return err
-	}
+	log.Debug().Msg("File lock released successfully")
 
 	db.closed = true
+	log.Debug().Msg("DB closed successfully")
 	return nil
 }
 
@@ -247,6 +235,9 @@ func (db *DB) PutWithOptions(key []byte, value []byte, options WriteOptions) err
 		batch.reset()
 		db.batchPool.Put(batch)
 	}()
+	// This is a single put operation, we can set Sync to false.
+	// Because the data will be written to the WAL,
+	// and the WAL file will be synced to disk according to the DB options.
 	batch.init(false, false, false, db).withPendingWrites()
 	if err := batch.Put(key, value); err != nil {
 		batch.unlock()
@@ -255,6 +246,9 @@ func (db *DB) PutWithOptions(key []byte, value []byte, options WriteOptions) err
 	return batch.Commit()
 }
 
+// Get the value of the specified key from the database.
+// Actually, it will open a new batch and commit it.
+// You can think the batch has only one Get operation.
 func (db *DB) Get(key []byte) ([]byte, error) {
 	batch, ok := db.batchPool.Get().(*Batch)
 	if !ok {
@@ -274,6 +268,9 @@ func (db *DB) Delete(key []byte) error {
 	return db.DeleteWithOptions(key, DefaultWriteOptions)
 }
 
+// DeleteWithOptions the specified key from the database.
+// Actually, it will open a new batch and commit it.
+// You can think the batch has only one Delete operation.
 func (db *DB) DeleteWithOptions(key []byte, options WriteOptions) error {
 	batch, ok := db.batchPool.Get().(*Batch)
 	if !ok {
@@ -284,6 +281,9 @@ func (db *DB) DeleteWithOptions(key []byte, options WriteOptions) error {
 		batch.reset()
 		db.batchPool.Put(batch)
 	}()
+	// This is a single delete operation, we can set Sync to false.
+	// Because the data will be written to the WAL,
+	// and the WAL file will be synced to disk according to the DB options.
 	batch.init(false, false, false, db).withPendingWrites()
 	if err := batch.Delete(key); err != nil {
 		batch.unlock()
@@ -292,6 +292,9 @@ func (db *DB) DeleteWithOptions(key []byte, options WriteOptions) error {
 	return batch.Commit()
 }
 
+// Exist checks if the specified key exists in the database.
+// Actually, it will open a new batch and commit it.
+// You can think the batch has only one Exist operation.
 func (db *DB) Exist(key []byte) (bool, error) {
 	batch, ok := db.batchPool.Get().(*Batch)
 	if !ok {
@@ -344,6 +347,10 @@ func (db *DB) getMemTables() []*memtable {
 	return tables
 }
 
+// waitMemtableSpace waits for space in the memtable.
+// If the active memtable is full, it will be flushed to disk by the background goroutine.
+// But if the flush speed is slower than the write speed, there may be no space in the memtable.
+// So the write operation will wait for space in the memtable, and the timeout is specified by WaitMemSpaceTimeout.
 func (db *DB) waitMemtableSpace() error {
 	if !db.activeMem.isFull() {
 		return nil
@@ -369,40 +376,46 @@ func (db *DB) waitMemtableSpace() error {
 	return nil
 }
 
+// flushMemtable flushes the specified memtable to disk.
+// Following steps will be done:
+// 1. Iterate all records in memtable, divide them into deleted keys and log records.
+// 2. Write the log records to value log, get the positions of keys.
+// 3. Write all keys and positions to index.
+// 4. Delete the deleted keys from index.
+// 5. Delete the wal.
 func (db *DB) flushMemtable(table *memtable) {
 	db.flushLock.Lock()
 	defer db.flushLock.Unlock()
-
 	sklIter := table.skl.NewIterator()
 	var deletedKeys [][]byte
 	var logRecords []*ValueLogRecord
 
+	// iterate all records in memtable, divide them into deleted keys and log records
 	for sklIter.SeekToFirst(); sklIter.Valid(); sklIter.Next() {
 		key, valueStruct := y.ParseKey(sklIter.Key()), sklIter.Value()
 		if valueStruct.Meta == LogRecordDeleted {
 			deletedKeys = append(deletedKeys, key)
 		} else {
-			logRecord := ValueLogRecord{key: key, value: valueStruct.Value, uid: uuid.New()}
+			logRecord := ValueLogRecord{key: key, value: valueStruct.Value}
 			logRecords = append(logRecords, &logRecord)
 		}
 	}
 	_ = sklIter.Close()
-	// log.Println("len del:",len(deletedKeys),len(logRecords))
 
 	// write to value log, get the positions of keys
 	keyPos, err := db.vlog.writeBatch(logRecords)
 	if err != nil {
-		log.Warn().Err(err).Msg("kv.wal.kvstore.go(394) vlog writeBatch error")
+		log.Warn().Msgf("vlog writeBatch failed:%v", err)
 		return
 	}
 
 	// sync the value log
 	if err = db.vlog.sync(); err != nil {
-		log.Warn().Err(err).Msg("kv.wal.kvstore.go(400) vlog sync error")
+		log.Warn().Msgf("vlog sync failed:%v", err)
 		return
 	}
 
-	// Add old key uuid into deprecatedtable, write all keys and positions to index.
+	// write all keys and positions to index
 	var putMatchKeys []diskhash.MatchKeyFunc
 	if db.options.IndexType == Hash && len(keyPos) > 0 {
 		putMatchKeys = make([]diskhash.MatchKeyFunc, len(keyPos))
@@ -410,20 +423,11 @@ func (db *DB) flushMemtable(table *memtable) {
 			putMatchKeys[i] = MatchKeyFunc(db, keyPos[i].key, nil, nil)
 		}
 	}
-
-	// Write all keys and positions to index.
-	oldKeyPostions, err := db.index.PutBatch(keyPos, putMatchKeys...)
-	if err != nil {
-		log.Warn().Err(err).Msg("kv.wal.kvstore.go(416) index put batch error")
+	if err = db.index.PutBatch(keyPos, putMatchKeys...); err != nil {
+		log.Warn().Msgf("index PutBatch failed:", err)
 		return
 	}
-
-	// Add old key uuid into deprecatedtable
-	for _, oldKeyPostion := range oldKeyPostions {
-		db.vlog.setDeprecated(oldKeyPostion.partition, oldKeyPostion.uid)
-	}
-
-	// Add deleted key uuid into deprecatedtable, and delete the deleted keys from index.
+	// delete the deleted keys from index
 	var deleteMatchKeys []diskhash.MatchKeyFunc
 	if db.options.IndexType == Hash && len(deletedKeys) > 0 {
 		deleteMatchKeys = make([]diskhash.MatchKeyFunc, len(deletedKeys))
@@ -431,33 +435,24 @@ func (db *DB) flushMemtable(table *memtable) {
 			deleteMatchKeys[i] = MatchKeyFunc(db, deletedKeys[i], nil, nil)
 		}
 	}
-
-	// delete the deleted keys from index
-	if oldKeyPostions, err = db.index.DeleteBatch(deletedKeys, deleteMatchKeys...); err != nil {
-		log.Warn().Err(err).Msg("kv.wal.kvstore.go(436) index delete batch error")
+	if err = db.index.DeleteBatch(deletedKeys, deleteMatchKeys...); err != nil {
+		log.Warn().Msgf("index DeleteBatch failed:%v", err)
 		return
 	}
-
-	// uuid into deprecatedtable
-	for _, oldKeyPostion := range oldKeyPostions {
-		db.vlog.setDeprecated(oldKeyPostion.partition, oldKeyPostion.uid)
-	}
-
 	// sync the index
 	if err = db.index.Sync(); err != nil {
-		log.Warn().Err(err).Msg("kv.wal.kvstore.go(447) index sync error")
+		log.Warn().Msgf("index sync failed:%v", err)
 		return
 	}
 
 	// delete the wal
 	if err = table.deleteWAl(); err != nil {
-		log.Warn().Err(err).Msg("kv.wal.kvstore.go(454) delete wal error")
+		log.Warn().Msgf("delete wal failed:%v", err)
 		return
 	}
 
 	// delete old memtable kept in memory
 	db.mu.Lock()
-	defer db.mu.Unlock()
 	if table == db.activeMem {
 		options := db.activeMem.options
 		options.tableID++
@@ -474,31 +469,8 @@ func (db *DB) flushMemtable(table *memtable) {
 			db.immuMems = db.immuMems[1:]
 		}
 	}
-	db.sendThresholdState()
-}
 
-func (db *DB) sendThresholdState() {
-	if db.options.AutoCompactSupport {
-		// check deprecatedtable size
-		lowerThreshold := uint32((float32)(db.vlog.totalNumber) * db.options.AdvisedCompactionRate)
-		upperThreshold := uint32((float32)(db.vlog.totalNumber) * db.options.ForceCompactionRate)
-		thresholdState := deprecatedState{
-			thresholdState: ThresholdState(UnarriveThreshold),
-		}
-		if db.vlog.deprecatedNumber >= upperThreshold {
-			thresholdState = deprecatedState{
-				thresholdState: ThresholdState(ArriveForceThreshold),
-			}
-		} else if db.vlog.deprecatedNumber > lowerThreshold {
-			thresholdState = deprecatedState{
-				thresholdState: ThresholdState(ArriveAdvisedThreshold),
-			}
-		}
-		select {
-		case db.compactChan <- thresholdState:
-		default: // this compacting, just do nothing.
-		}
-	}
+	db.mu.Unlock()
 }
 
 func (db *DB) listenMemtableFlush() {
@@ -506,12 +478,11 @@ func (db *DB) listenMemtableFlush() {
 	signal.Notify(sig, os.Interrupt, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	for {
 		select {
-		// timer
 		case table, ok := <-db.flushChan:
 			if ok {
 				db.flushMemtable(table)
 			} else {
-				db.closeflushChan <- struct{}{}
+				db.closeChan <- struct{}{}
 				return
 			}
 		case <-sig:
@@ -520,89 +491,20 @@ func (db *DB) listenMemtableFlush() {
 	}
 }
 
-func (db *DB) listenAutoCompact() {
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, os.Interrupt, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
-	firstCompact := true
-	thresholdstate := ThresholdState(UnarriveThreshold)
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-	for {
-		select {
-		case state, ok := <-db.compactChan:
-			if ok {
-				thresholdstate = state.thresholdState
-			} else {
-				db.closeCompactChan <- struct{}{}
-				return
-			}
-		case <-sig:
-			return
-		case <-ticker.C:
-			//nolint:nestif // It requires multiple nested conditions for different thresholds and error judgments.
-			if thresholdstate == ThresholdState(ArriveForceThreshold) {
-				var err error
-				if firstCompact {
-					firstCompact = false
-					err = db.Compact()
-				} else {
-					err = db.CompactWithDeprecatedtable()
-				}
-				if err != nil {
-					panic(err)
-				}
-				thresholdstate = ThresholdState(UnarriveThreshold)
-			} else if thresholdstate == ThresholdState(ArriveAdvisedThreshold) {
-				// determine whether to do compact based on the current IO state
-				free, err := db.diskIO.IsFree()
-				if err != nil {
-					panic(err)
-				}
-				if free {
-					if firstCompact {
-						firstCompact = false
-						err = db.Compact()
-					} else {
-						err = db.CompactWithDeprecatedtable()
-					}
-					if err != nil {
-						panic(err)
-					}
-					thresholdstate = ThresholdState(UnarriveThreshold)
-				} else {
-					log.Info().Msg("IO Busy now")
-				}
-			}
-		}
-	}
-}
-
-func (db *DB) listenDiskIOState() {
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, os.Interrupt, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
-	for {
-		select {
-		case <-sig:
-			return
-		default:
-			err := db.diskIO.Monitor()
-			if err != nil {
-				panic(err)
-			}
-		}
-	}
-}
-
+// Compact will iterate all values in vlog, and write the valid values to a new vlog file.
+// Then replace the old vlog file with the new one, and delete the old one.
+//
+//nolint:gocognit
 func (db *DB) Compact() error {
 	db.flushLock.Lock()
 	defer db.flushLock.Unlock()
 
-	log.Info().Msg("[Compact data]")
 	openVlogFile := func(part int, ext string) *wal.WAL {
 		walFile, err := wal.Open(wal.Options{
 			DirPath:        db.vlog.options.dirPath,
 			SegmentSize:    db.vlog.options.segmentSize,
 			SegmentFileExt: fmt.Sprintf(ext, part),
+			BlockCache:     db.vlog.options.blockCache,
 			Sync:           false, // we will sync manually
 			BytesPerSync:   0,     // the same as Sync
 		})
@@ -614,19 +516,18 @@ func (db *DB) Compact() error {
 	}
 
 	g, _ := errgroup.WithContext(context.Background())
-	var capacity int64
-	var capacityList = make([]int64, db.options.PartitionNum)
 	for i := 0; i < int(db.vlog.options.partitionNum); i++ {
 		part := i
 		g.Go(func() error {
 			newVlogFile := openVlogFile(part, tempValueLogFileExt)
-			validRecords := make([]*ValueLogRecord, 0)
+
+			validRecords := make([]*ValueLogRecord, 0, db.vlog.options.compactBatchCount)
 			reader := db.vlog.walFiles[part].NewReader()
+			count := 0
 			// iterate all records in wal, find the valid records
 			for {
+				count++
 				chunk, pos, err := reader.Next()
-				atomic.AddInt64(&capacity, int64(len(chunk)))
-				capacityList[part] += int64(len(chunk))
 				if err != nil {
 					if errors.Is(err, io.EOF) {
 						break
@@ -658,15 +559,13 @@ func (db *DB) Compact() error {
 					validRecords = append(validRecords, record)
 				}
 
-				if capacity >= int64(db.vlog.options.compactBatchCapacity) {
+				if count%db.vlog.options.compactBatchCount == 0 {
 					err = db.rewriteValidRecords(newVlogFile, validRecords, part)
 					if err != nil {
 						_ = newVlogFile.Delete()
 						return err
 					}
 					validRecords = validRecords[:0]
-					atomic.AddInt64(&capacity, -capacityList[part])
-					capacityList[part] = 0
 				}
 			}
 
@@ -686,119 +585,11 @@ func (db *DB) Compact() error {
 			}
 			db.vlog.walFiles[part] = openVlogFile(part, valueLogFileExt)
 
-			// clean dpTable after compact
-			db.vlog.dpTables[part].clean()
-
 			return nil
 		})
 	}
-	db.vlog.cleanDeprecatedTable()
+
 	return g.Wait()
-}
-
-func (db *DB) CompactWithDeprecatedtable() error {
-	db.flushLock.Lock()
-	defer db.flushLock.Unlock()
-
-	log.Info().Msg("[CompactWithDeprecatedtable data]")
-	openVlogFile := func(part int, ext string) *wal.WAL {
-		walFile, err := wal.Open(wal.Options{
-			DirPath:        db.vlog.options.dirPath,
-			SegmentSize:    db.vlog.options.segmentSize,
-			SegmentFileExt: fmt.Sprintf(ext, part),
-			Sync:           false, // we will sync manually
-			BytesPerSync:   0,     // the same as Sync
-		})
-		if err != nil {
-			_ = walFile.Delete()
-			panic(err)
-		}
-		return walFile
-	}
-
-	g, _ := errgroup.WithContext(context.Background())
-	var capacity int64
-	var capacityList = make([]int64, db.options.PartitionNum)
-	for i := 0; i < int(db.vlog.options.partitionNum); i++ {
-		part := i
-		g.Go(func() error {
-			newVlogFile := openVlogFile(part, tempValueLogFileExt)
-			validRecords := make([]*ValueLogRecord, 0)
-			reader := db.vlog.walFiles[part].NewReader()
-			// iterate all records in wal, find the valid records
-			for {
-				chunk, pos, err := reader.Next()
-				atomic.AddInt64(&capacity, int64(len(chunk)))
-				capacityList[part] += int64(len(chunk))
-				if err != nil {
-					if errors.Is(err, io.EOF) {
-						break
-					}
-					_ = newVlogFile.Delete()
-					return err
-				}
-
-				record := decodeValueLogRecord(chunk)
-				if !db.vlog.isDeprecated(part, record.uid) {
-					// not find old uuid in dptable, we add it to validRecords.
-					validRecords = append(validRecords, record)
-				}
-				if db.options.IndexType == Hash {
-					var hashTableKeyPos *KeyPosition
-					// var matchKey func(diskhash.Slot) (bool, error)
-					matchKey := MatchKeyFunc(db, record.key, &hashTableKeyPos, nil)
-					var keyPos *KeyPosition
-					keyPos, err = db.index.Get(record.key, matchKey)
-					if err != nil {
-						_ = newVlogFile.Delete()
-						return err
-					}
-
-					if db.options.IndexType == Hash {
-						keyPos = hashTableKeyPos
-					}
-
-					if keyPos == nil {
-						continue
-					}
-					if keyPos.partition == uint32(part) && reflect.DeepEqual(keyPos.position, pos) {
-						validRecords = append(validRecords, record)
-					}
-				}
-
-				if capacity >= int64(db.vlog.options.compactBatchCapacity) {
-					err = db.rewriteValidRecords(newVlogFile, validRecords, part)
-					if err != nil {
-						_ = newVlogFile.Delete()
-						return err
-					}
-					validRecords = validRecords[:0]
-					atomic.AddInt64(&capacity, -capacityList[part])
-					capacityList[part] = 0
-				}
-			}
-			if len(validRecords) > 0 {
-				err := db.rewriteValidRecords(newVlogFile, validRecords, part)
-				if err != nil {
-					_ = newVlogFile.Delete()
-					return err
-				}
-			}
-
-			// replace the wal with the new one.
-			_ = db.vlog.walFiles[part].Delete()
-			_ = newVlogFile.Close()
-			if err := newVlogFile.RenameFileExt(fmt.Sprintf(valueLogFileExt, part)); err != nil {
-				return err
-			}
-			db.vlog.walFiles[part] = openVlogFile(part, valueLogFileExt)
-			return nil
-		})
-	}
-
-	err := g.Wait()
-	db.vlog.cleanDeprecatedTable()
-	return err
 }
 
 func (db *DB) rewriteValidRecords(walFile *wal.WAL, validRecords []*ValueLogRecord, part int) error {
@@ -825,82 +616,5 @@ func (db *DB) rewriteValidRecords(walFile *wal.WAL, validRecords []*ValueLogReco
 			matchKeys[i] = MatchKeyFunc(db, positions[i].key, nil, nil)
 		}
 	}
-	_, err = db.index.PutBatch(positions, matchKeys...)
-	return err
-}
-
-// load deprecated entries meta, and create meta file in first open.
-//
-// //nolint:nestif //default.
-func loadDeprecatedEntryMeta(deprecatedMetaPath string) (uint32, uint32, error) {
-	var err error
-	var deprecatedNumber uint32
-	var totalEntryNumber uint32
-	if _, err = os.Stat(deprecatedMetaPath); os.IsNotExist(err) {
-		// no exist, create one
-		var file *os.File
-		file, err = os.Create(deprecatedMetaPath)
-		if err != nil {
-			return deprecatedNumber, totalEntryNumber, err
-		}
-		deprecatedNumber = 0
-		totalEntryNumber = 0
-		file.Close()
-	} else if err != nil {
-		return deprecatedNumber, totalEntryNumber, err
-	} else {
-		// not err, we load meta
-		var file *os.File
-		file, err = os.Open(deprecatedMetaPath)
-		if err != nil {
-			return deprecatedNumber, totalEntryNumber, err
-		}
-
-		// set the file pointer to 0
-		_, err = file.Seek(0, 0)
-		if err != nil {
-			return deprecatedNumber, totalEntryNumber, err
-		}
-
-		// read deprecatedNumber
-		err = binary.Read(file, binary.LittleEndian, &deprecatedNumber)
-		if err != nil {
-			return deprecatedNumber, totalEntryNumber, err
-		}
-
-		// read totalEntryNumber
-		err = binary.Read(file, binary.LittleEndian, &totalEntryNumber)
-		if err != nil {
-			return deprecatedNumber, totalEntryNumber, err
-		}
-	}
-	return deprecatedNumber, totalEntryNumber, nil
-}
-
-// persist deprecated number and total entry number.
-func storeDeprecatedEntryMeta(deprecatedMetaPath string, deprecatedNumber uint32, totalNumber uint32) error {
-	file, err := os.OpenFile(deprecatedMetaPath, os.O_RDWR|os.O_TRUNC, 0666)
-	if err != nil {
-		return err
-	}
-
-	// set the file pointer to 0 and overwrite
-	_, err = file.Seek(0, 0)
-	if err != nil {
-		return err
-	}
-
-	// write deprecatedNumber
-	err = binary.Write(file, binary.LittleEndian, &deprecatedNumber)
-	if err != nil {
-		return err
-	}
-
-	// write totalEntryNumber
-	err = binary.Write(file, binary.LittleEndian, &totalNumber)
-	if err != nil {
-		return err
-	}
-	file.Close()
-	return nil
+	return db.index.PutBatch(positions, matchKeys...)
 }

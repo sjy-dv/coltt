@@ -18,19 +18,32 @@
 package main
 
 import (
-	"encoding/binary"
 	"fmt"
+	"time"
 
-	"github.com/google/uuid"
+	"github.com/sjy-dv/nnv/kv"
 )
 
 func main() {
-	id := uuid.New()
-	fmt.Println(id)
-	fmt.Println(UuidMod(id, 3))
-}
+	opts := kv.DefaultOptions
+	opts.DirPath = "./data_dir/tmp"
 
-func UuidMod(x uuid.UUID, mod uint64) uint64 {
-	res := ((binary.LittleEndian.Uint64(x[:8]) % mod) + (binary.LittleEndian.Uint64(x[8:]) % mod))
-	return res % mod
+	db, err := kv.Open(opts)
+	if err != nil {
+		panic(err)
+	}
+
+	opts.DirPath = "./data_dir/tmp2"
+	db2, err := kv.Open(opts)
+	if err != nil {
+		panic(err)
+	}
+	time.Sleep(10 * time.Second)
+	if err := db.Close(); err != nil {
+		fmt.Println(err)
+	}
+	if err := db2.Close(); err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println("closing")
 }

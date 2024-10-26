@@ -82,6 +82,7 @@ func (b *Batch) unlock() {
 	}
 }
 
+// Put adds a key-value pair to the batch for writing.
 func (b *Batch) Put(key []byte, value []byte) error {
 	if len(key) == 0 {
 		return ErrKeyIsEmpty
@@ -94,7 +95,7 @@ func (b *Batch) Put(key []byte, value []byte) error {
 	}
 
 	b.mu.Lock()
-
+	// write to pendingWrites
 	b.pendingWrites[string(key)] = &LogRecord{
 		Key:   key,
 		Value: value,
@@ -105,6 +106,7 @@ func (b *Batch) Put(key []byte, value []byte) error {
 	return nil
 }
 
+// Get retrieves the value associated with a given key from the batch.
 func (b *Batch) Get(key []byte) ([]byte, error) {
 	if len(key) == 0 {
 		return nil, ErrKeyIsEmpty
@@ -113,6 +115,7 @@ func (b *Batch) Get(key []byte) ([]byte, error) {
 		return nil, ErrDBClosed
 	}
 
+	// get from pendingWrites
 	if b.pendingWrites != nil {
 		b.mu.RLock()
 		if record := b.pendingWrites[string(key)]; record != nil {
@@ -126,6 +129,7 @@ func (b *Batch) Get(key []byte) ([]byte, error) {
 		b.mu.RUnlock()
 	}
 
+	// get from memtables
 	tables := b.db.getMemTables()
 	for _, table := range tables {
 		deleted, value := table.get(key)
@@ -137,6 +141,7 @@ func (b *Batch) Get(key []byte) ([]byte, error) {
 		}
 	}
 
+	// get from index
 	var value []byte
 	var matchKey func(diskhash.Slot) (bool, error)
 	if b.db.options.IndexType == Hash {
@@ -164,6 +169,7 @@ func (b *Batch) Get(key []byte) ([]byte, error) {
 	return record.value, nil
 }
 
+// Delete marks a key for deletion in the batch.
 func (b *Batch) Delete(key []byte) error {
 	if len(key) == 0 {
 		return ErrKeyIsEmpty
@@ -185,6 +191,7 @@ func (b *Batch) Delete(key []byte) error {
 	return nil
 }
 
+// Exist checks if the key exists in the database.
 func (b *Batch) Exist(key []byte) (bool, error) {
 	if len(key) == 0 {
 		return false, ErrKeyIsEmpty
@@ -193,6 +200,7 @@ func (b *Batch) Exist(key []byte) (bool, error) {
 		return false, ErrDBClosed
 	}
 
+	// check if the key exists in pendingWrites
 	if b.pendingWrites != nil {
 		b.mu.RLock()
 		if record := b.pendingWrites[string(key)]; record != nil {
@@ -202,6 +210,7 @@ func (b *Batch) Exist(key []byte) (bool, error) {
 		b.mu.RUnlock()
 	}
 
+	// get from memtables
 	tables := b.db.getMemTables()
 	for _, table := range tables {
 		deleted, value := table.get(key)
@@ -213,6 +222,7 @@ func (b *Batch) Exist(key []byte) (bool, error) {
 		}
 	}
 
+	// check if the key exists in index
 	var value []byte
 	var matchKeyFunc func(diskhash.Slot) (bool, error)
 	if b.db.options.IndexType == Hash {
@@ -228,6 +238,11 @@ func (b *Batch) Exist(key []byte) (bool, error) {
 	return pos != nil, nil
 }
 
+// Commit commits the batch, if the batch is readonly or empty, it will return directly.
+//
+// It will iterate the pendingWrites and write the data to the database,
+// then write a record to indicate the end of the batch to guarantee atomicity.
+// Finally, it will write the index.
 func (b *Batch) Commit() error {
 	defer b.unlock()
 	if b.db.closed {
@@ -241,15 +256,17 @@ func (b *Batch) Commit() error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
+	// check if committed
 	if b.committed {
 		return ErrBatchCommitted
 	}
 
+	// wait for memtable space
 	if err := b.db.waitMemtableSpace(); err != nil {
 		return err
 	}
 	batchID := b.batchID.Generate()
-
+	// call memtable put batch
 	err := b.db.activeMem.putBatch(b.pendingWrites, batchID, b.options.WriteOptions)
 	if err != nil {
 		return err
