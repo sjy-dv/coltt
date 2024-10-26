@@ -197,7 +197,7 @@ func (self *HnswBucket) Search(bucketName string, vec gomath.Vector, topCandidat
 
 	err = self.Buckets[bucketName].searchLayer(
 		vec,
-		&Item{Distance: curDist, Node: match.Id},
+		&Item{Distance: curDist, Node: match.Id, Metadata: match.Metadata},
 		topCandidates,
 		efSearch,
 		0,

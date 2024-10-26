@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/RoaringBitmap/roaring"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"github.com/sjy-dv/nnv/kv"
 	"github.com/sjy-dv/nnv/pkg/bitset"
@@ -19,6 +20,8 @@ import (
 
 func (self *HnswBucket) Start(opts *kv.Options) error {
 	self.rmu.Lock()
+	self.BucketGroup = make(map[string]bool)
+	self.Buckets = make(map[string]*Hnsw)
 	defer self.rmu.Unlock()
 	if opts == nil {
 		opts = &kv.DefaultOptions
@@ -107,7 +110,7 @@ func (self *HnswBucket) dataloader(bucketName string) error {
 	// --------sort data----------
 	// hnsw must order put node
 	sort.Slice(nodes, func(i, j int) bool {
-		return nodes[i].Timestamp < nodes[j].Timestamp
+		return nodes[i].Id < nodes[j].Id
 	})
 	//------------------ transfer empty node-----------------
 	self.BucketGroup[bucketName] = true
@@ -173,6 +176,9 @@ func (self *HnswBucket) NewHnswBucket(bucketName string, config HnswConfig) erro
 	genesisNode.Layer = 0
 	genesisNode.Vectors = make(gomath.Vector, self.Buckets[bucketName].Dim)
 	genesisNode.LinkNodes = make([][]uint32, self.Buckets[bucketName].Mmax0+1)
+	genesisNode.Metadata = map[string]interface{}{
+		"_id": uuid.New(),
+	}
 	genesisNode.Timestamp = uint64(time.Now().UnixNano())
 	genesisVal, err := msgpack.Marshal(genesisNode)
 	if err != nil {

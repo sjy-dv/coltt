@@ -133,7 +133,7 @@ func (db *DB) Close() error {
 
 	close(db.flushChan)
 
-	closeTimeout := time.After(5 * time.Second)
+	closeTimeout := time.After(1 * time.Second)
 
 	log.Debug().Msg("Waiting for close channel to signal")
 	select {

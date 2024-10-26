@@ -12,6 +12,7 @@ import (
 )
 
 func main() {
+	log.Info().Msg("rootlayer start")
 	go func() {
 		err := rootlayer.NewRootLayer()
 		if err != nil {

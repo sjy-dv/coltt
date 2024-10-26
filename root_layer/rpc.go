@@ -1,19 +1,30 @@
 package rootlayer
 
 import (
+	"context"
+	"fmt"
 	"net"
+	"os"
 	"time"
 
+	rpclog "github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/rs/zerolog/log"
 	"github.com/sjy-dv/nnv/config"
 	"github.com/sjy-dv/nnv/gen/protoc/v1/dataCoordinatorV1"
 	"github.com/sjy-dv/nnv/gen/protoc/v1/resourceCoordinatorV1"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/status"
 )
 
 func gRpcStart() error {
+	logger := rpclog.NewLogfmtLogger(os.Stderr)
+	rpcLogger := rpclog.With(logger, "service", "gRPC/server", "component", "nnv-rpc")
 	lis, err := net.Listen("tcp", config.Config.RootLayer.BindAddress)
 	if err != nil {
 		return err
@@ -67,6 +78,13 @@ func gRpcStart() error {
 		}
 		rpcOpts = append(rpcOpts, grpc.Creds(creds))
 	}
+	rpcOpts = append(rpcOpts, grpc.ChainUnaryInterceptor(
+		recovery.UnaryServerInterceptor(recovery.WithRecoveryHandler(rpcPanicHandler)),
+		logging.UnaryServerInterceptor(interceptorLogger(rpcLogger)),
+	), grpc.ChainStreamInterceptor(
+		recovery.StreamServerInterceptor(recovery.WithRecoveryHandler(rpcPanicHandler)),
+		logging.StreamServerInterceptor(interceptorLogger(rpcLogger)),
+	))
 	roots.S = grpc.NewServer(rpcOpts...)
 	rpcLayer := rpcLayer{}
 	rpcLayer.X1 = &datasetCoordinator{rpcLayer: rpcLayer}
@@ -80,4 +98,26 @@ func gRpcStart() error {
 		return err
 	}
 	return nil
+}
+
+func rpcPanicHandler(p any) (err error) {
+	return status.Errorf(codes.Internal, "%s", p)
+}
+
+func interceptorLogger(l rpclog.Logger) logging.Logger {
+	return logging.LoggerFunc(func(_ context.Context, lvl logging.Level, msg string, fields ...any) {
+		largs := append([]any{"msg", msg}, fields...)
+		switch lvl {
+		case logging.LevelDebug:
+			_ = level.Debug(l).Log(largs...)
+		case logging.LevelInfo:
+			_ = level.Info(l).Log(largs...)
+		case logging.LevelWarn:
+			_ = level.Warn(l).Log(largs...)
+		case logging.LevelError:
+			_ = level.Error(l).Log(largs...)
+		default:
+			panic(fmt.Sprintf("unknown level %v", lvl))
+		}
+	})
 }

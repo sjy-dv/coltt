@@ -117,7 +117,10 @@ func (self *datasetCoordinator) Search(
 		}
 		retval := make([]*dataCoordinatorV1.Candidates, 0, req.GetTopK())
 		for _, candidate := range topCandidates.Items {
-			vmeta, err := msgpack.Marshal(candidate.Metadata)
+			if candidate.Node == 0 {
+				continue
+			}
+			vmeta, err := msgpack.Marshal(roots.VBucket.Buckets[req.GetBucketName()].NodeList.Nodes[candidate.Node].Metadata)
 			if err != nil {
 				c <- reply{
 					Result: &dataCoordinatorV1.SearchResponse{
@@ -132,7 +135,7 @@ func (self *datasetCoordinator) Search(
 				return
 			}
 			retval = append(retval, &dataCoordinatorV1.Candidates{
-				Id:       candidate.Metadata["_id"].(string),
+				Id:       "",
 				Metadata: vmeta,
 				Score: float32(math.
 					Round(float64(

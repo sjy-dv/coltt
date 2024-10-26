@@ -14,17 +14,20 @@ import (
 var roots = &RootLayer{}
 
 func NewRootLayer() error {
+	log.Info().Msg("wait for rootlayer create..")
 	roots = &RootLayer{
 		VBucket:     &hnsw.HnswBucket{},
 		Bucket:      &kv.DB{},
 		S:           &grpc.Server{},
 		StreamLayer: &nats.Conn{},
 	}
+	log.Info().Msg("rootlayer mount vector database")
 	err := roots.VBucket.Start(nil)
 	if err != nil {
 		log.Warn().Err(err).Msg("root_layer.root.go(23) vBucket start failed")
 		return err
 	}
+	log.Info().Msg("rootlayer mount key-value database")
 	kvOpts := kv.DefaultOptions
 	kvOpts.DirPath = "./data_dir/kv"
 	roots.Bucket, err = kv.Open(kvOpts)
