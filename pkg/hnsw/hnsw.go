@@ -1,166 +1,147 @@
 package hnsw
 
 import (
-	"bytes"
 	"container/heap"
 	"errors"
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/RoaringBitmap/roaring"
 	"github.com/google/uuid"
-	"github.com/rs/zerolog/log"
-	"github.com/sjy-dv/nnv/kv"
 	"github.com/sjy-dv/nnv/pkg/bitset"
+	"github.com/sjy-dv/nnv/pkg/distance"
 	"github.com/sjy-dv/nnv/pkg/gomath"
-	"github.com/sjy-dv/nnv/pkg/shortid"
-	"github.com/vmihailenco/msgpack/v5"
 )
 
-func (self *HnswBucket) Start(opts *kv.Options) error {
+// func (self *HnswBucket) Start(opts *kv.Options) error {
 
-	self.rmu.Lock()
-	self.BucketGroup = make(map[string]bool)
-	self.Buckets = make(map[string]*Hnsw)
-	defer self.rmu.Unlock()
-	if opts == nil {
-		opts = &kv.DefaultOptions
-		opts.DirPath = "./data_dir/ann"
-	}
+// 	self.rmu.Lock()
+// 	self.BucketGroup = make(map[string]bool)
+// 	self.Buckets = make(map[string]*Hnsw)
+// 	defer self.rmu.Unlock()
+// 	if opts == nil {
+// 		opts = &kv.DefaultOptions
+// 		opts.DirPath = "./data_dir/ann"
+// 	}
 
-	kvstore, err := kv.Open(*opts)
-	if err != nil {
-		log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(20) open kv file failed error")
-		return err
-	}
+// 	kvstore, err := kv.Open(*opts)
+// 	if err != nil {
+// 		log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(20) open kv file failed error")
+// 		return err
+// 	}
 
-	self.Storage = kvstore
-	// reload hnsw config & node data
-	iter, err := kvstore.NewIterator(kv.IteratorOptions{
-		Reverse: false,
-		Prefix:  []byte(BucketPrefix),
-	})
-	if err != nil {
-		log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(30) kv iterator failed error")
-		return err
-	}
+// 	self.Storage = kvstore
+// 	// reload hnsw config & node data
+// 	iter, err := kvstore.NewIterator(kv.IteratorOptions{
+// 		Reverse: false,
+// 		Prefix:  []byte(BucketPrefix),
+// 	})
+// 	if err != nil {
+// 		log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(30) kv iterator failed error")
+// 		return err
+// 	}
 
-	for iter.Valid() {
-		fmt.Println(iter.Value())
-		err := self.dataloader(string(iter.Value()))
-		if err != nil {
-			log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(38) dataloader.Fn failed error")
-			return err
-		}
-		iter.Next()
-	}
+// 	for iter.Valid() {
+// 		fmt.Println(iter.Value())
+// 		err := self.dataloader(string(iter.Value()))
+// 		if err != nil {
+// 			log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(38) dataloader.Fn failed error")
+// 			return err
+// 		}
+// 		iter.Next()
+// 	}
 
-	if err := iter.Close(); err != nil {
-		log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(38) kv iterator closed error")
-		return err
-	}
-	return nil
-}
+// 	if err := iter.Close(); err != nil {
+// 		log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(38) kv iterator closed error")
+// 		return err
+// 	}
+// 	return nil
+// }
 
-func (self *HnswBucket) dataloader(bucketName string) error {
-	cfgbytes, err := self.Storage.Get([]byte(fmt.Sprintf("%s%s", bucketName, BucketConfigPrefix)))
-	if err != nil {
-		log.Warn().Err(err).Msg(fmt.Sprintf("pkg.hnsw.hnsw.go(55) bucket %s config load failed error", bucketName))
-		return err
-	}
-	var cfg HnswConfig
-	err = msgpack.Unmarshal(cfgbytes, &cfg)
-	if err != nil {
-		log.Warn().Err(err).Msg(fmt.Sprintf("pkg.hnsw.hnsw.go(62) bucket %s config data msgpack.Unmarshal failed error", bucketName))
-		return err
-	}
-	emptyNodebytes, err := self.Storage.Get([]byte(fmt.Sprintf("%s%s", bucketName, BucketEmptyNodePrefix)))
-	if err != nil {
-		log.Warn().Err(err).Msg(fmt.Sprintf("pkg.hnsw.hnsw.go(70) bucket %s empty node data load failed error", bucketName))
-		return err
-	}
-	var emptyNodes []uint32
-	err = msgpack.Unmarshal(emptyNodebytes, &emptyNodes)
-	if err != nil {
-		log.Warn().Err(err).Msg(fmt.Sprintf("pkg.hnsw.hnsw.go(76) bucket %s empty node data msgpack.Unmarshal failed error", bucketName))
-		return err
-	}
-	iter, err := self.Storage.NewIterator(kv.IteratorOptions{
-		Reverse: false,
-		Prefix:  []byte(bucketName + "_"),
-	})
-	if err != nil {
-		log.Warn().Err(err).Msg(fmt.Sprintf("pkg.hnsw.hnsw.go(6) bucket %s vector data loaded failed error", bucketName))
-		return err
-	}
-	nodes := []Node{}
-	for iter.Valid() {
-		if !bytes.HasPrefix(iter.Key(), []byte(bucketName+"_")) {
-			log.Warn().Msg(fmt.Sprintf("pkg.hnsw.hnsw.go(78) iterator key unmatched expected: %ssomething get: %s", bucketName+"_", string(iter.Key())))
-			return errors.New("iterator key unmatched")
-		}
-		node := Node{}
-		err := msgpack.Unmarshal(iter.Value(), &node)
-		if err != nil {
-			log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(62) bucket data msgpack.Unmarshal failed error")
-			return err
-		}
-		nodes = append(nodes, node)
-		iter.Next()
-	}
-	if err := iter.Close(); err != nil {
-		log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(38) kv iterator closed error")
-		return err
-	}
-	// ------find bitmap index---------
+// func (self *HnswBucket) dataloader(bucketName string) error {
+// 	cfgbytes, err := self.Storage.Get([]byte(fmt.Sprintf("%s%s", bucketName, BucketConfigPrefix)))
+// 	if err != nil {
+// 		log.Warn().Err(err).Msg(fmt.Sprintf("pkg.hnsw.hnsw.go(55) bucket %s config load failed error", bucketName))
+// 		return err
+// 	}
+// 	var cfg HnswConfig
+// 	err = msgpack.Unmarshal(cfgbytes, &cfg)
+// 	if err != nil {
+// 		log.Warn().Err(err).Msg(fmt.Sprintf("pkg.hnsw.hnsw.go(62) bucket %s config data msgpack.Unmarshal failed error", bucketName))
+// 		return err
+// 	}
+// 	emptyNodebytes, err := self.Storage.Get([]byte(fmt.Sprintf("%s%s", bucketName, BucketEmptyNodePrefix)))
+// 	if err != nil {
+// 		log.Warn().Err(err).Msg(fmt.Sprintf("pkg.hnsw.hnsw.go(70) bucket %s empty node data load failed error", bucketName))
+// 		return err
+// 	}
+// 	var emptyNodes []uint32
+// 	err = msgpack.Unmarshal(emptyNodebytes, &emptyNodes)
+// 	if err != nil {
+// 		log.Warn().Err(err).Msg(fmt.Sprintf("pkg.hnsw.hnsw.go(76) bucket %s empty node data msgpack.Unmarshal failed error", bucketName))
+// 		return err
+// 	}
+// 	iter, err := self.Storage.NewIterator(kv.IteratorOptions{
+// 		Reverse: false,
+// 		Prefix:  []byte(bucketName + "_"),
+// 	})
+// 	if err != nil {
+// 		log.Warn().Err(err).Msg(fmt.Sprintf("pkg.hnsw.hnsw.go(6) bucket %s vector data loaded failed error", bucketName))
+// 		return err
+// 	}
+// 	nodes := []Node{}
+// 	for iter.Valid() {
+// 		if !bytes.HasPrefix(iter.Key(), []byte(bucketName+"_")) {
+// 			log.Warn().Msg(fmt.Sprintf("pkg.hnsw.hnsw.go(78) iterator key unmatched expected: %ssomething get: %s", bucketName+"_", string(iter.Key())))
+// 			return errors.New("iterator key unmatched")
+// 		}
+// 		node := Node{}
+// 		err := msgpack.Unmarshal(iter.Value(), &node)
+// 		if err != nil {
+// 			log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(62) bucket data msgpack.Unmarshal failed error")
+// 			return err
+// 		}
+// 		nodes = append(nodes, node)
+// 		iter.Next()
+// 	}
+// 	if err := iter.Close(); err != nil {
+// 		log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(38) kv iterator closed error")
+// 		return err
+// 	}
+// 	// ------find bitmap index---------
 
-	// --------sort data----------
-	// hnsw must order put node
-	sort.Slice(nodes, func(i, j int) bool {
-		return nodes[i].Id < nodes[j].Id
-	})
-	//------------------ transfer empty node-----------------
-	self.BucketGroup[bucketName] = true
-	self.Buckets[bucketName] = &Hnsw{
-		Efconstruction: cfg.Efconstruction,
-		M:              cfg.M,
-		Mmax:           cfg.Mmax,
-		Mmax0:          cfg.Mmax0,
-		Ml:             cfg.Ml,
-		Ep:             cfg.Ep,
-		MaxLevel:       cfg.MaxLevel,
-		Dim:            cfg.Dim,
-		Heuristic:      cfg.Heuristic,
-		Space:          cfg.Space,
-		NodeList:       NodeList{Nodes: nodes},
-		BucketName:     cfg.BucketName,
-		EmptyNodes:     emptyNodes,
-	}
-	return nil
-}
+// 	// --------sort data----------
+// 	// hnsw must order put node
+// 	sort.Slice(nodes, func(i, j int) bool {
+// 		return nodes[i].Id < nodes[j].Id
+// 	})
+// 	//------------------ transfer empty node-----------------
+// 	self.BucketGroup[bucketName] = true
+// 	self.Buckets[bucketName] = &Hnsw{
+// 		Efconstruction: cfg.Efconstruction,
+// 		M:              cfg.M,
+// 		Mmax:           cfg.Mmax,
+// 		Mmax0:          cfg.Mmax0,
+// 		Ml:             cfg.Ml,
+// 		Ep:             cfg.Ep,
+// 		MaxLevel:       cfg.MaxLevel,
+// 		Dim:            cfg.Dim,
+// 		Heuristic:      cfg.Heuristic,
+// 		Space:          cfg.Space,
+// 		NodeList:       NodeList{Nodes: nodes},
+// 		BucketName:     cfg.BucketName,
+// 		EmptyNodes:     emptyNodes,
+// 	}
+// 	return nil
+// }
 
-func (self *HnswBucket) NewHnswBucket(bucketName string, config HnswConfig) error {
+func (self *HnswBucket) NewHnswBucket(bucketName string, config HnswConfig, dist distance.Space) error {
 	self.rmu.RLock()
 	defer self.rmu.RUnlock()
 	if ok := self.BucketGroup[bucketName]; ok {
 		return fmt.Errorf("bucket[%s] is already exists", bucketName)
 	}
-	err := self.Storage.Put([]byte(fmt.Sprintf("bucket_%s", bucketName)), []byte(bucketName))
-	if err != nil {
-		log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(17) saved new hnsw bucket failed error")
-		return err
-	}
-	cfgbytes, err := msgpack.Marshal(config)
-	if err != nil {
-		log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(145) msgpack.Marshal.Fn failed error")
-		return err
-	}
-	err = self.Storage.Put([]byte(fmt.Sprintf("%s%s", bucketName, BucketConfigPrefix)), cfgbytes)
-	if err != nil {
-		log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(150) saved new hnsw bucket config failed error")
-		return err
-	}
+
 	self.BucketGroup[bucketName] = true
 	self.Buckets[bucketName] = &Hnsw{
 		Efconstruction: config.Efconstruction,
@@ -172,7 +153,7 @@ func (self *HnswBucket) NewHnswBucket(bucketName string, config HnswConfig) erro
 		MaxLevel:       config.MaxLevel,
 		Dim:            config.Dim,
 		Heuristic:      config.Heuristic,
-		Space:          config.Space,
+		Space:          dist,
 		NodeList: NodeList{
 			Nodes: make([]Node, 1),
 		},
@@ -188,18 +169,18 @@ func (self *HnswBucket) NewHnswBucket(bucketName string, config HnswConfig) erro
 		"_id": uuid.New(),
 	}
 	genesisNode.Timestamp = uint64(time.Now().UnixNano())
-	genesisVal, err := msgpack.Marshal(genesisNode)
-	if err != nil {
-		log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(144) msgpackV5.Marshal failed error")
-		return err
-	}
+	// genesisVal, err := msgpack.Marshal(genesisNode)
+	// if err != nil {
+	// 	log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(144) msgpackV5.Marshal failed error")
+	// 	return err
+	// }
 	// node uint id is node.len, then delete the node data, duplicate id,...
-	serial := shortid.MustGenerate()
-	err = self.Storage.Put([]byte(fmt.Sprintf("%s_%d_%s", bucketName, 0, serial)), genesisVal)
-	if err != nil {
-		log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(149) kv put genesis event failed error")
-		return err
-	}
+	// serial := shortid.MustGenerate()
+	// err = self.Storage.Put([]byte(fmt.Sprintf("%s_%d_%s", bucketName, 0, serial)), genesisVal)
+	// if err != nil {
+	// 	log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(149) kv put genesis event failed error")
+	// 	return err
+	// }
 	self.Buckets[bucketName].NodeList.Nodes[0] = genesisNode
 	return nil
 }

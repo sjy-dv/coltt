@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	"github.com/RoaringBitmap/roaring"
-	"github.com/sjy-dv/nnv/kv"
 	"github.com/sjy-dv/nnv/pkg/distance"
 	"github.com/sjy-dv/nnv/pkg/gomath"
 )
@@ -35,10 +34,11 @@ type HnswConfig struct {
 	Ep             int64
 	MaxLevel       int
 	Dim            uint32
-	Space          distance.Space
+	DistanceType   string
 	Heuristic      bool
 	BucketName     string   // using seperate vector or find prefix kv
 	Filter         []string //bitmap index column
+	EmptyNodes     []uint32
 }
 
 type Hnsw struct {
@@ -52,6 +52,7 @@ type Hnsw struct {
 	Dim            uint32
 	Heuristic      bool
 	Space          distance.Space
+	DistanceType   string
 	NodeList       NodeList
 	BucketName     string // using seperate vector or find prefix kv
 	Filter         []string
@@ -69,7 +70,6 @@ type Hnsw struct {
 // }
 
 type HnswBucket struct {
-	Storage     *kv.DB
 	Buckets     map[string]*Hnsw // bucket managing multi-hnsw nodes
 	BucketGroup map[string]bool
 	rmu         sync.RWMutex

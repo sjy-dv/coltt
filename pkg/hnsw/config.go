@@ -2,11 +2,9 @@ package hnsw
 
 import (
 	"math"
-
-	"github.com/sjy-dv/nnv/pkg/distance"
 )
 
-func DefaultConfig(dim uint32, bucketName string, dist distance.Space) HnswConfig {
+func DefaultConfig(dim uint32, bucketName string, dist string) HnswConfig {
 	return HnswConfig{
 		Efconstruction: 200,
 		M:              16,
@@ -16,7 +14,7 @@ func DefaultConfig(dim uint32, bucketName string, dist distance.Space) HnswConfi
 		Ep:             0,
 		MaxLevel:       0,
 		Heuristic:      true,
-		Space:          dist,
+		DistanceType:   dist,
 		Dim:            dim,
 		BucketName:     bucketName,
 	}

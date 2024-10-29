@@ -105,6 +105,14 @@ To manage disk usage efficiently, all previous partitions up to the reliably syn
 
 This approach ensures stable data management.
 
+### The private ID and node ID are different, so how do you find them? Do you load them into memory?
+
+![arch8](./examples/assets/arch8.png)
+
+The private ID and node ID can differ and are treated separately in NNV. Loading them into memory is not efficient.
+
+Since we support internal KV storage, we store the node ID as the value with the private ID as the key. This allows us to update or delete the desired key based on user requests.
+
 ### 🐛 BugFix
 
 ```go

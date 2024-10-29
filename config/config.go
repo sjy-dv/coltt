@@ -15,7 +15,8 @@ var LeafServerFlag = flag.String("leaf-servers", "", "Comma separated list of le
 var DataRootDir = os.TempDir()
 
 type ConfigMap struct {
-	NodeID uint64 `toml:"node_id"`
+	CacheKey string `toml:"cache_key"`
+	NodeID   uint64 `toml:"node_id"`
 	// when false, detect cluster mode
 	// use single instance, must standalone=true
 	Standalone bool      `toml:"standalone"`
@@ -51,7 +52,8 @@ type RootLayer struct {
 }
 
 var Config = &ConfigMap{
-	NodeID: 0,
+	CacheKey: "nnv-cache",
+	NodeID:   0,
 	JetStream: JetStream{
 		URLs:                 []string{},
 		SubjectPrefix:        "nnv-change-log",

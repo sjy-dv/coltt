@@ -1,4 +1,4 @@
-package rootlayer
+package standalone
 
 import (
 	"context"
@@ -38,16 +38,20 @@ func (self *resourceCoordinator) CreateBucket(
 		}()
 
 		var dist distance.Space
+		var distType string
 		if req.GetSpace() == resourceCoordinatorV1.Space_Cosine {
 			dist = distance.NewCosine()
+			distType = "cosine"
 		} else if req.GetSpace() == resourceCoordinatorV1.Space_Manhattan {
 			dist = distance.NewManhattan()
+			distType = "manhattan"
 		} else {
 			dist = distance.NewEuclidean()
+			distType = "euclidean"
 		}
 
-		config := hnsw.DefaultConfig(req.GetDim(), req.GetBucketName(), dist)
-		if err := roots.VBucket.NewHnswBucket(req.GetBucketName(), config); err != nil {
+		config := hnsw.DefaultConfig(req.GetDim(), req.GetBucketName(), distType)
+		if err := roots.VBucket.NewHnswBucket(req.GetBucketName(), config, dist); err != nil {
 			c <- reply{
 				Result: &resourceCoordinatorV1.BucketResponse{
 					Bucket: nil,

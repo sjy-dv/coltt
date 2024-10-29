@@ -125,42 +125,42 @@ func (self *HnswBucket) Insert(bucketName string, userNodeId string, vec gomath.
 		self.Buckets[bucketName].MaxLevel = node.Layer
 		self.Buckets[bucketName].rmu.Unlock()
 	}
-	bytevec, err := msgpack.Marshal(node)
-	if err != nil {
-		rerr := self.Buckets[bucketName].removeConnection(node.Id)
-		if rerr != nil {
-			return fmt.Errorf("msgpackMarshalError: %v\nremovedError: %v", err, rerr)
-		}
-		return err
-	}
-	err = self.Storage.Put(
-		[]byte(fmt.Sprintf("%s_%s", bucketName, userNodeId)),
-		bytevec,
-	)
-	if err != nil {
-		rerr := self.Buckets[bucketName].removeConnection(node.Id)
-		if rerr != nil {
-			return fmt.Errorf("storageError: %v\nremovedError: %v", err, rerr)
-		}
-		return err
-	}
+	// bytevec, err := msgpack.Marshal(node)
+	// if err != nil {
+	// 	rerr := self.Buckets[bucketName].removeConnection(node.Id)
+	// 	if rerr != nil {
+	// 		return fmt.Errorf("msgpackMarshalError: %v\nremovedError: %v", err, rerr)
+	// 	}
+	// 	return err
+	// }
+	// err = self.Storage.Put(
+	// 	[]byte(fmt.Sprintf("%s_%s", bucketName, userNodeId)),
+	// 	bytevec,
+	// )
+	// if err != nil {
+	// 	rerr := self.Buckets[bucketName].removeConnection(node.Id)
+	// 	if rerr != nil {
+	// 		return fmt.Errorf("storageError: %v\nremovedError: %v", err, rerr)
+	// 	}
+	// 	return err
+	// }
 	return nil
 }
 
 func (self *HnswBucket) Update(bucketName string, nodeId string, vec gomath.Vector, metadata map[string]interface{}) error {
-	val, err := self.Storage.Get([]byte(nodeId))
-	if err != nil {
-		return err
-	}
-	node := Node{}
-	err = msgpack.Unmarshal(val, &node)
-	if err != nil {
-		return err
-	}
-	err = self.Storage.Delete([]byte(nodeId))
-	if err != nil {
-		return err
-	}
+	// val, err := self.Storage.Get([]byte(nodeId))
+	// if err != nil {
+	// 	return err
+	// }
+	// node := Node{}
+	// err = msgpack.Unmarshal(val, &node)
+	// if err != nil {
+	// 	return err
+	// }
+	// err = self.Storage.Delete([]byte(nodeId))
+	// if err != nil {
+	// 	return err
+	// }
 
 	err = self.Buckets[bucketName].removeConnection(node.Id)
 	if err != nil {
