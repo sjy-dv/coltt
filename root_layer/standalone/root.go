@@ -6,8 +6,9 @@ import (
 
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
-	"github.com/sjy-dv/nnv/kv"
+	"github.com/sjy-dv/nnv/data_access_layer"
 	"github.com/sjy-dv/nnv/pkg/hnsw"
+	matchdbgo "github.com/sjy-dv/nnv/pkg/match_db.go"
 	"google.golang.org/grpc"
 )
 
@@ -16,25 +17,42 @@ var roots = &RootLayer{}
 func NewRootLayer() error {
 	log.Info().Msg("wait for rootlayer create..")
 	roots = &RootLayer{
-		VBucket:     &hnsw.HnswBucket{},
-		Bucket:      &kv.DB{},
+		VBucket: &hnsw.HnswBucket{
+			Buckets:     make(map[string]*hnsw.Hnsw),
+			BucketGroup: make(map[string]bool),
+		},
 		S:           &grpc.Server{},
 		StreamLayer: &nats.Conn{},
 	}
 	log.Info().Msg("rootlayer mount vector database")
-	err := roots.VBucket.Start(nil)
+	err := matchdbgo.Open()
 	if err != nil {
-		log.Warn().Err(err).Msg("root_layer.root.go(23) vBucket start failed")
+		log.Warn().Err(err).Msg("root_layer.root.go(280) matchdb open failed")
 		return err
 	}
-	log.Info().Msg("rootlayer mount key-value database")
-	kvOpts := kv.DefaultOptions
-	kvOpts.DirPath = "./data_dir/kv"
-	roots.Bucket, err = kv.Open(kvOpts)
+
+	// hnsw bucket loaded
+	loadbuckets, err := data_access_layer.Rollup()
 	if err != nil {
-		log.Warn().Err(err).Msg("root_layer.root.go(27) kv bucket start failed")
+		log.Warn().Err(err).Msg("root_layer.root.go(36) vector-data rollup failed")
 		return err
 	}
+	if loadbuckets != nil {
+		roots.VBucket = loadbuckets
+	}
+	// err := roots.VBucket.Start(nil)
+	// if err != nil {
+	// 	log.Warn().Err(err).Msg("root_layer.root.go(23) vBucket start failed")
+	// 	return err
+	// }
+	// log.Info().Msg("rootlayer mount key-value database")
+	// kvOpts := kv.DefaultOptions
+	// kvOpts.DirPath = "./data_dir/kv"
+	// roots.Bucket, err = kv.Open(kvOpts)
+	// if err != nil {
+	// 	log.Warn().Err(err).Msg("root_layer.root.go(27) kv bucket start failed")
+	// 	return err
+	// }
 	// single instance
 	// only supported - 2024.10.25
 	// if config.Config.Standalone {
@@ -64,31 +82,18 @@ func StableRelease(ctx context.Context) error {
 			log.Debug().Msg("gRPC server forced shutdown due to timeout")
 		}
 	}
-	if roots.Bucket != nil {
-		log.Debug().Msg("Attempting to close KV store")
-		bkStopped := make(chan struct{})
-		go func() {
-			if err := roots.Bucket.Close(); err != nil {
-				log.Warn().Err(err).Msg("kv-store closed failed")
-			} else {
-				log.Debug().Msg("kv-store closed successfully")
-			}
-			close(bkStopped)
-		}()
-		select {
-		case <-bkStopped:
-		case <-ctx.Done():
-			log.Warn().Msg("kv-store close forced shutdown due to timeout")
-		}
+	log.Debug().Msg("Attempting to close match-database")
+	err := matchdbgo.Close()
+	if err != nil {
+		log.Warn().Err(err).Msg("match-database closed failed")
 	}
 	if roots.VBucket != nil {
 		log.Debug().Msg("Attempting to close vector store")
 		vbStopped := make(chan struct{})
 		go func() {
-			if err := roots.VBucket.Storage.Close(); err != nil {
-				log.Warn().Err(err).Msg("vector-store closed failed")
-			} else {
-				log.Debug().Msg("vector-store closed successfully")
+			err := data_access_layer.Commit(roots.VBucket)
+			if err != nil {
+				log.Warn().Err(err).Msg("data_access_layer stable saved data failed")
 			}
 			close(vbStopped)
 		}()

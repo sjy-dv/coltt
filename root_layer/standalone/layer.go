@@ -7,7 +7,6 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/sjy-dv/nnv/gen/protoc/v1/dataCoordinatorV1"
 	"github.com/sjy-dv/nnv/gen/protoc/v1/resourceCoordinatorV1"
-	"github.com/sjy-dv/nnv/kv"
 	"github.com/sjy-dv/nnv/pkg/hnsw"
 	"google.golang.org/grpc"
 )
@@ -20,7 +19,6 @@ type RootLayer struct {
 	StreamLayerCtx nats.JetStreamContext
 
 	VBucket *hnsw.HnswBucket // vector store
-	Bucket  *kv.DB           //key-value store
 	S       *grpc.Server
 }
 

@@ -1,25 +1,26 @@
 package data_access_layer
 
 import (
-	"encoding/base64"
+	"compress/flate"
 	"encoding/gob"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/rs/zerolog/log"
-	"github.com/sjy-dv/nnv/config"
-	"github.com/sjy-dv/nnv/pkg/flate"
+
 	"github.com/sjy-dv/nnv/pkg/hnsw"
 )
 
 const parentDir string = "./data_dir"
 
 func Commit(nodeTrees *hnsw.HnswBucket) error {
-
+	metaTime := time.Now().UnixNano()
 	dirs, err := os.ReadDir(parentDir)
 	if err != nil {
 		log.Warn().Err(err).Msg("data_access_layer.Commit_ReadDir failed")
@@ -29,6 +30,9 @@ func Commit(nodeTrees *hnsw.HnswBucket) error {
 	var dirsList []string
 	for _, dir := range dirs {
 		if dir.IsDir() {
+			if dir.Name() == "matchid" || dir.Name() == "backup" {
+				continue
+			}
 			dirsList = append(dirsList, dir.Name())
 		}
 	}
@@ -93,36 +97,45 @@ func Commit(nodeTrees *hnsw.HnswBucket) error {
 	}
 	//=========write backup nodes =====================//
 	f, err := os.OpenFile(fmt.Sprintf("%s/nodes.cdat", newDirPath), os.O_TRUNC|
-		os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
+		os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Warn().Err(err).Msg("data_access_layer.Commit_nodesCdat_OpenFile failed")
 		return err
 	}
 
-	decodeKey, err := base64.StdEncoding.DecodeString(config.Config.CacheKey)
-	if err != nil {
-		log.Warn().Err(err).Msg("data_access_layer.Commit_base64_decode_string failed")
-		return err
-	}
-
-	nodesOut, _ = flate.NewWriter(f, flate.BestCompression, decodeKey)
-
+	nodesOut, _ = flate.NewWriter(f, flate.BestCompression)
 	enc := gob.NewEncoder(nodesOut)
-	enc.Encode(backupNodes)
-	err = nodesOut.(io.Closer).Close()
-	if err != nil {
+	if err := enc.Encode(backupNodes); err != nil {
 		log.Warn().Err(err).Msg("data_access_layer.write nodes data.cdat failed")
 		return err
 	}
+	if flusher, ok := nodesOut.(interface{ Flush() error }); ok {
+		if err := flusher.Flush(); err != nil {
+			log.Warn().Err(err).Msg("Failed to flush data")
+			return err
+		}
+	}
+
+	if err := nodesOut.(io.Closer).Close(); err != nil {
+		log.Warn().Err(err).Msg("data_access_layer.write nodes data close failed")
+		return err
+	}
+	// enc := gob.NewEncoder(nodesOut)
+	// enc.Encode(backupNodes)
+	// err = nodesOut.(io.Closer).Close()
+	// if err != nil {
+	// 	log.Warn().Err(err).Msg("data_access_layer.write nodes data.cdat failed")
+	// 	return err
+	// }
 
 	//============write backup hnsw nodes config =============
 	cf, err := os.OpenFile(fmt.Sprintf("%s/nodes_config.cdat", newDirPath), os.O_TRUNC|
-		os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
+		os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Warn().Err(err).Msg("data_access_layer.Commit_configCdat_OpenFile failed")
 		return err
 	}
-	nodesCofingOut, _ = flate.NewWriter(cf, flate.BestCompression, decodeKey)
+	nodesCofingOut, _ = flate.NewWriter(cf, flate.BestCompression)
 
 	cenc := gob.NewEncoder(nodesCofingOut)
 	cenc.Encode(backupConfig)
@@ -134,18 +147,38 @@ func Commit(nodeTrees *hnsw.HnswBucket) error {
 
 	//==================write bucket list=======================
 	bf, err := os.OpenFile(fmt.Sprintf("%s/buckets.cdat", newDirPath), os.O_TRUNC|
-		os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
+		os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Warn().Err(err).Msg("data_access_layer.Commit_bucketCdat_OpenFile failed")
 		return err
 	}
-	bucketsOut, _ = flate.NewWriter(bf, flate.BestCompression, decodeKey)
+	bucketsOut, _ = flate.NewWriter(bf, flate.BestCompression)
 
 	benc := gob.NewEncoder(bucketsOut)
 	benc.Encode(backupBuckets)
 	err = bucketsOut.(io.Closer).Close()
 	if err != nil {
 		log.Warn().Err(err).Msg("data_access_layer.write buckets data.cdat failed")
+		return err
+	}
+
+	//================write lasttimestamp meta.json================
+	type meta struct {
+		Timestamp int64 `json:"timestamp"`
+	}
+	metaJson := meta{
+		Timestamp: metaTime,
+	}
+	mf, err := os.Create(fmt.Sprintf("%s/meta.json", newDirPath))
+	if err != nil {
+		log.Warn().Err(err).Msg("data_access_layer.create meta timestamp file failed")
+		return err
+	}
+	jenc := json.NewEncoder(mf)
+	jenc.Encode(metaJson)
+	err = mf.Close()
+	if err != nil {
+		log.Warn().Err(err).Msg("data_access_layer.write meta timestamp file failed")
 		return err
 	}
 	return nil

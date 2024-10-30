@@ -18,32 +18,39 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
-	"time"
-
-	"github.com/sjy-dv/nnv/kv"
+	"log"
 )
 
 func main() {
-	opts := kv.DefaultOptions
-	opts.DirPath = "./data_dir/tmp"
+	key := make([]byte, 32)
+	if _, err := rand.Read(key); err != nil {
+		log.Fatal(err)
+	}
+	base64Key := base64.StdEncoding.EncodeToString(key)
+	fmt.Println("Generated 32-byte base64 key:", base64Key)
 
-	db, err := kv.Open(opts)
-	if err != nil {
-		panic(err)
-	}
+	// logdb, err := backup.NewStorage(backup.WithTimestampPrecision(backup.Nanoseconds))
+	// fmt.Println(err)
+	// defer logdb.Close()
 
-	opts.DirPath = "./data_dir/tmp2"
-	db2, err := kv.Open(opts)
-	if err != nil {
-		panic(err)
-	}
-	time.Sleep(10 * time.Second)
-	if err := db.Close(); err != nil {
-		fmt.Println(err)
-	}
-	if err := db2.Close(); err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println("closing")
+	// err = logdb.InsertRows([]backup.Row{
+	// 	{Metric: "test", DataPoint: backup.DataPoint{
+	// 		Value:     1,
+	// 		Timestamp: time.Now().UnixNano(),
+	// 	},
+	// 		Labels: []backup.Label{
+	// 			backup.Label{
+	// 				Name:  "bucketok?",
+	// 				Value: "maybe ok..",
+	// 			},
+	// 		},
+	// 	},
+	// })
+	// fmt.Println(err)
+	// p, err := logdb.Select("test", nil, 0, time.Now().UnixNano())
+	// fmt.Println(err)
+	// fmt.Println(p)
 }

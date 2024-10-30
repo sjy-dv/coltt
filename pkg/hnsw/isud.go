@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/sjy-dv/nnv/pkg/gomath"
-	"github.com/vmihailenco/msgpack/v5"
+	matchdbgo "github.com/sjy-dv/nnv/pkg/match_db.go"
 )
 
 // isud => insert update delete... hahaha
@@ -125,6 +125,14 @@ func (self *HnswBucket) Insert(bucketName string, userNodeId string, vec gomath.
 		self.Buckets[bucketName].MaxLevel = node.Layer
 		self.Buckets[bucketName].rmu.Unlock()
 	}
+	err := matchdbgo.Set(userNodeId, node.Id)
+	if err != nil {
+		rerr := self.Buckets[bucketName].removeConnection(node.Id)
+		if rerr != nil {
+			return fmt.Errorf("matchedDB.Set.Error: %v\nremovedError: %v", err, rerr)
+		}
+		return err
+	}
 	// bytevec, err := msgpack.Marshal(node)
 	// if err != nil {
 	// 	rerr := self.Buckets[bucketName].removeConnection(node.Id)
@@ -161,8 +169,15 @@ func (self *HnswBucket) Update(bucketName string, nodeId string, vec gomath.Vect
 	// if err != nil {
 	// 	return err
 	// }
-
-	err = self.Buckets[bucketName].removeConnection(node.Id)
+	val, err := matchdbgo.Get(nodeId)
+	if err != nil {
+		return err
+	}
+	err = matchdbgo.Delete(nodeId)
+	if err != nil {
+		return err
+	}
+	err = self.Buckets[bucketName].removeConnection(val)
 	if err != nil {
 		return err
 	}
@@ -170,20 +185,24 @@ func (self *HnswBucket) Update(bucketName string, nodeId string, vec gomath.Vect
 }
 
 func (self *HnswBucket) Delete(bucketName string, nodeId string) error {
-	val, err := self.Storage.Get([]byte(nodeId))
+	val, err := matchdbgo.Get(nodeId)
 	if err != nil {
 		return err
 	}
-	node := Node{}
-	err = msgpack.Unmarshal(val, &node)
+	// node := Node{}
+	// err = msgpack.Unmarshal(val, &node)
+	// if err != nil {
+	// 	return err
+	// }
+	// err = self.Storage.Delete([]byte(nodeId))
+	// if err != nil {
+	// 	return err
+	// }
+	err = matchdbgo.Delete(nodeId)
 	if err != nil {
 		return err
 	}
-	err = self.Storage.Delete([]byte(nodeId))
-	if err != nil {
-		return err
-	}
-	err = self.Buckets[bucketName].removeConnection(node.Id)
+	err = self.Buckets[bucketName].removeConnection(val)
 	return err
 }
 

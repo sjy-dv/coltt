@@ -1,7 +1,7 @@
 package data_access_layer
 
 import (
-	"encoding/base64"
+	"compress/flate"
 	"encoding/gob"
 	"fmt"
 	"io"
@@ -10,38 +10,42 @@ import (
 	"sort"
 
 	"github.com/rs/zerolog/log"
-	"github.com/sjy-dv/nnv/config"
 	"github.com/sjy-dv/nnv/pkg/distance"
-	"github.com/sjy-dv/nnv/pkg/flate"
 	"github.com/sjy-dv/nnv/pkg/hnsw"
 )
 
 // Recovery logic needs to be added in the future.
 func Rollup() (*hnsw.HnswBucket, error) {
-
 	dirs, err := os.ReadDir(parentDir)
 	if err != nil {
 		log.Warn().Err(err).Msg("data_access_layer.Rollup_ReadDir failed")
 		return nil, err
 	}
-
 	// find recent dirs
 	var dirsList []string
+	if len(dirs) == 0 {
+		return nil, nil
+	}
 	for _, dir := range dirs {
 		if dir.IsDir() {
+			if dir.Name() == "matchid" || dir.Name() == "backup" {
+				continue
+			}
 			dirsList = append(dirsList, dir.Name())
 		}
 	}
-
+	if len(dirsList) == 0 {
+		return nil, nil
+	}
 	sort.Strings(dirsList)
 	rollUpDirs := filepath.Join(parentDir, dirsList[len(dirsList)-1])
-
+	fmt.Println("rollup", rollUpDirs)
 	// =======config decode key===========
-	decodeKey, err := base64.StdEncoding.DecodeString(config.Config.CacheKey)
-	if err != nil {
-		log.Warn().Err(err).Msg("data_access_layer.Rollup_base64_decode_string failed")
-		return nil, err
-	}
+	// decodeKey, err := base64.StdEncoding.DecodeString(config.Config.CacheKey)
+	// if err != nil {
+	// 	log.Warn().Err(err).Msg("data_access_layer.Rollup_base64_decode_string failed")
+	// 	return nil, err
+	// }
 	// ----------load nodes data---------------
 
 	nodesCdat, err := os.OpenFile(fmt.Sprintf("%s/nodes.cdat", rollUpDirs), os.O_RDONLY, 0777)
@@ -54,10 +58,9 @@ func Rollup() (*hnsw.HnswBucket, error) {
 
 	var ncIo io.Reader
 
-	ncIo = flate.NewReader(nodesCdat, decodeKey)
+	ncIo = flate.NewReader(nodesCdat)
 
 	nodeDec := gob.NewDecoder(ncIo)
-
 	err = nodeDec.Decode(&loadNodes)
 	if err != nil {
 		log.Warn().Err(err).Msg("data_access_layer.Rollup_NodeCdat Decode failed")
@@ -80,7 +83,7 @@ func Rollup() (*hnsw.HnswBucket, error) {
 
 	var ncfgIo io.Reader
 
-	ncfgIo = flate.NewReader(nodesConf, decodeKey)
+	ncfgIo = flate.NewReader(nodesConf)
 	nodeCfgDec := gob.NewDecoder(ncfgIo)
 	err = nodeCfgDec.Decode(&loadCofigs)
 	if err != nil {
@@ -103,7 +106,7 @@ func Rollup() (*hnsw.HnswBucket, error) {
 
 	var bucketIo io.Reader
 
-	bucketIo = flate.NewReader(nodesBucket, decodeKey)
+	bucketIo = flate.NewReader(nodesBucket)
 	bucketDec := gob.NewDecoder(bucketIo)
 	err = bucketDec.Decode(&loadBuckets)
 	if err != nil {
@@ -115,8 +118,12 @@ func Rollup() (*hnsw.HnswBucket, error) {
 		log.Warn().Err(err).Msg("data_access_layer.Rollup_Abnormaly Bucket Io Closing failed")
 		return nil, err
 	}
-	recoveryBuckets := new(hnsw.HnswBucket)
+	recoveryBuckets := &hnsw.HnswBucket{
+		Buckets:     make(map[string]*hnsw.Hnsw),
+		BucketGroup: make(map[string]bool),
+	}
 	for _, bucket := range loadBuckets {
+		recoveryBuckets.Buckets[bucket] = new(hnsw.Hnsw)
 		recoveryBuckets.BucketGroup[bucket] = true
 		recoveryBuckets.Buckets[bucket].BucketName = bucket
 		recoveryBuckets.Buckets[bucket].Efconstruction = loadCofigs[bucket].Efconstruction

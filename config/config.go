@@ -52,7 +52,7 @@ type RootLayer struct {
 }
 
 var Config = &ConfigMap{
-	CacheKey: "nnv-cache",
+	CacheKey: "22ENpk1CTyMsbKlkATzRPydsrZRDu657mltVvAQSMJc=",
 	NodeID:   0,
 	JetStream: JetStream{
 		URLs:                 []string{},
