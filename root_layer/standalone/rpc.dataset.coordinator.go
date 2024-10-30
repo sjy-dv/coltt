@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"sort"
 
 	"github.com/sjy-dv/nnv/gen/protoc/v1/dataCoordinatorV1"
 	"github.com/sjy-dv/nnv/pkg/hnsw"
@@ -54,6 +55,112 @@ func (self *datasetCoordinator) Insert(
 		if err := roots.VBucket.Insert(
 			req.GetBucketName(), req.GetId(),
 			req.GetVector(), metadata); err != nil {
+			c <- reply{
+				Result: &dataCoordinatorV1.Response{
+					Status: false,
+					Error: &dataCoordinatorV1.Error{
+						ErrorMessage: err.Error(),
+						ErrorCode:    dataCoordinatorV1.ErrorCode_INTERNAL_FUNC_ERROR,
+					},
+				},
+			}
+			return
+		}
+		c <- reply{
+			Result: &dataCoordinatorV1.Response{
+				Status: true,
+				Error:  nil,
+			},
+		}
+	}()
+	res := <-c
+	return res.Result, res.Error
+}
+
+func (self *datasetCoordinator) Update(
+	ctx context.Context,
+	req *dataCoordinatorV1.ModifyDataset) (
+	*dataCoordinatorV1.Response,
+	error,
+) {
+	type reply struct {
+		Result *dataCoordinatorV1.Response
+		Error  error
+	}
+
+	c := make(chan reply, 1)
+
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				c <- reply{
+					Result: nil,
+					Error:  fmt.Errorf(UncaughtPanicError, r),
+				}
+			}
+		}()
+		metadata := make(map[string]interface{})
+		err := msgpack.Unmarshal(req.GetMetadata(), &metadata)
+		if err != nil {
+			c <- reply{
+				Result: &dataCoordinatorV1.Response{
+					Status: false,
+					Error: &dataCoordinatorV1.Error{
+						ErrorMessage: err.Error(),
+						ErrorCode:    dataCoordinatorV1.ErrorCode_INTERNAL_FUNC_ERROR,
+					},
+				},
+			}
+			return
+		}
+		if err := roots.VBucket.Update(
+			req.GetBucketName(), req.GetId(),
+			req.GetVector(), metadata); err != nil {
+			c <- reply{
+				Result: &dataCoordinatorV1.Response{
+					Status: false,
+					Error: &dataCoordinatorV1.Error{
+						ErrorMessage: err.Error(),
+						ErrorCode:    dataCoordinatorV1.ErrorCode_INTERNAL_FUNC_ERROR,
+					},
+				},
+			}
+			return
+		}
+		c <- reply{
+			Result: &dataCoordinatorV1.Response{
+				Status: true,
+				Error:  nil,
+			},
+		}
+	}()
+	res := <-c
+	return res.Result, res.Error
+}
+
+func (self *datasetCoordinator) Delete(
+	ctx context.Context,
+	req *dataCoordinatorV1.DeleteDataset) (
+	*dataCoordinatorV1.Response,
+	error,
+) {
+	type reply struct {
+		Result *dataCoordinatorV1.Response
+		Error  error
+	}
+
+	c := make(chan reply, 1)
+
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				c <- reply{
+					Result: nil,
+					Error:  fmt.Errorf(UncaughtPanicError, r),
+				}
+			}
+		}()
+		if err := roots.VBucket.Delete(req.GetBucketName(), req.GetId()); err != nil {
 			c <- reply{
 				Result: &dataCoordinatorV1.Response{
 					Status: false,
@@ -140,6 +247,9 @@ func (self *datasetCoordinator) Search(
 				Score: float32(math.
 					Round(float64(
 						100-(candidate.Distance*100))*10) / 10),
+			})
+			sort.Slice(retval, func(i, j int) bool {
+				return retval[i].Score > retval[j].Score
 			})
 		}
 		c <- reply{
