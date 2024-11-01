@@ -9,7 +9,27 @@ import (
 
 	"github.com/sjy-dv/nnv/pkg/gomath"
 	matchdbgo "github.com/sjy-dv/nnv/pkg/match_db.go"
+	"github.com/sjy-dv/nnv/pkg/nnlogdb"
 )
+
+// nnlogdb using insert & delete
+/*
+	update => delete(nnlog record) + insert(nnlogrecord)
+
+	colum => 1  aaaa
+	update => 1 bbbb
+		- internal flow
+			1 aaaa <- delete (nnlog record to {delete-event, 1, aaaa})
+			1 bbbb <- insert (nnlog record to {insert-event, 1, bbbb})
+	when recovery
+		- internal flow
+			1 aaaa <- old log
+			<- delete event : drop column
+			<- insert event : add bbbb column but update must required full data, don t worry
+			&& this hnsw first set node location is empty Nodes
+	search => not necessary
+
+*/
 
 // isud => insert update delete... hahaha
 // metadata include unserNodeId
@@ -133,6 +153,19 @@ func (self *HnswBucket) Insert(bucketName string, userNodeId string, vec gomath.
 		}
 		return err
 	}
+	// save-log
+	err = nnlogdb.AddLogf(
+		nnlogdb.PrintlF(
+			userNodeId, "insert", node.Id, node.Timestamp, node.Metadata, node.Vectors,
+		),
+	)
+	if err != nil {
+		rerr := self.Buckets[bucketName].removeConnection(node.Id)
+		if rerr != nil {
+			return fmt.Errorf("matchedDB.Set.Error: %v\nremovedError: %v", err, rerr)
+		}
+		return err
+	}
 	// bytevec, err := msgpack.Marshal(node)
 	// if err != nil {
 	// 	rerr := self.Buckets[bucketName].removeConnection(node.Id)
@@ -181,6 +214,7 @@ func (self *HnswBucket) Update(bucketName string, nodeId string, vec gomath.Vect
 	if err != nil {
 		return err
 	}
+	// insert record to nnlog
 	return self.Insert(bucketName, nodeId, vec, metadata)
 }
 
@@ -203,6 +237,17 @@ func (self *HnswBucket) Delete(bucketName string, nodeId string) error {
 		return err
 	}
 	err = self.Buckets[bucketName].removeConnection(val)
+	if err != nil {
+		return err
+	}
+	err = nnlogdb.AddLogf(
+		nnlogdb.PrintlF(
+			nodeId, "delete", val, 0, map[string]interface{}{"_id": nodeId}, []float32{0.0},
+		),
+	)
+	if err != nil {
+		return err
+	}
 	return err
 }
 
