@@ -18,39 +18,35 @@
 package main
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
-	"log"
+	"reflect"
+
+	"github.com/sjy-dv/nnv/backup"
+	"github.com/sjy-dv/nnv/backup/document"
+	"github.com/sjy-dv/nnv/backup/query"
 )
 
 func main() {
-	key := make([]byte, 32)
-	if _, err := rand.Read(key); err != nil {
-		log.Fatal(err)
+	tdb, err := backup.Open("./tmp/test")
+	fmt.Println(err)
+	log := document.NewDocument()
+	tdb.CreateCollection("test")
+	log.Set("metadata", map[string]interface{}{
+		"event": "how",
+		"value": 10.0,
+	})
+	log.Set("vector", []float32{0.1, 0.2, 0.4})
+	tdb.Insert("test", log)
+
+	getL, err := tdb.FindFirst(query.NewQuery("test"))
+	fmt.Println(err)
+	recoverMap := getL.Get("metadata").(map[string]interface{})
+	fmt.Println(recoverMap, reflect.TypeOf(recoverMap))
+	recoverVec := getL.Get("vector").([]interface{})
+	newFloat := make([]float32, len(recoverVec))
+	for i, v := range recoverVec {
+		newFloat[i] = float32(v.(float64))
 	}
-	base64Key := base64.StdEncoding.EncodeToString(key)
-	fmt.Println("Generated 32-byte base64 key:", base64Key)
-
-	// logdb, err := backup.NewStorage(backup.WithTimestampPrecision(backup.Nanoseconds))
-	// fmt.Println(err)
-	// defer logdb.Close()
-
-	// err = logdb.InsertRows([]backup.Row{
-	// 	{Metric: "test", DataPoint: backup.DataPoint{
-	// 		Value:     1,
-	// 		Timestamp: time.Now().UnixNano(),
-	// 	},
-	// 		Labels: []backup.Label{
-	// 			backup.Label{
-	// 				Name:  "bucketok?",
-	// 				Value: "maybe ok..",
-	// 			},
-	// 		},
-	// 	},
-	// })
-	// fmt.Println(err)
-	// p, err := logdb.Select("test", nil, 0, time.Now().UnixNano())
-	// fmt.Println(err)
-	// fmt.Println(p)
+	fmt.Println(newFloat, reflect.TypeOf(newFloat))
+	defer tdb.Close()
 }

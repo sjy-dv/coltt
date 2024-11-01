@@ -15,6 +15,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/sjy-dv/nnv/pkg/hnsw"
+	"github.com/sjy-dv/nnv/pkg/nnlogdb"
 )
 
 const parentDir string = "./data_dir"
@@ -30,7 +31,7 @@ func Commit(nodeTrees *hnsw.HnswBucket) error {
 	var dirsList []string
 	for _, dir := range dirs {
 		if dir.IsDir() {
-			if dir.Name() == "matchid" || dir.Name() == "backup" {
+			if dir.Name() == "matchid" || dir.Name() == "backup-log" {
 				continue
 			}
 			dirsList = append(dirsList, dir.Name())
@@ -165,9 +166,11 @@ func Commit(nodeTrees *hnsw.HnswBucket) error {
 	//================write lasttimestamp meta.json================
 	type meta struct {
 		Timestamp int64 `json:"timestamp"`
+		Partition string
 	}
 	metaJson := meta{
 		Timestamp: metaTime,
+		Partition: nnlogdb.CurPartitionLabel(),
 	}
 	mf, err := os.Create(fmt.Sprintf("%s/meta.json", newDirPath))
 	if err != nil {

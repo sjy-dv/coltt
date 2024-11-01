@@ -9,6 +9,7 @@ import (
 	"github.com/sjy-dv/nnv/data_access_layer"
 	"github.com/sjy-dv/nnv/pkg/hnsw"
 	matchdbgo "github.com/sjy-dv/nnv/pkg/match_db.go"
+	"github.com/sjy-dv/nnv/pkg/nnlogdb"
 	"google.golang.org/grpc"
 )
 
@@ -24,13 +25,19 @@ func NewRootLayer() error {
 		S:           &grpc.Server{},
 		StreamLayer: &nats.Conn{},
 	}
-	log.Info().Msg("rootlayer mount vector database")
+	log.Info().Msg("rootlayer mount match k/v database")
 	err := matchdbgo.Open()
 	if err != nil {
 		log.Warn().Err(err).Msg("root_layer.root.go(280) matchdb open failed")
 		return err
 	}
-
+	log.Info().Msg("rootlayer mount nnlogdb")
+	err = nnlogdb.Open()
+	if err != nil {
+		log.Warn().Err(err).Msg("root_layer.root.go(36) nnlogdb open failed")
+		return err
+	}
+	log.Info().Msg("rootlayer mount vector database")
 	// hnsw bucket loaded
 	loadbuckets, err := data_access_layer.Rollup()
 	if err != nil {

@@ -28,7 +28,7 @@ func Rollup() (*hnsw.HnswBucket, error) {
 	}
 	for _, dir := range dirs {
 		if dir.IsDir() {
-			if dir.Name() == "matchid" || dir.Name() == "backup" {
+			if dir.Name() == "matchid" || dir.Name() == "backup-log" {
 				continue
 			}
 			dirsList = append(dirsList, dir.Name())
