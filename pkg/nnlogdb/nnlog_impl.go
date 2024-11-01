@@ -47,10 +47,11 @@ func Open() error {
 	return nil
 }
 
-func PrintlF(privateId, event string, nodeId uint32, timestamp uint64, metadata map[string]interface{}, vector []float32) *document.Document {
+func PrintlF(privateId, event, bucket string, nodeId uint32, timestamp uint64, metadata map[string]interface{}, vector []float32) *document.Document {
 	printer := document.NewDocument()
 	printer.Set("private_id", privateId)
 	printer.Set("node_id", nodeId)
+	printer.Set("bucket", bucket)
 	printer.Set("timestamp", timestamp)
 	printer.Set("metadata", metadata)
 	printer.Set("vector", vector)
@@ -66,6 +67,7 @@ func AddLogf(logs *document.Document) error {
 
 type RecoveryLog struct {
 	PrivateId string
+	Bucket    string
 	Event     string
 	NodeId    uint32
 	Timestamp uint64
@@ -87,6 +89,7 @@ func GetPartition(partition string) (*[]RecoveryLog, error) {
 	recoveryLogs := make([]RecoveryLog, 0, len(logs))
 	for _, log := range logs {
 		retry := RecoveryLog{}
+		retry.Bucket = log.Get("bucket").(string)
 		retry.Event = log.Get("event").(string)
 		retry.Metadata = log.Get("metadata").(map[string]interface{})
 		retry.NodeId = log.Get("node_id").(uint32)

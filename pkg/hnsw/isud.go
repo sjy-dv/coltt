@@ -156,7 +156,7 @@ func (self *HnswBucket) Insert(bucketName string, userNodeId string, vec gomath.
 	// save-log
 	err = nnlogdb.AddLogf(
 		nnlogdb.PrintlF(
-			userNodeId, "insert", node.Id, node.Timestamp, node.Metadata, node.Vectors,
+			userNodeId, "insert", bucketName, node.Id, node.Timestamp, node.Metadata, node.Vectors,
 		),
 	)
 	if err != nil {
@@ -242,7 +242,7 @@ func (self *HnswBucket) Delete(bucketName string, nodeId string) error {
 	}
 	err = nnlogdb.AddLogf(
 		nnlogdb.PrintlF(
-			nodeId, "delete", val, 0, map[string]interface{}{"_id": nodeId}, []float32{0.0},
+			nodeId, "delete", bucketName, val, 0, map[string]interface{}{"_id": nodeId}, []float32{0.0},
 		),
 	)
 	if err != nil {
