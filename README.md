@@ -114,6 +114,103 @@ The private ID and node ID can differ and are treated separately in NNV. Loading
 
 Since we support internal KV storage, we store the node ID as the value with the private ID as the key. This allows us to update or delete the desired key based on user requests.
 
+### The node link structure and the order of the graph in HNSW are crucial, and any deviation could significantly reduce accuracy. Despite this, is safe recovery still possible?
+
+#### Simulation
+
+```sh
+Step 1: Initial State (Empty Graph)
+
+[ ]   [ ]   [ ]   [ ]   [ ]   [ ]   [ ]   [ ]   [ ]   [ ]
+ |     |     |     |     |     |     |     |     |     |
+( )   ( )   ( )   ( )   ( )   ( )   ( )   ( )   ( )   ( )
+
+Explanation:
+- Each `[ ]` represents an empty node.
+- The `( )` below each node symbolizes potential links to other nodes (currently empty).
+
+Step 2: Insert '1 aaaa'
+
+[1:aaaa]   [ ]   [ ]   [ ]   [ ]   [ ]   [ ]   [ ]   [ ]   [ ]
+     |
+   ( )
+
+Explanation:
+- Data `'aaaa'` with ID `1` is inserted into the first empty node.
+- Links `( )` are established according to the HNSW algorithm.
+
+Step 3: Update '1 aaaa' to '1 bbbb' (Delete + Insert)
+
+Delete '1 aaaa':
+[ ]   [ ]   [ ]   [ ]   [ ]   [ ]   [ ]   [ ]   [ ]   [ ]
+ |
+( )
+
+Explanation:
+- The data `'aaaa'` is deleted from node `1`, leaving it empty.
+- This action is logged as `{delete-event, 1, aaaa}`.
+
+Insert '1 bbbb':
+
+[1:bbbb]   [ ]   [ ]   [ ]   [ ]   [ ]   [ ]   [ ]   [ ]   [ ]
+     |
+   ( )
+
+Explanation:
+- New data `'bbbb'` is inserted into node `1`.
+- This action is logged as `{insert-event, 1, bbbb}`.
+- Links are re-established as necessary.
+
+Step 4: Recovery Process
+
+During recovery, we start with all nodes empty and replay the logs in order:
+
+Insert '1 aaaa':
+Node 1 now contains 'aaaa'.
+Delete '1 aaaa':
+Node 1 is emptied.
+Insert '1 bbbb':
+Node 1 now contains 'bbbb'.
+
+[1:bbbb]   [ ]   [ ]   [ ]   [ ]   [ ]   [ ]   [ ]   [ ]   [ ]
+     |
+   ( )
+
+Explanation:
+- Node `1` contains the updated data `'bbbb'`.
+- The graph's structure and links are restored accordingly.
+
+```
+
+#### Understanding the Update Process
+
+- Update as Delete + Insert:
+  - An update operation replaces old data with new data.
+  - We handle this by first deleting the old data ('aaaa') and then inserting the new data ('bbbb').
+  - This method simplifies the logging to just insert and delete events.
+
+#### Recovery Mechanics
+
+- Starting from Empty Nodes:
+
+  - Recovery begins with all nodes in an empty state.
+  - This approach avoids dependencies on previous node states or positions.
+
+- Applying Logs Sequentially:
+  - Logs are replayed in the exact order they were recorded.
+  - Each log entry modifies the graph incrementally, ensuring consistency.
+
+#### Graph Structure Maintenance
+
+- Node IDs and Links:
+
+  - Each node has a unique ID (e.g., 1).
+  - Links between nodes are managed according to the HNSW algorithm during inserts.
+
+- Handling Empty Nodes:
+  - Empty nodes are available for new data insertions.
+  - The algorithm ensures that the graph remains navigable even as nodes are added or removed.
+
 ### 🐛 BugFix
 
 ```go
