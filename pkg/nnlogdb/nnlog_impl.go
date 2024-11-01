@@ -42,6 +42,10 @@ func Open() error {
 		if err != nil {
 			return err
 		}
+		err = logdb.CreateIndex(nodeLogCollection, "bucket")
+		if err != nil {
+			return err
+		}
 	}
 	nnlogdb = logdb
 	return nil
@@ -116,6 +120,14 @@ func DeleteLastPartition(partition string) error {
 	return nnlogdb.Delete(
 		query.NewQuery(nodeLogCollection).Where(
 			query.Field("partition").Eq(partition),
+		),
+	)
+}
+
+func DropBucketLogs(bucket string) error {
+	return nnlogdb.Delete(
+		query.NewQuery(nodeLogCollection).Where(
+			query.Field("bucket").Eq(bucket),
 		),
 	)
 }
