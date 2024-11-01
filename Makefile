@@ -4,6 +4,9 @@ PROTO_SRC_DIR=./idl/proto/v1
 PROTO_OUT_DIR=./gen/protoc/v1
 COMPILE_VERSION=V1
 
+docker-build-bin:
+	- env GOOS=linux go build -o ./bin/ cmd/root/main.go
+
 compile-gogoproto:
 	@echo "Compiling proto files..."
 	mkdir -p $(GOGOPROTO_OUT_DIR)
