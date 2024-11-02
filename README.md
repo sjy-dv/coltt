@@ -6,12 +6,19 @@ NNV (No-Named.V) is a production database project by a developer aspiring to gai
 
 Additionally, its flexible and innovative cluster architecture presents a new vision.
 
+### Release Update (2024.11.02) [UPDATE HISTORY](./UPDATE-LOG.md)
+
+- Fast cache data storage and loading is supported through INFLATE/DEFLATE.
+- nnlogdb has stabilized, and log storage and bucket-based partitioning have been completed.
+
+### Update Preview
+
+- A bitmap-based index will be added, and hybrid search functionality is scheduled to be updated.
+
 ### ⚠️ Warning
 
-- ~~HNSW accuracy is lower than expected. Currently being edited.~~
 - It may be slow because you are not currently focused on this task.
 - The hybrid search method using bitmap indexing within metadata is scheduled to be added after the initial release.
-- nnlogdb is currently unstable and shows subpar performance that falls short of my expectations, requiring additional work.
 
 # Index
 
