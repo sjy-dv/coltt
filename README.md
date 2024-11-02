@@ -15,7 +15,7 @@ Additionally, its flexible and innovative cluster architecture presents a new vi
     - All metadata is indexed without user configuration.
     - RAM is required to maintain the index.
     - Support for various operators is limited; currently, only matching is possible.
-- Searches can only be performed using filters.
+- Searches can be performed using only filters.
 - Hybrid search is supported.
   - Limitations
     - All filters must be processed as strings. For example, if age is stored as an integer (20), it must be searched using "age": "20".
