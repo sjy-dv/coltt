@@ -50,7 +50,7 @@ func (e CorruptInputError) Error() string {
 	return "flate: corrupt input before offset " + strconv.FormatInt(int64(e), 10)
 }
 
-// An InternalError reports an error in the flate code itself.
+// An InternalError reports an error in the flate code itxx.
 type InternalError string
 
 func (e InternalError) Error() string { return "flate: internal error: " + string(e) }

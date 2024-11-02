@@ -12,19 +12,20 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/sjy-dv/nnv/pkg/distance"
 	"github.com/sjy-dv/nnv/pkg/hnsw"
+	"github.com/sjy-dv/nnv/pkg/index"
 )
 
 // Recovery logic needs to be added in the future.
-func Rollup() (*hnsw.HnswBucket, error) {
+func Rollup() (*hnsw.HnswBucket, *index.BitmapIndex, error) {
 	dirs, err := os.ReadDir(parentDir)
 	if err != nil {
 		log.Warn().Err(err).Msg("data_access_layer.Rollup_ReadDir failed")
-		return nil, err
+		return nil, nil, err
 	}
 	// find recent dirs
 	var dirsList []string
 	if len(dirs) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 	for _, dir := range dirs {
 		if dir.IsDir() {
@@ -35,7 +36,7 @@ func Rollup() (*hnsw.HnswBucket, error) {
 		}
 	}
 	if len(dirsList) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 	sort.Strings(dirsList)
 	rollUpDirs := filepath.Join(parentDir, dirsList[len(dirsList)-1])
@@ -51,7 +52,7 @@ func Rollup() (*hnsw.HnswBucket, error) {
 	nodesCdat, err := os.OpenFile(fmt.Sprintf("%s/nodes.cdat", rollUpDirs), os.O_RDONLY, 0777)
 	if err != nil {
 		log.Warn().Err(err).Msg("data_access_layer.Rollup_nodesCdat_OpenFile failed")
-		return nil, err
+		return nil, nil, err
 	}
 
 	loadNodes := make(map[string][]hnsw.Node)
@@ -64,12 +65,12 @@ func Rollup() (*hnsw.HnswBucket, error) {
 	err = nodeDec.Decode(&loadNodes)
 	if err != nil {
 		log.Warn().Err(err).Msg("data_access_layer.Rollup_NodeCdat Decode failed")
-		return nil, err
+		return nil, nil, err
 	}
 	err = ncIo.(io.Closer).Close()
 	if err != nil {
 		log.Warn().Err(err).Msg("data_access_layer.Rollup_Abnormaly nodesCdat Io Closing failed")
-		return nil, err
+		return nil, nil, err
 	}
 
 	//============load nodes config ==================
@@ -78,7 +79,7 @@ func Rollup() (*hnsw.HnswBucket, error) {
 	nodesConf, err := os.OpenFile(fmt.Sprintf("%s/nodes_config.cdat", rollUpDirs), os.O_RDONLY, 0777)
 	if err != nil {
 		log.Warn().Err(err).Msg("data_access_layer.Rollup_nodesConfig_OpenFile failed")
-		return nil, err
+		return nil, nil, err
 	}
 
 	var ncfgIo io.Reader
@@ -88,12 +89,12 @@ func Rollup() (*hnsw.HnswBucket, error) {
 	err = nodeCfgDec.Decode(&loadCofigs)
 	if err != nil {
 		log.Warn().Err(err).Msg("data_access_layer.Rollup_NodesConfig Decode failed")
-		return nil, err
+		return nil, nil, err
 	}
 	err = ncfgIo.(io.Closer).Close()
 	if err != nil {
 		log.Warn().Err(err).Msg("data_access_layer.Rollup_Abnormaly config Io Closing failed")
-		return nil, err
+		return nil, nil, err
 	}
 	//=========load buckets ===================
 	loadBuckets := make([]string, 0)
@@ -101,7 +102,7 @@ func Rollup() (*hnsw.HnswBucket, error) {
 	nodesBucket, err := os.OpenFile(fmt.Sprintf("%s/buckets.cdat", rollUpDirs), os.O_RDONLY, 0777)
 	if err != nil {
 		log.Warn().Err(err).Msg("data_access_layer.Rollup_Bucket_OpenFile failed")
-		return nil, err
+		return nil, nil, err
 	}
 
 	var bucketIo io.Reader
@@ -111,12 +112,12 @@ func Rollup() (*hnsw.HnswBucket, error) {
 	err = bucketDec.Decode(&loadBuckets)
 	if err != nil {
 		log.Warn().Err(err).Msg("data_access_layer.Rollup_Bucket Decode failed")
-		return nil, err
+		return nil, nil, err
 	}
 	err = bucketIo.(io.Closer).Close()
 	if err != nil {
 		log.Warn().Err(err).Msg("data_access_layer.Rollup_Abnormaly Bucket Io Closing failed")
-		return nil, err
+		return nil, nil, err
 	}
 	recoveryBuckets := &hnsw.HnswBucket{
 		Buckets:     make(map[string]*hnsw.Hnsw),
@@ -154,5 +155,17 @@ func Rollup() (*hnsw.HnswBucket, error) {
 		recoveryBuckets.Buckets[bucket].EmptyNodes = loadCofigs[bucket].EmptyNodes
 		recoveryBuckets.Buckets[bucket].NodeList.Nodes = loadNodes[bucket]
 	}
-	return recoveryBuckets, nil
+
+	recoveryIndex := index.NewBitmapIndex()
+	err = recoveryIndex.DeserializeBinary(fmt.Sprintf("%s/index.bin", rollUpDirs))
+	if err != nil {
+		log.Warn().Err(err).Msg("bitmap index recovery failed")
+		return nil, nil, err
+	}
+	err = recoveryIndex.ValidateIndex()
+	if err != nil {
+		log.Warn().Err(err).Msg("bitmap index validation test failed")
+		return nil, nil, err
+	}
+	return recoveryBuckets, recoveryIndex, nil
 }

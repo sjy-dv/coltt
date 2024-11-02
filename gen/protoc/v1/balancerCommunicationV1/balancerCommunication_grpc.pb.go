@@ -31,7 +31,9 @@ const (
 	LBCoordinator_BatchInsert_FullMethodName      = "/balancerCommunicationV1.LBCoordinator/BatchInsert"
 	LBCoordinator_BatchUpdate_FullMethodName      = "/balancerCommunicationV1.LBCoordinator/BatchUpdate"
 	LBCoordinator_BatchDelete_FullMethodName      = "/balancerCommunicationV1.LBCoordinator/BatchDelete"
-	LBCoordinator_Search_FullMethodName           = "/balancerCommunicationV1.LBCoordinator/Search"
+	LBCoordinator_VectorSearch_FullMethodName     = "/balancerCommunicationV1.LBCoordinator/VectorSearch"
+	LBCoordinator_FilterSearch_FullMethodName     = "/balancerCommunicationV1.LBCoordinator/FilterSearch"
+	LBCoordinator_HybridSearch_FullMethodName     = "/balancerCommunicationV1.LBCoordinator/HybridSearch"
 	LBCoordinator_DataLoader_FullMethodName       = "/balancerCommunicationV1.LBCoordinator/DataLoader"
 )
 
@@ -53,7 +55,12 @@ type LBCoordinatorClient interface {
 	BatchInsert(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[ModifyDataset, Response], error)
 	BatchUpdate(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[ModifyDataset, Response], error)
 	BatchDelete(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[DeleteDataset, Response], error)
-	Search(ctx context.Context, in *SearchReq, opts ...grpc.CallOption) (*SearchResponse, error)
+	// vectorsearch <- only search vector query
+	// filtersearch <- not using vector, only use filter
+	// hybrid filter + vector
+	VectorSearch(ctx context.Context, in *SearchReq, opts ...grpc.CallOption) (*SearchResponse, error)
+	FilterSearch(ctx context.Context, in *SearchReq, opts ...grpc.CallOption) (*SearchResponse, error)
+	HybridSearch(ctx context.Context, in *SearchReq, opts ...grpc.CallOption) (*SearchResponse, error)
 	// sync
 	DataLoader(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[ModifyDataset, Response], error)
 }
@@ -185,10 +192,30 @@ func (c *lBCoordinatorClient) BatchDelete(ctx context.Context, opts ...grpc.Call
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type LBCoordinator_BatchDeleteClient = grpc.BidiStreamingClient[DeleteDataset, Response]
 
-func (c *lBCoordinatorClient) Search(ctx context.Context, in *SearchReq, opts ...grpc.CallOption) (*SearchResponse, error) {
+func (c *lBCoordinatorClient) VectorSearch(ctx context.Context, in *SearchReq, opts ...grpc.CallOption) (*SearchResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SearchResponse)
-	err := c.cc.Invoke(ctx, LBCoordinator_Search_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, LBCoordinator_VectorSearch_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *lBCoordinatorClient) FilterSearch(ctx context.Context, in *SearchReq, opts ...grpc.CallOption) (*SearchResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchResponse)
+	err := c.cc.Invoke(ctx, LBCoordinator_FilterSearch_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *lBCoordinatorClient) HybridSearch(ctx context.Context, in *SearchReq, opts ...grpc.CallOption) (*SearchResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchResponse)
+	err := c.cc.Invoke(ctx, LBCoordinator_HybridSearch_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +253,12 @@ type LBCoordinatorServer interface {
 	BatchInsert(grpc.BidiStreamingServer[ModifyDataset, Response]) error
 	BatchUpdate(grpc.BidiStreamingServer[ModifyDataset, Response]) error
 	BatchDelete(grpc.BidiStreamingServer[DeleteDataset, Response]) error
-	Search(context.Context, *SearchReq) (*SearchResponse, error)
+	// vectorsearch <- only search vector query
+	// filtersearch <- not using vector, only use filter
+	// hybrid filter + vector
+	VectorSearch(context.Context, *SearchReq) (*SearchResponse, error)
+	FilterSearch(context.Context, *SearchReq) (*SearchResponse, error)
+	HybridSearch(context.Context, *SearchReq) (*SearchResponse, error)
 	// sync
 	DataLoader(grpc.BidiStreamingServer[ModifyDataset, Response]) error
 }
@@ -271,8 +303,14 @@ func (UnimplementedLBCoordinatorServer) BatchUpdate(grpc.BidiStreamingServer[Mod
 func (UnimplementedLBCoordinatorServer) BatchDelete(grpc.BidiStreamingServer[DeleteDataset, Response]) error {
 	return status.Errorf(codes.Unimplemented, "method BatchDelete not implemented")
 }
-func (UnimplementedLBCoordinatorServer) Search(context.Context, *SearchReq) (*SearchResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Search not implemented")
+func (UnimplementedLBCoordinatorServer) VectorSearch(context.Context, *SearchReq) (*SearchResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VectorSearch not implemented")
+}
+func (UnimplementedLBCoordinatorServer) FilterSearch(context.Context, *SearchReq) (*SearchResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FilterSearch not implemented")
+}
+func (UnimplementedLBCoordinatorServer) HybridSearch(context.Context, *SearchReq) (*SearchResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method HybridSearch not implemented")
 }
 func (UnimplementedLBCoordinatorServer) DataLoader(grpc.BidiStreamingServer[ModifyDataset, Response]) error {
 	return status.Errorf(codes.Unimplemented, "method DataLoader not implemented")
@@ -462,20 +500,56 @@ func _LBCoordinator_BatchDelete_Handler(srv interface{}, stream grpc.ServerStrea
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type LBCoordinator_BatchDeleteServer = grpc.BidiStreamingServer[DeleteDataset, Response]
 
-func _LBCoordinator_Search_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _LBCoordinator_VectorSearch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SearchReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LBCoordinatorServer).Search(ctx, in)
+		return srv.(LBCoordinatorServer).VectorSearch(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: LBCoordinator_Search_FullMethodName,
+		FullMethod: LBCoordinator_VectorSearch_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LBCoordinatorServer).Search(ctx, req.(*SearchReq))
+		return srv.(LBCoordinatorServer).VectorSearch(ctx, req.(*SearchReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LBCoordinator_FilterSearch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LBCoordinatorServer).FilterSearch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LBCoordinator_FilterSearch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LBCoordinatorServer).FilterSearch(ctx, req.(*SearchReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LBCoordinator_HybridSearch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LBCoordinatorServer).HybridSearch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LBCoordinator_HybridSearch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LBCoordinatorServer).HybridSearch(ctx, req.(*SearchReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -527,8 +601,16 @@ var LBCoordinator_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _LBCoordinator_Delete_Handler,
 		},
 		{
-			MethodName: "Search",
-			Handler:    _LBCoordinator_Search_Handler,
+			MethodName: "VectorSearch",
+			Handler:    _LBCoordinator_VectorSearch_Handler,
+		},
+		{
+			MethodName: "FilterSearch",
+			Handler:    _LBCoordinator_FilterSearch_Handler,
+		},
+		{
+			MethodName: "HybridSearch",
+			Handler:    _LBCoordinator_HybridSearch_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

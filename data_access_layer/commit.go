@@ -15,12 +15,13 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/sjy-dv/nnv/pkg/hnsw"
+	"github.com/sjy-dv/nnv/pkg/index"
 	"github.com/sjy-dv/nnv/pkg/nnlogdb"
 )
 
 const parentDir string = "./data_dir"
 
-func Commit(nodeTrees *hnsw.HnswBucket) error {
+func Commit(nodeTrees *hnsw.HnswBucket, bitmapIdex *index.BitmapIndex) error {
 	metaTime := time.Now().UnixNano()
 	dirs, err := os.ReadDir(parentDir)
 	if err != nil {
@@ -91,7 +92,6 @@ func Commit(nodeTrees *hnsw.HnswBucket) error {
 			DistanceType:   nodes.DistanceType,
 			Heuristic:      nodes.Heuristic,
 			BucketName:     nodes.BucketName,
-			Filter:         nodes.Filter,
 			EmptyNodes:     nodes.EmptyNodes,
 		}
 		backupBuckets = append(backupBuckets, nodes.BucketName)
@@ -182,6 +182,12 @@ func Commit(nodeTrees *hnsw.HnswBucket) error {
 	err = mf.Close()
 	if err != nil {
 		log.Warn().Err(err).Msg("data_access_layer.write meta timestamp file failed")
+		return err
+	}
+	//============write bitmap index=============
+	err = bitmapIdex.SerializeBinary(fmt.Sprintf("%s/index.bin", newDirPath))
+	if err != nil {
+		log.Warn().Err(err).Msg("data_access_layer.save bitmap index failed")
 		return err
 	}
 	return nil

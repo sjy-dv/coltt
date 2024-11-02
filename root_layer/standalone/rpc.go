@@ -89,7 +89,7 @@ func gRpcStart() error {
 	rpcLayer := rpcLayer{}
 	rpcLayer.X1 = &datasetCoordinator{rpcLayer: rpcLayer}
 	rpcLayer.X2 = &resourceCoordinator{rpcLayer: rpcLayer}
-	//rpcLayer.rootClone = self
+	//rpcLayer.rootClone = xx
 	dataCoordinatorV1.RegisterDatasetCoordinatorServer(roots.S, rpcLayer.X1)
 	resourceCoordinatorV1.RegisterResourceCoordinatorServer(roots.S, rpcLayer.X2)
 	log.Debug().Msgf("grpc_startup bind_addr : %s", config.Config.RootLayer.BindAddress)

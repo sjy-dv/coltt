@@ -111,10 +111,10 @@ func startStreamLayer(nodeName string) (*internalJetstream, error) {
 	return embdJetstream, nil
 }
 
-func (self *internalJetstream) prepareConnection(opts ...nats.Option) (*nats.Conn, error) {
-	self.mu.Lock()
-	s := self.server
-	self.mu.Unlock()
+func (xx *internalJetstream) prepareConnection(opts ...nats.Option) (*nats.Conn, error) {
+	xx.mu.Lock()
+	s := xx.server
+	xx.mu.Unlock()
 
 	for !s.ReadyForConnections(1 * time.Second) {
 		continue

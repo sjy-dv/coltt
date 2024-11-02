@@ -234,7 +234,7 @@ func (f *field) Contains(elems ...interface{}) Criteria {
 }
 
 // getFieldOrValue returns dereferenced value if value denotes another document field,
-// otherwise returns the value itself directly
+// otherwise returns the value itxx directly
 func getFieldOrValue(doc *document.Document, value interface{}) interface{} {
 	if cmpField, ok := value.(*field); ok {
 		value = doc.Get(cmpField.name)

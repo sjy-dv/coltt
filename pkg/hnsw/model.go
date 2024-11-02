@@ -3,7 +3,6 @@ package hnsw
 import (
 	"sync"
 
-	"github.com/RoaringBitmap/roaring"
 	"github.com/sjy-dv/nnv/pkg/distance"
 	"github.com/sjy-dv/nnv/pkg/gomath"
 )
@@ -36,8 +35,7 @@ type HnswConfig struct {
 	Dim            uint32
 	DistanceType   string
 	Heuristic      bool
-	BucketName     string   // using seperate vector or find prefix kv
-	Filter         []string //bitmap index column
+	BucketName     string // using seperate vector or find prefix kv
 	EmptyNodes     []uint32
 }
 
@@ -54,9 +52,7 @@ type Hnsw struct {
 	Space          distance.Space
 	DistanceType   string
 	NodeList       NodeList
-	BucketName     string // using seperate vector or find prefix kv
-	Filter         []string
-	Index          map[string]*roaring.Bitmap
+	BucketName     string   // using seperate vector or find prefix kv
 	EmptyNodes     []uint32 // restore empty node link
 	rmu            sync.RWMutex
 	Wg             sync.WaitGroup

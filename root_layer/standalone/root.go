@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/sjy-dv/nnv/data_access_layer"
 	"github.com/sjy-dv/nnv/pkg/hnsw"
+	"github.com/sjy-dv/nnv/pkg/index"
 	matchdbgo "github.com/sjy-dv/nnv/pkg/match_db.go"
 	"github.com/sjy-dv/nnv/pkg/nnlogdb"
 	"google.golang.org/grpc"
@@ -22,6 +23,7 @@ func NewRootLayer() error {
 			Buckets:     make(map[string]*hnsw.Hnsw),
 			BucketGroup: make(map[string]bool),
 		},
+		BitmapIndex: &index.BitmapIndex{},
 		S:           &grpc.Server{},
 		StreamLayer: &nats.Conn{},
 	}
@@ -39,13 +41,19 @@ func NewRootLayer() error {
 	}
 	log.Info().Msg("rootlayer mount vector database")
 	// hnsw bucket loaded
-	loadbuckets, err := data_access_layer.Rollup()
+	loadbuckets, bidx, err := data_access_layer.Rollup()
 	if err != nil {
 		log.Warn().Err(err).Msg("root_layer.root.go(36) vector-data rollup failed")
 		return err
 	}
 	if loadbuckets != nil {
 		roots.VBucket = loadbuckets
+	}
+	if bidx != nil {
+		roots.BitmapIndex = bidx
+	} else {
+		// when first start
+		roots.BitmapIndex = index.NewBitmapIndex()
 	}
 	// err := roots.VBucket.Start(nil)
 	// if err != nil {
@@ -98,7 +106,7 @@ func StableRelease(ctx context.Context) error {
 		log.Debug().Msg("Attempting to close vector store")
 		vbStopped := make(chan struct{})
 		go func() {
-			err := data_access_layer.Commit(roots.VBucket)
+			err := data_access_layer.Commit(roots.VBucket, roots.BitmapIndex)
 			if err != nil {
 				log.Warn().Err(err).Msg("data_access_layer stable saved data failed")
 			}

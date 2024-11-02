@@ -98,7 +98,7 @@ message SearchReq {
     uint64 topK=3;
     float min_score=4;
     int32 efSearch=5;
-    bytes search_options=6;
+    map<string,string> filter=6;
     bool with_latency=7;
 }
 

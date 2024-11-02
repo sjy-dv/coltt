@@ -8,6 +8,7 @@ import (
 	"github.com/sjy-dv/nnv/gen/protoc/v1/dataCoordinatorV1"
 	"github.com/sjy-dv/nnv/gen/protoc/v1/resourceCoordinatorV1"
 	"github.com/sjy-dv/nnv/pkg/hnsw"
+	"github.com/sjy-dv/nnv/pkg/index"
 	"google.golang.org/grpc"
 )
 
@@ -18,8 +19,9 @@ type RootLayer struct {
 	StreamLayer    *nats.Conn
 	StreamLayerCtx nats.JetStreamContext
 
-	VBucket *hnsw.HnswBucket // vector store
-	S       *grpc.Server
+	VBucket     *hnsw.HnswBucket // vector store
+	BitmapIndex *index.BitmapIndex
+	S           *grpc.Server
 }
 
 type rpcLayer struct {

@@ -6,19 +6,18 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/RoaringBitmap/roaring"
 	"github.com/google/uuid"
 	"github.com/sjy-dv/nnv/pkg/bitset"
 	"github.com/sjy-dv/nnv/pkg/distance"
 	"github.com/sjy-dv/nnv/pkg/gomath"
 )
 
-// func (self *HnswBucket) Start(opts *kv.Options) error {
+// func (xx *HnswBucket) Start(opts *kv.Options) error {
 
-// 	self.rmu.Lock()
-// 	self.BucketGroup = make(map[string]bool)
-// 	self.Buckets = make(map[string]*Hnsw)
-// 	defer self.rmu.Unlock()
+// 	xx.rmu.Lock()
+// 	xx.BucketGroup = make(map[string]bool)
+// 	xx.Buckets = make(map[string]*Hnsw)
+// 	defer xx.rmu.Unlock()
 // 	if opts == nil {
 // 		opts = &kv.DefaultOptions
 // 		opts.DirPath = "./data_dir/ann"
@@ -30,7 +29,7 @@ import (
 // 		return err
 // 	}
 
-// 	self.Storage = kvstore
+// 	xx.Storage = kvstore
 // 	// reload hnsw config & node data
 // 	iter, err := kvstore.NewIterator(kv.IteratorOptions{
 // 		Reverse: false,
@@ -43,7 +42,7 @@ import (
 
 // 	for iter.Valid() {
 // 		fmt.Println(iter.Value())
-// 		err := self.dataloader(string(iter.Value()))
+// 		err := xx.dataloader(string(iter.Value()))
 // 		if err != nil {
 // 			log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(38) dataloader.Fn failed error")
 // 			return err
@@ -58,8 +57,8 @@ import (
 // 	return nil
 // }
 
-// func (self *HnswBucket) dataloader(bucketName string) error {
-// 	cfgbytes, err := self.Storage.Get([]byte(fmt.Sprintf("%s%s", bucketName, BucketConfigPrefix)))
+// func (xx *HnswBucket) dataloader(bucketName string) error {
+// 	cfgbytes, err := xx.Storage.Get([]byte(fmt.Sprintf("%s%s", bucketName, BucketConfigPrefix)))
 // 	if err != nil {
 // 		log.Warn().Err(err).Msg(fmt.Sprintf("pkg.hnsw.hnsw.go(55) bucket %s config load failed error", bucketName))
 // 		return err
@@ -70,7 +69,7 @@ import (
 // 		log.Warn().Err(err).Msg(fmt.Sprintf("pkg.hnsw.hnsw.go(62) bucket %s config data msgpack.Unmarshal failed error", bucketName))
 // 		return err
 // 	}
-// 	emptyNodebytes, err := self.Storage.Get([]byte(fmt.Sprintf("%s%s", bucketName, BucketEmptyNodePrefix)))
+// 	emptyNodebytes, err := xx.Storage.Get([]byte(fmt.Sprintf("%s%s", bucketName, BucketEmptyNodePrefix)))
 // 	if err != nil {
 // 		log.Warn().Err(err).Msg(fmt.Sprintf("pkg.hnsw.hnsw.go(70) bucket %s empty node data load failed error", bucketName))
 // 		return err
@@ -81,7 +80,7 @@ import (
 // 		log.Warn().Err(err).Msg(fmt.Sprintf("pkg.hnsw.hnsw.go(76) bucket %s empty node data msgpack.Unmarshal failed error", bucketName))
 // 		return err
 // 	}
-// 	iter, err := self.Storage.NewIterator(kv.IteratorOptions{
+// 	iter, err := xx.Storage.NewIterator(kv.IteratorOptions{
 // 		Reverse: false,
 // 		Prefix:  []byte(bucketName + "_"),
 // 	})
@@ -116,8 +115,8 @@ import (
 // 		return nodes[i].Id < nodes[j].Id
 // 	})
 // 	//------------------ transfer empty node-----------------
-// 	self.BucketGroup[bucketName] = true
-// 	self.Buckets[bucketName] = &Hnsw{
+// 	xx.BucketGroup[bucketName] = true
+// 	xx.Buckets[bucketName] = &Hnsw{
 // 		Efconstruction: cfg.Efconstruction,
 // 		M:              cfg.M,
 // 		Mmax:           cfg.Mmax,
@@ -135,15 +134,15 @@ import (
 // 	return nil
 // }
 
-func (self *HnswBucket) NewHnswBucket(bucketName string, config HnswConfig, dist distance.Space) error {
-	self.rmu.RLock()
-	defer self.rmu.RUnlock()
-	if ok := self.BucketGroup[bucketName]; ok {
+func (xx *HnswBucket) NewHnswBucket(bucketName string, config HnswConfig, dist distance.Space) error {
+	xx.rmu.RLock()
+	defer xx.rmu.RUnlock()
+	if ok := xx.BucketGroup[bucketName]; ok {
 		return fmt.Errorf("bucket[%s] is already exists", bucketName)
 	}
 
-	self.BucketGroup[bucketName] = true
-	self.Buckets[bucketName] = &Hnsw{
+	xx.BucketGroup[bucketName] = true
+	xx.Buckets[bucketName] = &Hnsw{
 		Efconstruction: config.Efconstruction,
 		M:              config.M,
 		Mmax:           config.Mmax,
@@ -158,13 +157,12 @@ func (self *HnswBucket) NewHnswBucket(bucketName string, config HnswConfig, dist
 			Nodes: make([]Node, 1),
 		},
 		BucketName: bucketName,
-		Index:      make(map[string]*roaring.Bitmap),
 	}
 	genesisNode := Node{}
 	genesisNode.Id = 0
 	genesisNode.Layer = 0
-	genesisNode.Vectors = make(gomath.Vector, self.Buckets[bucketName].Dim)
-	genesisNode.LinkNodes = make([][]uint32, self.Buckets[bucketName].Mmax0+1)
+	genesisNode.Vectors = make(gomath.Vector, xx.Buckets[bucketName].Dim)
+	genesisNode.LinkNodes = make([][]uint32, xx.Buckets[bucketName].Mmax0+1)
 	genesisNode.Metadata = map[string]interface{}{
 		"_id": uuid.New(),
 	}
@@ -176,30 +174,30 @@ func (self *HnswBucket) NewHnswBucket(bucketName string, config HnswConfig, dist
 	// }
 	// node uint id is node.len, then delete the node data, duplicate id,...
 	// serial := shortid.MustGenerate()
-	// err = self.Storage.Put([]byte(fmt.Sprintf("%s_%d_%s", bucketName, 0, serial)), genesisVal)
+	// err = xx.Storage.Put([]byte(fmt.Sprintf("%s_%d_%s", bucketName, 0, serial)), genesisVal)
 	// if err != nil {
 	// 	log.Warn().Err(err).Msg("pkg.hnsw.hnsw.go(149) kv put genesis event failed error")
 	// 	return err
 	// }
-	self.Buckets[bucketName].NodeList.Nodes[0] = genesisNode
+	xx.Buckets[bucketName].NodeList.Nodes[0] = genesisNode
 	return nil
 }
 
-func (self *Hnsw) getConnection(ep *Node, level int) []uint32 {
+func (xx *Hnsw) getConnection(ep *Node, level int) []uint32 {
 	return ep.LinkNodes[level]
 }
 
-func (self *Hnsw) removeConnection(nodeId uint32) error {
-	node := &self.NodeList.Nodes[nodeId]
+func (xx *Hnsw) removeConnection(nodeId uint32) error {
+	node := &xx.NodeList.Nodes[nodeId]
 	if node.Id == 0 && !node.IsEmpty {
 		return errors.New("node not found")
 	}
 
-	for level := 0; level <= self.MaxLevel; level++ {
-		self.NodeList.rmu.Lock()
+	for level := 0; level <= xx.MaxLevel; level++ {
+		xx.NodeList.rmu.Lock()
 		connections := node.LinkNodes[level]
 		for _, neighbourId := range connections {
-			neighbor := &self.NodeList.Nodes[neighbourId]
+			neighbor := &xx.NodeList.Nodes[neighbourId]
 			newLinks := []uint32{}
 			for _, link := range neighbor.LinkNodes[level] {
 				if link != nodeId {
@@ -208,22 +206,22 @@ func (self *Hnsw) removeConnection(nodeId uint32) error {
 			}
 			neighbor.LinkNodes[level] = newLinks
 		}
-		self.NodeList.rmu.Unlock()
+		xx.NodeList.rmu.Unlock()
 	}
 
-	self.NodeList.rmu.Lock()
-	self.NodeList.Nodes[nodeId] = Node{
+	xx.NodeList.rmu.Lock()
+	xx.NodeList.Nodes[nodeId] = Node{
 		Id:      nodeId,
 		IsEmpty: true,
 	}
-	self.NodeList.rmu.Unlock()
-	self.rmu.Lock()
-	self.EmptyNodes = append(self.EmptyNodes, nodeId)
-	self.rmu.Unlock()
+	xx.NodeList.rmu.Unlock()
+	xx.rmu.Lock()
+	xx.EmptyNodes = append(xx.EmptyNodes, nodeId)
+	xx.rmu.Unlock()
 	return nil
 }
 
-func (self *Hnsw) searchLayer(vec gomath.Vector, ep *Item, topCandidates *PriorityQueue, ef int, level uint) error {
+func (xx *Hnsw) searchLayer(vec gomath.Vector, ep *Item, topCandidates *PriorityQueue, ef int, level uint) error {
 	var visited bitset.BitSet
 
 	candidates := &PriorityQueue{}
@@ -243,10 +241,10 @@ func (self *Hnsw) searchLayer(vec gomath.Vector, ep *Item, topCandidates *Priori
 		if candidate.Distance > lowerBound {
 			break
 		}
-		for _, node := range self.NodeList.Nodes[candidate.Node].LinkNodes[level] {
+		for _, node := range xx.NodeList.Nodes[candidate.Node].LinkNodes[level] {
 			if !visited.Test(uint(node)) {
 				visited.Set(uint(node))
-				nodeDist := self.Space.Distance(vec, self.NodeList.Nodes[node].Vectors)
+				nodeDist := xx.Space.Distance(vec, xx.NodeList.Nodes[node].Vectors)
 				item := &Item{
 					Distance: nodeDist,
 					Node:     node,
@@ -269,13 +267,13 @@ func (self *Hnsw) searchLayer(vec gomath.Vector, ep *Item, topCandidates *Priori
 	return nil
 }
 
-func (self *Hnsw) SelectNeighboursSimple(topCandidates *PriorityQueue, M int) {
+func (xx *Hnsw) SelectNeighboursSimple(topCandidates *PriorityQueue, M int) {
 	for topCandidates.Len() > M {
 		_ = heap.Pop(topCandidates).(*Item)
 	}
 }
 
-func (self *Hnsw) SelectNeighboursHeuristic(topCandidates *PriorityQueue, M int, order bool) {
+func (xx *Hnsw) SelectNeighboursHeuristic(topCandidates *PriorityQueue, M int, order bool) {
 	if topCandidates.Len() < M {
 		return
 	}
@@ -310,9 +308,9 @@ func (self *Hnsw) SelectNeighboursHeuristic(topCandidates *PriorityQueue, M int,
 
 		for _, v := range items {
 
-			nodeDist := self.Space.Distance(
-				self.NodeList.Nodes[v.Node].Vectors,
-				self.NodeList.Nodes[item.Node].Vectors,
+			nodeDist := xx.Space.Distance(
+				xx.NodeList.Nodes[v.Node].Vectors,
+				xx.NodeList.Nodes[item.Node].Vectors,
 			)
 
 			if nodeDist < item.Distance {
@@ -338,32 +336,32 @@ func (self *Hnsw) SelectNeighboursHeuristic(topCandidates *PriorityQueue, M int,
 	}
 }
 
-func (self *Hnsw) addConnections(neighbourNode uint32, newNode uint32, level int) {
+func (xx *Hnsw) addConnections(neighbourNode uint32, newNode uint32, level int) {
 	var maxConnections int
 
 	if level == 0 {
-		maxConnections = int(self.Mmax0)
+		maxConnections = int(xx.Mmax0)
 	} else {
-		maxConnections = int(self.Mmax)
+		maxConnections = int(xx.Mmax)
 	}
 
-	self.NodeList.Nodes[neighbourNode].LinkNodes[level] = append(
-		self.NodeList.Nodes[neighbourNode].LinkNodes[level], newNode)
+	xx.NodeList.Nodes[neighbourNode].LinkNodes[level] = append(
+		xx.NodeList.Nodes[neighbourNode].LinkNodes[level], newNode)
 
-	curConnections := len(self.NodeList.Nodes[neighbourNode].LinkNodes[level])
+	curConnections := len(xx.NodeList.Nodes[neighbourNode].LinkNodes[level])
 
 	if curConnections > maxConnections {
-		switch self.Heuristic {
+		switch xx.Heuristic {
 		case false:
 			topCandidates := &PriorityQueue{}
 			topCandidates.Order = true
 			heap.Init(topCandidates)
 
 			for i := 0; i < curConnections; i++ {
-				connectedNode := self.NodeList.Nodes[neighbourNode].LinkNodes[level][i]
-				distanceBetweenNodes := self.Space.Distance(
-					self.NodeList.Nodes[neighbourNode].Vectors,
-					self.NodeList.Nodes[connectedNode].Vectors,
+				connectedNode := xx.NodeList.Nodes[neighbourNode].LinkNodes[level][i]
+				distanceBetweenNodes := xx.Space.Distance(
+					xx.NodeList.Nodes[neighbourNode].Vectors,
+					xx.NodeList.Nodes[connectedNode].Vectors,
 				)
 				heap.Push(topCandidates, &Item{
 					Node:     connectedNode,
@@ -371,13 +369,13 @@ func (self *Hnsw) addConnections(neighbourNode uint32, newNode uint32, level int
 				})
 			}
 
-			self.SelectNeighboursSimple(topCandidates, maxConnections)
+			xx.SelectNeighboursSimple(topCandidates, maxConnections)
 
-			self.NodeList.Nodes[neighbourNode].LinkNodes[level] = make([]uint32, maxConnections)
+			xx.NodeList.Nodes[neighbourNode].LinkNodes[level] = make([]uint32, maxConnections)
 
 			for i := maxConnections - 1; i >= 0; i-- {
 				node := heap.Pop(topCandidates).(*Item)
-				self.NodeList.Nodes[neighbourNode].LinkNodes[level][i] = node.Node
+				xx.NodeList.Nodes[neighbourNode].LinkNodes[level][i] = node.Node
 			}
 		case true:
 			topCandidates := &PriorityQueue{}
@@ -385,10 +383,10 @@ func (self *Hnsw) addConnections(neighbourNode uint32, newNode uint32, level int
 			heap.Init(topCandidates)
 
 			for i := 0; i < curConnections; i++ {
-				connectedNode := self.NodeList.Nodes[neighbourNode].LinkNodes[level][i]
-				distanceBetweenNodes := self.Space.Distance(
-					self.NodeList.Nodes[neighbourNode].Vectors,
-					self.NodeList.Nodes[connectedNode].Vectors,
+				connectedNode := xx.NodeList.Nodes[neighbourNode].LinkNodes[level][i]
+				distanceBetweenNodes := xx.Space.Distance(
+					xx.NodeList.Nodes[neighbourNode].Vectors,
+					xx.NodeList.Nodes[connectedNode].Vectors,
 				)
 				heap.Push(topCandidates, &Item{
 					Node:     connectedNode,
@@ -396,29 +394,29 @@ func (self *Hnsw) addConnections(neighbourNode uint32, newNode uint32, level int
 				})
 			}
 
-			self.SelectNeighboursSimple(topCandidates, maxConnections)
-			self.NodeList.Nodes[neighbourNode].LinkNodes[level] = make([]uint32, maxConnections)
+			xx.SelectNeighboursSimple(topCandidates, maxConnections)
+			xx.NodeList.Nodes[neighbourNode].LinkNodes[level] = make([]uint32, maxConnections)
 
 			for i := 0; i < maxConnections; i++ {
 				node := heap.Pop(topCandidates).(*Item)
-				self.NodeList.Nodes[neighbourNode].LinkNodes[level][i] = node.Node
+				xx.NodeList.Nodes[neighbourNode].LinkNodes[level][i] = node.Node
 			}
 		}
 	}
 }
 
-func (self *Hnsw) findEp(vec gomath.Vector, curObj *Node, layer int16) (match Node, curDist float32, err error) {
-	curDist = self.Space.Distance(vec, curObj.Vectors)
-	for level := self.MaxLevel; level > 0; level-- {
+func (xx *Hnsw) findEp(vec gomath.Vector, curObj *Node, layer int16) (match Node, curDist float32, err error) {
+	curDist = xx.Space.Distance(vec, curObj.Vectors)
+	for level := xx.MaxLevel; level > 0; level-- {
 		scan := true
 
 		for scan {
 			scan = false
 
-			for _, nodeId := range self.getConnection(curObj, level) {
-				nodeDist := self.Space.Distance(self.NodeList.Nodes[nodeId].Vectors, vec)
+			for _, nodeId := range xx.getConnection(curObj, level) {
+				nodeDist := xx.Space.Distance(xx.NodeList.Nodes[nodeId].Vectors, vec)
 				if nodeDist < curDist {
-					match = self.NodeList.Nodes[nodeId]
+					match = xx.NodeList.Nodes[nodeId]
 					curDist = nodeDist
 					scan = true
 				}

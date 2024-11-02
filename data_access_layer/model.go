@@ -3,6 +3,7 @@ package data_access_layer
 import (
 	"encoding/gob"
 
+	"github.com/RoaringBitmap/roaring"
 	"github.com/google/uuid"
 	"github.com/sjy-dv/nnv/pkg/hnsw"
 )
@@ -16,6 +17,8 @@ func init() {
 	gob.Register(map[string]interface{}{})
 	gob.Register(map[string][]hnsw.Node{})
 	gob.Register(map[string]hnsw.HnswConfig{})
+	gob.Register(roaring.Bitmap{})
+	gob.Register(map[string]map[string]*roaring.Bitmap{})
 }
 
 type BackupHnswBucket struct {
@@ -27,3 +30,7 @@ type BackupHnswBucket struct {
 type BackupNodes map[string][]hnsw.Node
 type BackupConfig map[string]hnsw.HnswConfig
 type BackupBucketList []string
+
+type SerdeBitmap struct {
+	Data string `json:"data"`
+}

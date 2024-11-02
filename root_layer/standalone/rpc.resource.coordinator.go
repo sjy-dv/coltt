@@ -10,11 +10,11 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-func (self *resourceCoordinator) Ping(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+func (xx *resourceCoordinator) Ping(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
 }
 
-func (self *resourceCoordinator) CreateBucket(
+func (xx *resourceCoordinator) CreateBucket(
 	ctx context.Context,
 	req *resourceCoordinatorV1.Bucket) (
 	*resourceCoordinatorV1.BucketResponse,
@@ -78,7 +78,6 @@ func (self *resourceCoordinator) CreateBucket(
 					Heuristic:      config.Heuristic,
 					Space:          req.GetSpace(),
 					BucketName:     config.BucketName,
-					Filter:         config.Filter,
 				},
 			},
 		}
@@ -87,7 +86,7 @@ func (self *resourceCoordinator) CreateBucket(
 	return res.Result, res.Error
 }
 
-func (self *resourceCoordinator) DeleteBucket(
+func (xx *resourceCoordinator) DeleteBucket(
 	ctx context.Context,
 	req *resourceCoordinatorV1.BucketName) (
 	*resourceCoordinatorV1.DeleteBucketResponse,
@@ -132,7 +131,7 @@ func (self *resourceCoordinator) DeleteBucket(
 	return res.Result, res.Error
 }
 
-func (self *resourceCoordinator) GetBucket(
+func (xx *resourceCoordinator) GetBucket(
 	ctx context.Context,
 	req *resourceCoordinatorV1.BucketName) (
 	*resourceCoordinatorV1.BucketDetail,
@@ -180,7 +179,6 @@ func (self *resourceCoordinator) GetBucket(
 				return resourceCoordinatorV1.Space_Cosine
 			}(),
 			BucketName: node.BucketName,
-			Filter:     node.Filter,
 		}
 		c <- reply{
 			Result: retval,
@@ -191,7 +189,7 @@ func (self *resourceCoordinator) GetBucket(
 	return res.Result, res.Error
 }
 
-func (self *resourceCoordinator) GetAllBuckets(
+func (xx *resourceCoordinator) GetAllBuckets(
 	ctx context.Context,
 	req *resourceCoordinatorV1.GetBuckets) (
 	*resourceCoordinatorV1.BucketsList,
@@ -242,7 +240,6 @@ func (self *resourceCoordinator) GetAllBuckets(
 						return resourceCoordinatorV1.Space_Cosine
 					}(),
 					BucketName: node.BucketName,
-					Filter:     node.Filter,
 				},
 				BucketSize:   0,
 				BucketMemory: 0,

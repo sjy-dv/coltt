@@ -20,8 +20,12 @@ service LBCoordinator {
     rpc BatchInsert(stream ModifyDataset) returns (stream Response) {}
     rpc BatchUpdate(stream ModifyDataset) returns (stream Response) {}
     rpc BatchDelete(stream DeleteDataset) returns (stream Response) {} 
-    rpc Search(SearchReq) returns (SearchResponse) {}
-
+    // vectorsearch <- only search vector query
+    // filtersearch <- not using vector, only use filter
+    // hybrid filter + vector
+    rpc VectorSearch(SearchReq) returns (SearchResponse) {}
+    rpc FilterSearch(SearchReq) returns (SearchResponse) {}
+    rpc HybridSearch(SearchReq) returns (SearchResponse) {}
     // sync
     rpc DataLoader(stream ModifyDataset) returns (stream Response) {}
 
