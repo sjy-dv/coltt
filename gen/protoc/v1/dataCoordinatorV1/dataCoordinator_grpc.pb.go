@@ -24,7 +24,9 @@ const (
 	DatasetCoordinator_Insert_FullMethodName                = "/dataCoordinatorV1.DatasetCoordinator/Insert"
 	DatasetCoordinator_Update_FullMethodName                = "/dataCoordinatorV1.DatasetCoordinator/Update"
 	DatasetCoordinator_Delete_FullMethodName                = "/dataCoordinatorV1.DatasetCoordinator/Delete"
-	DatasetCoordinator_Search_FullMethodName                = "/dataCoordinatorV1.DatasetCoordinator/Search"
+	DatasetCoordinator_VectorSearch_FullMethodName          = "/dataCoordinatorV1.DatasetCoordinator/VectorSearch"
+	DatasetCoordinator_FilterSearch_FullMethodName          = "/dataCoordinatorV1.DatasetCoordinator/FilterSearch"
+	DatasetCoordinator_HybridSearch_FullMethodName          = "/dataCoordinatorV1.DatasetCoordinator/HybridSearch"
 	DatasetCoordinator_BatchInsert_FullMethodName           = "/dataCoordinatorV1.DatasetCoordinator/BatchInsert"
 	DatasetCoordinator_BatchUpdate_FullMethodName           = "/dataCoordinatorV1.DatasetCoordinator/BatchUpdate"
 	DatasetCoordinator_BatchDelete_FullMethodName           = "/dataCoordinatorV1.DatasetCoordinator/BatchDelete"
@@ -46,7 +48,12 @@ type DatasetCoordinatorClient interface {
 	Insert(ctx context.Context, in *ModifyDataset, opts ...grpc.CallOption) (*Response, error)
 	Update(ctx context.Context, in *ModifyDataset, opts ...grpc.CallOption) (*Response, error)
 	Delete(ctx context.Context, in *DeleteDataset, opts ...grpc.CallOption) (*Response, error)
-	Search(ctx context.Context, in *SearchReq, opts ...grpc.CallOption) (*SearchResponse, error)
+	// vectorsearch <- only search vector query
+	// filtersearch <- not using vector, only use filter
+	// hybrid filter + vector
+	VectorSearch(ctx context.Context, in *SearchReq, opts ...grpc.CallOption) (*SearchResponse, error)
+	FilterSearch(ctx context.Context, in *SearchReq, opts ...grpc.CallOption) (*SearchResponse, error)
+	HybridSearch(ctx context.Context, in *SearchReq, opts ...grpc.CallOption) (*SearchResponse, error)
 	BatchInsert(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[StreamModifyDataset, Response], error)
 	BatchUpdate(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[StreamModifyDataset, Response], error)
 	BatchDelete(ctx context.Context, in *BatchDeleteIds, opts ...grpc.CallOption) (*Response, error)
@@ -107,10 +114,30 @@ func (c *datasetCoordinatorClient) Delete(ctx context.Context, in *DeleteDataset
 	return out, nil
 }
 
-func (c *datasetCoordinatorClient) Search(ctx context.Context, in *SearchReq, opts ...grpc.CallOption) (*SearchResponse, error) {
+func (c *datasetCoordinatorClient) VectorSearch(ctx context.Context, in *SearchReq, opts ...grpc.CallOption) (*SearchResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SearchResponse)
-	err := c.cc.Invoke(ctx, DatasetCoordinator_Search_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, DatasetCoordinator_VectorSearch_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *datasetCoordinatorClient) FilterSearch(ctx context.Context, in *SearchReq, opts ...grpc.CallOption) (*SearchResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchResponse)
+	err := c.cc.Invoke(ctx, DatasetCoordinator_FilterSearch_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *datasetCoordinatorClient) HybridSearch(ctx context.Context, in *SearchReq, opts ...grpc.CallOption) (*SearchResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchResponse)
+	err := c.cc.Invoke(ctx, DatasetCoordinator_HybridSearch_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +241,12 @@ type DatasetCoordinatorServer interface {
 	Insert(context.Context, *ModifyDataset) (*Response, error)
 	Update(context.Context, *ModifyDataset) (*Response, error)
 	Delete(context.Context, *DeleteDataset) (*Response, error)
-	Search(context.Context, *SearchReq) (*SearchResponse, error)
+	// vectorsearch <- only search vector query
+	// filtersearch <- not using vector, only use filter
+	// hybrid filter + vector
+	VectorSearch(context.Context, *SearchReq) (*SearchResponse, error)
+	FilterSearch(context.Context, *SearchReq) (*SearchResponse, error)
+	HybridSearch(context.Context, *SearchReq) (*SearchResponse, error)
 	BatchInsert(grpc.BidiStreamingServer[StreamModifyDataset, Response]) error
 	BatchUpdate(grpc.BidiStreamingServer[StreamModifyDataset, Response]) error
 	BatchDelete(context.Context, *BatchDeleteIds) (*Response, error)
@@ -246,8 +278,14 @@ func (UnimplementedDatasetCoordinatorServer) Update(context.Context, *ModifyData
 func (UnimplementedDatasetCoordinatorServer) Delete(context.Context, *DeleteDataset) (*Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
 }
-func (UnimplementedDatasetCoordinatorServer) Search(context.Context, *SearchReq) (*SearchResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Search not implemented")
+func (UnimplementedDatasetCoordinatorServer) VectorSearch(context.Context, *SearchReq) (*SearchResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VectorSearch not implemented")
+}
+func (UnimplementedDatasetCoordinatorServer) FilterSearch(context.Context, *SearchReq) (*SearchResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FilterSearch not implemented")
+}
+func (UnimplementedDatasetCoordinatorServer) HybridSearch(context.Context, *SearchReq) (*SearchResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method HybridSearch not implemented")
 }
 func (UnimplementedDatasetCoordinatorServer) BatchInsert(grpc.BidiStreamingServer[StreamModifyDataset, Response]) error {
 	return status.Errorf(codes.Unimplemented, "method BatchInsert not implemented")
@@ -365,20 +403,56 @@ func _DatasetCoordinator_Delete_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DatasetCoordinator_Search_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _DatasetCoordinator_VectorSearch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SearchReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DatasetCoordinatorServer).Search(ctx, in)
+		return srv.(DatasetCoordinatorServer).VectorSearch(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: DatasetCoordinator_Search_FullMethodName,
+		FullMethod: DatasetCoordinator_VectorSearch_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DatasetCoordinatorServer).Search(ctx, req.(*SearchReq))
+		return srv.(DatasetCoordinatorServer).VectorSearch(ctx, req.(*SearchReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DatasetCoordinator_FilterSearch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DatasetCoordinatorServer).FilterSearch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DatasetCoordinator_FilterSearch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DatasetCoordinatorServer).FilterSearch(ctx, req.(*SearchReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DatasetCoordinator_HybridSearch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DatasetCoordinatorServer).HybridSearch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DatasetCoordinator_HybridSearch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DatasetCoordinatorServer).HybridSearch(ctx, req.(*SearchReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -529,8 +603,16 @@ var DatasetCoordinator_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _DatasetCoordinator_Delete_Handler,
 		},
 		{
-			MethodName: "Search",
-			Handler:    _DatasetCoordinator_Search_Handler,
+			MethodName: "VectorSearch",
+			Handler:    _DatasetCoordinator_VectorSearch_Handler,
+		},
+		{
+			MethodName: "FilterSearch",
+			Handler:    _DatasetCoordinator_FilterSearch_Handler,
+		},
+		{
+			MethodName: "HybridSearch",
+			Handler:    _DatasetCoordinator_HybridSearch_Handler,
 		},
 		{
 			MethodName: "BatchDelete",

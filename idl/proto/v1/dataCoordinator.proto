@@ -12,7 +12,12 @@ service DatasetCoordinator {
     rpc Insert(ModifyDataset) returns (Response) {}
     rpc Update(ModifyDataset) returns (Response) {}
     rpc Delete(DeleteDataset) returns (Response) {}
-    rpc Search(SearchReq) returns (SearchResponse) {}
+    // vectorsearch <- only search vector query
+    // filtersearch <- not using vector, only use filter
+    // hybrid filter + vector
+    rpc VectorSearch(SearchReq) returns (SearchResponse) {}
+    rpc FilterSearch(SearchReq) returns (SearchResponse) {}
+    rpc HybridSearch(SearchReq) returns (SearchResponse) {}
 
     rpc BatchInsert(stream StreamModifyDataset) returns (stream Response) {}
     rpc BatchUpdate(stream StreamModifyDataset) returns (stream Response) {}

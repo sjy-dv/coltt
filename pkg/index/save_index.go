@@ -104,6 +104,9 @@ func (idx *BitmapIndex) SerializeBinary(filename string) error {
 func (idx *BitmapIndex) DeserializeBinary(filename string) error {
 	file, err := os.Open(filename)
 	if err != nil {
+		if err == os.ErrNotExist {
+			return nil
+		}
 		return fmt.Errorf("failed to open file %s: %v", filename, err)
 	}
 	defer file.Close()
