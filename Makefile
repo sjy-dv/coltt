@@ -28,6 +28,9 @@ clean:
 add-license:
 	- go-licenser -license ASL2 -licensor sjy-dv
 
+simple-docker:
+	- docker build --file simple.dockerfile -t nnv:simple .
+	- docker run nnv:simple -p 50051:50051 -d
 
 test:
 	- go test -v --count=1 ./pkg/sharding

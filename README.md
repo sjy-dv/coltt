@@ -36,6 +36,24 @@ Additionally, its flexible and innovative cluster architecture presents a new vi
 - It may be slow because you are not currently focused on this task.
 - The hybrid search method using bitmap indexing within metadata is scheduled to be added after the initial release.
 
+### Run from the source code.
+
+```sh
+Windows & Linux
+git clone https://github.com/sjy-dv/nnv
+cd nnv
+go run cmd/root/main.go
+
+MacOS
+**The CPU acceleration (SSE, AVX2, AVX-512) code has caused an error where it does not function on Mac, and it is not a priority to address at this time.**
+
+git clone https://github.com/sjy-dv/nnv
+cd nnv
+source .env
+deploy
+make simple-docker
+```
+
 # Index
 
 - [Features](#features)
