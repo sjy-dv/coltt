@@ -447,7 +447,9 @@ func (xx *datasetCoordinator) HybridSearch(
 			retval = append(retval, &dataCoordinatorV1.Candidates{
 				Id:       "",
 				Metadata: vmeta,
-				Score:    saveScore[id],
+				Score: float32(math.
+					Round(float64(
+						100-(saveScore[id]*100))*10) / 10),
 			})
 		}
 		c <- reply{

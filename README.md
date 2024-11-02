@@ -8,12 +8,28 @@ Additionally, its flexible and innovative cluster architecture presents a new vi
 
 ### Release Update (2024.11.02) [UPDATE HISTORY](./UPDATE-LOG.md)
 
-- Fast cache data storage and loading is supported through INFLATE/DEFLATE.
-- nnlogdb has stabilized, and log storage and bucket-based partitioning have been completed.
+[Please also review the test results.](./examples/2024_11_02_release.md)
+
+- Automatic indexing is supported.
+  - Limitations
+    - All metadata is indexed without user configuration.
+    - RAM is required to maintain the index.
+    - Support for various operators is limited; currently, only matching is possible.
+- Searches can only be performed using filters.
+- Hybrid search is supported.
+  - Limitations
+    - All filters must be processed as strings. For example, if age is stored as an integer (20), it must be searched using "age": "20".
+    - However, this is only a restriction during searches; the actual data retains its original type.
 
 ### Update Preview
 
-- A bitmap-based index will be added, and hybrid search functionality is scheduled to be updated.
+**⚠️I don't know when it will be updated. (I just want to develop 😭)**
+
+- A process to periodically save data must be added after checking the system's idle state.
+- An automatic recovery feature must be added.
+- Expressions, such as various range searches, must be supported in filters.
+- Benchmarking must be conducted after the system stabilizes.
+- A load balancer must be developed after the system stabilizes.
 
 ### ⚠️ Warning
 
@@ -219,146 +235,3 @@ Explanation:
   - The algorithm ensures that the graph remains navigable even as nodes are added or removed.
 
 ### 🐛 BugFix
-
-```go
-dataString := []string{
-		"I usually eat a sandwich",
-		"When I'm hungry, I tend to eat porridge",
-		"I like fixing cars",
-	}
-
-	query := "I'm hungry, what should I eat?"
-
-	addString := []string{
-		"Someday, I'll become a great person",
-		"I've thought about what to eat when I'm hungry, and cookies are definitely the best",
-	}
-
-	// create dataset
-	originDataset := make([]*dataCoordinatorV1.ModifyDataset, 0, 3)
-	for _, data := range dataString {
-		vec, err := embeddings.TextEmbedding(data)
-		if err != nil {
-			log.Fatal(err)
-		}
-		Uid := uuid.New().String()
-		metas, _ := msgpack.Marshal(map[string]interface{}{
-			"description": data,
-			"_id":         Uid,
-		})
-		originDataset = append(originDataset, &dataCoordinatorV1.ModifyDataset{
-			BucketName: "tbucket",
-			Id:         Uid,
-			Vector:     vec,
-			Metadata:   metas,
-		})
-	}
-	afterDataset := make([]*dataCoordinatorV1.ModifyDataset, 0, 3)
-	for _, data := range addString {
-		vec, err := embeddings.TextEmbedding(data)
-		if err != nil {
-			log.Fatal(err)
-		}
-		Uid := uuid.New().String()
-		metas, _ := msgpack.Marshal(map[string]interface{}{
-			"description": data,
-			"_id":         Uid,
-		})
-		afterDataset = append(afterDataset, &dataCoordinatorV1.ModifyDataset{
-			BucketName: "tbucket",
-			Id:         Uid,
-			Vector:     vec,
-			Metadata:   metas,
-		})
-	}
-	conn, err := grpc.Dial(":50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	fmt.Println(err)
-	rclient := resourceCoordinatorV1.NewResourceCoordinatorClient(conn)
-
-	res, err := rclient.CreateBucket(context.Background(), &resourceCoordinatorV1.Bucket{
-		BucketName: "tbucket",
-		Dim:        384,
-		Space:      resourceCoordinatorV1.Space_Cosine,
-	})
-	fmt.Println(err, res.Status)
-
-	dclient := dataCoordinatorV1.NewDatasetCoordinatorClient(conn)
-	for _, data := range originDataset {
-		res, err := dclient.Insert(context.Background(), data)
-		fmt.Println(res.Status, res.Error, err)
-	}
-	// first search
-	searchVec, _ := embeddings.TextEmbedding(query)
-	fmt.Println("old data search")
-	resp, err := dclient.Search(context.Background(), &dataCoordinatorV1.SearchReq{
-		BucketName: "tbucket",
-		Vector:     searchVec,
-		TopK:       3,
-		EfSearch:   16,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	if resp.Status {
-		for _, dd := range resp.GetCandidates() {
-			meta := make(map[string]interface{})
-			msgpack.Unmarshal(dd.GetMetadata(), &meta)
-			fmt.Println(dd.Id, dd.Score, meta)
-		}
-	} else {
-		log.Fatal(res.Error.ErrorMessage)
-	}
-	//add after data
-	for _, data := range afterDataset {
-		res, err := dclient.Insert(context.Background(), data)
-		fmt.Println(res.Status, res.Error, err)
-	}
-	// second search
-	fmt.Println("old+new data search")
-	resp, err = dclient.Search(context.Background(), &dataCoordinatorV1.SearchReq{
-		BucketName: "tbucket",
-		Vector:     searchVec,
-		TopK:       5,
-		EfSearch:   16,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	if resp.Status {
-		for _, dd := range resp.GetCandidates() {
-			meta := make(map[string]interface{})
-			msgpack.Unmarshal(dd.GetMetadata(), &meta)
-			fmt.Println(dd.Id, dd.Score, meta)
-		}
-	} else {
-		log.Fatal(res.Error.ErrorMessage)
-	}
-```
-
-The current code is highly experimental and focuses solely on the initial phase of verifying whether search functionality works. This code is unstable and intended as proof-of-concept (PoC) code. It performs additions and displays individual search results within a similar dataset (only small-scale datasets have been tested so far). (Note: Search results are also currently unsorted.)
-
-#### Result
-
-```sh
-<nil>
-<nil> false
-true <nil> <nil>
-true <nil> <nil>
-true <nil> <nil>
-true <nil> <nil>
-true <nil> <nil>
-old data search
-old data search
- 15 map[_id:6a1f0c33-00ec-4054-9c95-126c2c3af548 description:I like fixing cars]
- 15 map[_id:6a1f0c33-00ec-4054-9c95-126c2c3af548 description:I like fixing cars]
- 50.3 map[_id:7737effd-7990-4be3-bcde-0a843f425c6c description:I usually eat a sandwich]
- 50.3 map[_id:7737effd-7990-4be3-bcde-0a843f425c6c description:I usually eat a sandwich]
- 64.6 map[_id:95b53c24-7811-4899-a374-3a71ba0e2243 description:When I'm hungry, I tend 64.6 map[_id:95b53c24-7811-4899-a374-3a71ba0e2243 description:When I'm hungry, I tend to eat porridge]
- to eat porridge]
-true <nil> <nil>
-true <nil> <nil>
- 27.2 map[_id:280fe999-ba7e-40ea-9eac-c9d6ca2d0866 description:Someday, I'll become a great person]
- 64.6 map[_id:95b53c24-7811-4899-a374-3a71ba0e2243 description:When I'm hungry, I tend to eat porridge]
- 50.3 map[_id:7737effd-7990-4be3-bcde-0a843f425c6c description:I usually eat a sandwich]
- 67.6 map[_id:b4d03634-9fdb-4416-b4be-0c31a9e4ea54 description:I've thought about what to eat when I'm hungry, and cookies are definitely the best]
-```
