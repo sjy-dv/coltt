@@ -428,7 +428,7 @@ func (xx *datasetCoordinator) HybridSearch(
 			saveScore[candidate.Node] = candidate.Distance
 		}
 		finalIds := roots.BitmapIndex.SearchWitCandidates(vecMatchIds, req.GetFilter())
-		retval := make([]*dataCoordinatorV1.Candidates, 0, req.GetTopK())
+		retval := make([]*dataCoordinatorV1.Candidates, 0, req.GetTopK()*3)
 		for _, id := range finalIds {
 			vmeta, err := msgpack.Marshal(roots.VBucket.Buckets[req.GetBucketName()].NodeList.Nodes[id].Metadata)
 			if err != nil {
@@ -451,6 +451,12 @@ func (xx *datasetCoordinator) HybridSearch(
 					Round(float64(
 						100-(saveScore[id]*100))*10) / 10),
 			})
+		}
+		sort.Slice(retval, func(i, j int) bool {
+			return retval[i].Score > retval[j].Score
+		})
+		if len(retval) > int(req.GetTopK()) {
+			retval = retval[:req.GetTopK()]
 		}
 		c <- reply{
 			Result: &dataCoordinatorV1.SearchResponse{
