@@ -34,7 +34,7 @@ Additionally, its flexible and innovative cluster architecture presents a new vi
 ### ⚠️ Warning
 
 - It may be slow because you are not currently focused on this task.
-- The hybrid search method using bitmap indexing within metadata is scheduled to be added after the initial release.
+- ~~The hybrid search method using bitmap indexing within metadata is scheduled to be added after the initial release.~~ (update complete release 2024.11.02)
 
 ### Run from the source code.
 
