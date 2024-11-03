@@ -1,0 +1,133 @@
+syntax="proto3";
+package resourceCoordinatorV2;
+option go_package="./resourceCoordinatorV2";
+
+import "google/protobuf/empty.proto";
+
+// resource coordinator is using managed resource, vector bucket managing
+service ResourceCoordinator {
+    rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+    rpc CreateCollection(Collection) returns (CollectionResponse) {}
+    rpc DeleteCollection(CollectionName) returns (DeleteCollectionResponse) {}
+    rpc GetCollection(CollectionName) returns (CollectionDetail) {}
+    rpc GetAllCollections(GetCollections) returns(CollectionLists) {}
+    rpc LoadCollection(CollectionName) returns (CollectionDetail) {}
+    rpc ReleaseCollection(CollectionName) returns (Response) {}
+
+
+    rpc LoadResourceInfo(google.protobuf.Empty) returns(SystemInfo) {}
+}
+
+message Collection {
+    string collection_name=1;
+    Distance distance=2;
+    Quantization quantization=3;
+    uint32 dim=4;
+    uint32 connectivity=5;
+    uint32 expansion_add=6;
+    uint32 expansion_search=7;
+    bool multi=8;
+    StorageType storage=9;
+}
+
+enum StorageType {
+    highspeed_memory=0;
+}
+
+
+message CollectionResponse {
+    Collection collection=1;
+    bool status=2;
+    Error error=3;
+}
+
+message CollectionDetail {
+    Collection collection=1;
+    uint32 collection_size=2;
+    uint64 collection_memory=3;
+    bool status=4;
+    Error error=5;
+}
+
+message CollectionList {
+    Collection collection=1;
+    uint32 collection_size=2;
+    uint64 collection_memory=3;
+}
+
+message CollectionLists {
+    repeated CollectionList collections=1;
+    bool status=2;
+    Error error=3;
+}
+
+message DeleteCollectionResponse {
+    bool status=1;
+    Error error=2;
+}
+
+message CollectionName {
+    string collection_name=1;
+    bool with_size=2;
+}
+
+
+message GetCollections {
+    bool with_size=1;
+}
+
+
+enum Distance {
+    L2sq=0;
+    Ip=1;
+    Cosine=2;
+    Haversine=3;
+    Divergence=4;
+    Pearson=5;
+    Hamming=6;
+    Tanimoto=7;
+    Sorensen=8;
+}
+
+enum Quantization {
+    None=0;
+    BF16=1;
+    F16=2;
+    F32=3;
+    F64=4;
+    I8=5;
+    B1=6;
+    
+}
+
+message Response {
+    bool status=1;
+    Error error=2;
+}
+
+
+message Error {
+    string error_message=1;
+    ErrorCode error_code=2;
+}
+
+enum ErrorCode {
+    UNDEFINED=0; // check error message
+    RPC_ERROR=1;
+    COMMUNICATION_SHARD_RPC_ERROR=2;
+    COMMUNICATION_SHARD_ERROR=3;
+    MARSHAL_ERROR=4;
+    INTERNAL_FUNC_ERROR=5;
+}
+
+message SystemInfo {
+    uint64 uptime=1;
+    double cpu_load1=2;
+    double cpu_load5=3;
+    double cpu_load15=4;
+    uint64 mem_total=5;
+    uint64 mem_available=6;
+    uint64 mem_used=7;
+    uint64 mem_free=8;
+    double mem_used_percent=9;
+}

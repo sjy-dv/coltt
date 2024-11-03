@@ -1,8 +1,8 @@
 GOGOPROTO_SRC_DIR=./idl/gogoproto/v1
 GOGOPROTO_OUT_DIR=./gen/gogoprotoc/v1
-PROTO_SRC_DIR=./idl/proto/v1
-PROTO_OUT_DIR=./gen/protoc/v1
-COMPILE_VERSION=V1
+PROTO_SRC_DIR=./idl/proto/v2
+PROTO_OUT_DIR=./gen/protoc/v2
+COMPILE_VERSION=V2
 
 docker-build-bin:
 	- env GOOS=linux go build -o ./bin/ cmd/root/main.go
