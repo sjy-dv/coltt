@@ -32,6 +32,9 @@ simple-docker:
 	- docker build --file simple.dockerfile -t nnv:simple .
 	- docker run nnv:simple -p 50051:50051 -d
 
+simple2-docker:
+	- docker build --file simple.v2.dockerfile -t nnv:cgo .
+
 test:
 	- go test -v --count=1 ./pkg/sharding
 # - go test -v --count=1 ./storage

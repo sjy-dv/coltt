@@ -1,18 +1,36 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/sjy-dv/nnv/pkg/fasthnsw"
+)
 
 func main() {
 
-	x := map[string]interface{}{
-		"aa":   10,
-		"bb":   0.12252115,
-		"cxcx": []float32{0.1, 0.2},
+	// Create Index
+	vectorSize := 3
+	vectorsCount := 100
+	conf := fasthnsw.DefaultConfig(uint(vectorSize))
+	index, err := fasthnsw.NewIndex(conf)
+	if err != nil {
+		panic("Failed to create Index")
+	}
+	defer index.Destroy()
+
+	// Add to Index
+	err = index.Reserve(uint(vectorsCount))
+	for i := 0; i < vectorsCount; i++ {
+		err = index.Add(fasthnsw.Key(i), []float32{float32(i), float32(i + 1), float32(i + 2)})
+		if err != nil {
+			panic("Failed to add")
+		}
 	}
 
-	a := make(map[string]string)
-	for k, v := range x {
-		a[k] = fmt.Sprintf("%v", v)
+	// Search
+	keys, distances, err := index.Search([]float32{0.0, 1.0, 2.0}, 3)
+	if err != nil {
+		panic("Failed to search")
 	}
-	fmt.Println(a)
+	fmt.Println(keys, distances)
 }

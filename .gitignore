@@ -2,3 +2,6 @@
 /data
 /data_dir
 /release_after
+/usearch
+*.dll
+# *.h
