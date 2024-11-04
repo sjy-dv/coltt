@@ -30,7 +30,7 @@ var (
 
 type docConsumer func(doc *document.Document) error
 
-// DB represents the entry point of each clover database.
+// DB represents the entry point of each nnlog database.
 type DB struct {
 	store  store.Store
 	closed uint32
@@ -265,7 +265,7 @@ func (db *DB) InsertOne(collectionName string, doc *document.Document) (string, 
 	return doc.ObjectId(), err
 }
 
-// Open opens a new clover database on the supplied path. If such a folder doesn't exist, it is automatically createdocument.
+// Open opens a new nnlog database on the supplied path. If such a folder doesn't exist, it is automatically createdocument.
 func Open(dir string) (*DB, error) {
 	dataStore, err := bbolt.Open(dir)
 	if err != nil {
@@ -274,7 +274,7 @@ func Open(dir string) (*DB, error) {
 	return OpenWithStore(dataStore)
 }
 
-// OpenWithStore opens a new clover database using the provided store.
+// OpenWithStore opens a new nnlog database using the provided store.
 func OpenWithStore(store store.Store) (*DB, error) {
 	return &DB{store: store}, nil
 }

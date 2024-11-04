@@ -49,8 +49,8 @@ func normalizeStruct(structValue reflect.Value) (map[string]interface{}, error) 
 		if fieldType.PkgPath == "" {
 			fieldName := fieldType.Name
 
-			cloverTag := fieldType.Tag.Get("clover")
-			name, omitempty := processStructTag(cloverTag)
+			nnlogTag := fieldType.Tag.Get("nnlog")
+			name, omitempty := processStructTag(nnlogTag)
 			if name != "" {
 				fieldName = name
 			}
@@ -187,7 +187,7 @@ func createRenameMap(rv reflect.Value, renameMap map[string]string) map[string]s
 			}
 		}
 
-		tagStr, found := fieldType.Tag.Lookup("clover")
+		tagStr, found := fieldType.Tag.Lookup("nnlog")
 		if found {
 			name, _ := processStructTag(tagStr)
 			if name != "" {

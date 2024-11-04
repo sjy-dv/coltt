@@ -111,3 +111,24 @@ func (xx *Tensor) CreateTensorIndex(collectionName string, cfg CollectionConfig)
 	}()
 	return <-c
 }
+
+func (xx *Tensor) DropTensorIndex(collectionName string) error {
+	c := make(chan error)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				c <- fmt.Errorf(panicr, r)
+			}
+		}()
+		ok := xx.existsTensor(collectionName)
+		if !ok {
+			c <- nil
+			return
+		}
+		xx.tensorLock.Lock()
+		delete(xx.tensors, collectionName)
+		xx.tensorLock.Unlock()
+		c <- nil
+	}()
+	return <-c
+}

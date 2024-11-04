@@ -7,10 +7,6 @@ import (
 	"time"
 )
 
-var (
-	panicr = "panic %v"
-)
-
 type HighSpeedMem struct {
 	Collections  map[string]*CollectionMem
 	groupLock    sync.RWMutex
@@ -46,6 +42,7 @@ type CollectionConfig struct {
 
 func NewHighSpeedMemory() *HighSpeedMem {
 	NewTensorLink()
+	NewIndexDB()
 	return &HighSpeedMem{
 		Collections:  map[string]*CollectionMem{},
 		stopCommiter: make(chan bool),
@@ -109,6 +106,15 @@ func (xx *HighSpeedMem) CreateCollection(collectionName string, cfg CollectionCo
 			c <- err
 			return
 		}
+		//==========bitmap index build=======//
+		err = indexdb.CreateIndex(collectionName)
+		if err != nil {
+			xx.groupLock.Lock()
+			delete(xx.Collections, collectionName)
+			xx.groupLock.Unlock()
+			c <- tensorLinker.DropTensorIndex(collectionName)
+			return
+		}
 		c <- nil
 	}()
 	return <-c
@@ -130,7 +136,12 @@ func (xx *HighSpeedMem) DropCollection(collectionName string) error {
 		xx.groupLock.Lock()
 		delete(xx.Collections, collectionName)
 		xx.groupLock.Unlock()
-		c <- nil
+		err := tensorLinker.DropTensorIndex(collectionName)
+		if err != nil {
+			c <- err
+			return
+		}
+		c <- indexdb.DropIndex(collectionName)
 	}()
 	return <-c
 }
@@ -152,7 +163,7 @@ func (xx *HighSpeedMem) GetCollection(collectionName string) (CollectionConfig, 
 		col := xx.getCollection(collectionName)
 		if col == nil {
 			c <- cc{
-				Error: fmt.Errorf("not found collection %s", collectionName),
+				Error: fmt.Errorf("not found collection: %s", collectionName),
 			}
 			return
 		}
