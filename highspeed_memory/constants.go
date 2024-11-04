@@ -1,5 +1,7 @@
 package highspeedmemory
 
+import "errors"
+
 var (
 	fLinkCdat            = "./data_dir/%s.cdat"
 	backupfLinkCdat      = "./data_dir/%s-backup.cdat"
@@ -13,8 +15,27 @@ var (
 	panicr               = "panic %v"
 	collectionJson       = "./data_dir/collection.json"
 	backupCollectionJson = "./data_dir/collection-backup.json"
+	commitLog            = "./data_dir/commit-log"
+	commitCollection     = "back-log"
 )
 
+var errUnrecoverable = errors.New("unrecoverable error")
 var collections = []string{}
 
 var tensorCapacity uint = 0
+
+type functionAttempt int
+
+const (
+	retryBinaryDo functionAttempt = iota
+	retryCommitLogDo
+	scaleUpCapacity
+)
+
+type event int
+
+const (
+	INSERT event = iota
+	UPDATE
+	DELETE
+)

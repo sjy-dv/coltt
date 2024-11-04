@@ -8,7 +8,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/gofrs/uuid/v5"
+	"github.com/google/uuid"
 	"github.com/sjy-dv/nnv/pkg/fasthnsw"
 	"github.com/sjy-dv/nnv/pkg/index"
 )
