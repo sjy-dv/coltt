@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"net/http"
+	"net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"github.com/sjy-dv/nnv/config"
 	rootlayer "github.com/sjy-dv/nnv/root_layer"
 )
 
@@ -20,19 +23,21 @@ func main() {
 			os.Exit(1)
 		}
 	}()
-	// sigChan := make(chan os.Signal, 1)
-	// signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	// go func() {
-	// 	<-sigChan
-	// 	log.Debug().Msg("received shutdown signal")
+	if config.Config.RootLayer.ProfAddr != "" {
+		go func() {
+			mux := http.NewServeMux()
+			mux.HandleFunc("/debug/pprof/", pprof.Index)
+			mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+			mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+			mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+			mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
-	// 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	// 	defer cancel()
-
-	// 	rootlayer.StableRelease(ctx)
-
-	// 	log.Debug().Msg("shutdown complete")
-	// }()
+			err := http.ListenAndServe(config.Config.RootLayer.ProfAddr, mux)
+			if err != nil {
+				log.Error().Err(err).Msg("profile server crashed!")
+			}
+		}()
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 

@@ -42,6 +42,7 @@ type JetStream struct {
 
 type RootLayer struct {
 	BindAddress              string `toml:"bind_address"`
+	ProfAddr                 string `toml:"prof_addr"`
 	KeepAliveTimeOut         int    `toml:"keep_alive_time_out"`
 	KeepAliveTime            int    `toml:"keep_alive_time"`
 	EnforcementPolicyMinTime int    `toml:"enforcement_policy_min_time"`
@@ -68,6 +69,7 @@ var Config = &ConfigMap{
 	},
 	RootLayer: RootLayer{
 		BindAddress:              ":50051",
+		ProfAddr:                 ":10224",
 		KeepAliveTimeOut:         0,
 		KeepAliveTime:            0,
 		EnforcementPolicyMinTime: 0,
