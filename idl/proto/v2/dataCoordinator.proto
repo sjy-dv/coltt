@@ -4,6 +4,7 @@ option go_package="./dataCoordinatorV2";
 
 import "google/protobuf/empty.proto";
 // import "google/protobuf/any.proto";
+import "google/protobuf/struct.proto";
 
 // dataset coordinator is managing kv data or vector data
 service DatasetCoordinator {
@@ -39,7 +40,7 @@ message ModifyDataset {
     string id=1;
     string collection_name=2;
     repeated float vector=3;
-    bytes metadata=4;
+    google.protobuf.Struct metadata=4;
 }
 
 message DeleteDataset {
@@ -71,8 +72,8 @@ message SearchReq {
     string collection_name=1;
     repeated float vector=2;
     uint64 topK=3;
-    map<string,string> filter=6;
-    bool with_latency=7;
+    map<string,string> filter=4;
+    bool with_latency=5;
 }
 
 message SearchResponse {
@@ -84,7 +85,6 @@ message SearchResponse {
 
 message Candidates {
     string id = 1;
-    bytes metadata = 2;
-    repeated float vector=3;
-    float score=4;
+    google.protobuf.Struct metadata = 2;
+    float score=3;
 }

@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/sjy-dv/nnv/gen/protoc/v2/dataCoordinatorV2"
-	"github.com/vmihailenco/msgpack/v5"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func (xx *HighMem) Insert(
@@ -62,27 +62,15 @@ scripts:
 				}
 			}
 		}()
-		metadata := make(map[string]interface{})
-		err := msgpack.Unmarshal(req.GetMetadata(), &metadata)
-		if err != nil {
-			c <- reply{
-				Result: &dataCoordinatorV2.Response{
-					Status: false,
-					Error: &dataCoordinatorV2.Error{
-						ErrorMessage: err.Error(),
-						ErrorCode:    dataCoordinatorV2.ErrorCode_INTERNAL_FUNC_ERROR,
-					},
-				},
-			}
-			return
-		}
+
 		autoId := autoCommitID()
 		// first add data
+		cloneMap := req.GetMetadata().AsMap()
 		xx.Collections[req.GetCollectionName()].collectionLock.Lock()
-		xx.Collections[req.GetCollectionName()].Data[autoId] = metadata
+		xx.Collections[req.GetCollectionName()].Data[autoId] = cloneMap
 		xx.Collections[req.GetCollectionName()].collectionLock.Unlock()
 		//second build index
-		err = indexdb.indexes[req.GetCollectionName()].Add(autoId, metadata)
+		err := indexdb.indexes[req.GetCollectionName()].Add(autoId, cloneMap)
 		if err != nil {
 			c <- reply{
 				Result: &dataCoordinatorV2.Response{
@@ -184,28 +172,15 @@ scripts:
 			}
 			return
 		}
-		metadata := make(map[string]interface{})
-		err := msgpack.Unmarshal(req.GetMetadata(), &metadata)
-		if err != nil {
-			c <- reply{
-				Result: &dataCoordinatorV2.Response{
-					Status: false,
-					Error: &dataCoordinatorV2.Error{
-						ErrorMessage: err.Error(),
-						ErrorCode:    dataCoordinatorV2.ErrorCode_INTERNAL_FUNC_ERROR,
-					},
-				},
-			}
-			return
-		}
+
 		xx.Collections[req.GetCollectionName()].collectionLock.RLock()
 		copyMeta := xx.Collections[req.GetCollectionName()].Data[_id[0]]
 		xx.Collections[req.GetCollectionName()].collectionLock.RUnlock()
 		xx.Collections[req.GetCollectionName()].collectionLock.Lock()
-		xx.Collections[req.GetCollectionName()].Data[_id[0]] = metadata
+		xx.Collections[req.GetCollectionName()].Data[_id[0]] = req.GetMetadata().AsMap()
 		xx.Collections[req.GetCollectionName()].collectionLock.Unlock()
 		//remove index & new index add
-		err = indexdb.indexes[req.GetCollectionName()].Remove(_id[0], copyMeta.(map[string]interface{}))
+		err := indexdb.indexes[req.GetCollectionName()].Remove(_id[0], copyMeta.(map[string]interface{}))
 		if err != nil {
 			c <- reply{
 				Result: &dataCoordinatorV2.Response{
@@ -218,7 +193,7 @@ scripts:
 			}
 			return
 		}
-		err = indexdb.indexes[req.GetCollectionName()].Add(_id[0], metadata)
+		err = indexdb.indexes[req.GetCollectionName()].Add(_id[0], req.GetMetadata().AsMap())
 		if err != nil {
 			c <- reply{
 				Result: &dataCoordinatorV2.Response{
@@ -448,7 +423,10 @@ scripts:
 			xx.Collections[req.GetCollectionName()].collectionLock.RLock()
 			copyMeta := xx.Collections[req.GetCollectionName()].Data[nodeId]
 			xx.Collections[req.GetCollectionName()].collectionLock.RUnlock()
-			vmeta, err := msgpack.Marshal(copyMeta)
+
+			candidate := new(dataCoordinatorV2.Candidates)
+			candidate.Id = copyMeta.(map[string]interface{})["id"].(string)
+			candidate.Metadata, err = structpb.NewStruct(copyMeta.(map[string]interface{}))
 			if err != nil {
 				c <- reply{
 					Result: &dataCoordinatorV2.SearchResponse{
@@ -461,9 +439,6 @@ scripts:
 				}
 				return
 			}
-			candidate := new(dataCoordinatorV2.Candidates)
-			candidate.Id = copyMeta.(map[string]interface{})["id"].(string)
-			candidate.Metadata = vmeta
 			candidate.Score = distances[rank]
 			retval = append(retval, candidate)
 		}
