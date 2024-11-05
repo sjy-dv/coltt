@@ -20,6 +20,7 @@ var (
 	backupCollectionJson = "./data_dir/collection-backup.json"
 	commitLog            = "./data_dir/commit-log"
 	commitCollection     = "back-log"
+	fatalCommit          = "fatal-log"
 )
 
 var errUnrecoverable = errors.New("unrecoverable error")

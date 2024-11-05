@@ -48,6 +48,12 @@ type CommitLog struct {
 
 var commitLogger *CommitLogger
 
+// only use closing server
+func BorrowCommitLogger() *CommitLogger {
+	return commitLogger
+}
+
+// after add collection checker
 func StartCommitLogger() error {
 	commitdb, err := backup.Open(commitLog)
 	if err != nil {

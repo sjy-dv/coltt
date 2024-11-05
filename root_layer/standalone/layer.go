@@ -4,11 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/nats-io/nats.go"
 	"github.com/sjy-dv/nnv/gen/protoc/v1/dataCoordinatorV1"
 	"github.com/sjy-dv/nnv/gen/protoc/v1/resourceCoordinatorV1"
-	"github.com/sjy-dv/nnv/pkg/hnsw"
-	"github.com/sjy-dv/nnv/pkg/index"
+	"github.com/sjy-dv/nnv/highmem"
 	"google.golang.org/grpc"
 )
 
@@ -16,12 +14,13 @@ type RootLayer struct {
 	Ctx    context.Context
 	Cancel context.CancelFunc
 
-	StreamLayer    *nats.Conn
-	StreamLayerCtx nats.JetStreamContext
+	HighMem *highmem.HighMem
+	// StreamLayer    *nats.Conn
+	// StreamLayerCtx nats.JetStreamContext
 
-	VBucket     *hnsw.HnswBucket // vector store
-	BitmapIndex *index.BitmapIndex
-	S           *grpc.Server
+	// VBucket     *hnsw.HnswBucket // vector store
+	// BitmapIndex *index.BitmapIndex
+	S *grpc.Server
 }
 
 type rpcLayer struct {

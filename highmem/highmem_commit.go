@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 	"github.com/sjy-dv/nnv/pkg/fasthnsw"
 	"github.com/sjy-dv/nnv/pkg/index"
 )
@@ -16,6 +17,27 @@ import (
 func init() {
 	gob.Register(uuid.UUID{})
 	gob.Register(map[uint64]interface{}{})
+}
+
+func (xx *HighMem) CommitAll() {
+	log.Info().Msg("starting commit..")
+	log.Info().Msg("attempting to commit collection list")
+	err := xx.CommitCollection()
+	if err != nil {
+		log.Error().Err(err).Msg("failed to commit collection list")
+	}
+	//Efficiently stores only collections with predictable changes that are loaded into memory
+	for collection, ok := range stateManager.loadchecker.collections {
+		// only commit true collection
+		//Because collections that are false are committed during the Release process.
+		if ok {
+			err := xx.ReleaseCollection(collection)
+			if err != nil {
+				// add to commit logger fatal init
+				log.Error().Err(err).Msgf("failed to commit collection: %s", collection)
+			}
+		}
+	}
 }
 
 /*

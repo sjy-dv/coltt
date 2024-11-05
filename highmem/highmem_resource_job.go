@@ -54,8 +54,6 @@ type CollectionInfo struct {
 }
 
 func NewHighMemory() *HighMem {
-	NewTensorLink()
-	NewIndexDB()
 	return &HighMem{
 		Collections:  map[string]*CollectionMem{},
 		stopCommiter: make(chan bool),
