@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/RoaringBitmap/roaring"
+	roaring "github.com/RoaringBitmap/roaring/roaring64"
 )
 
 type BitmapIndex struct {
@@ -66,7 +66,7 @@ func (idx *BitmapIndex) getShard(key string) *IndexShard {
 	return shard
 }
 
-func (idx *BitmapIndex) Add(nodeId uint32, metadata map[string]interface{}) error {
+func (idx *BitmapIndex) Add(nodeId uint64, metadata map[string]interface{}) error {
 	for key, val := range metadata {
 		shard := idx.getShard(key)
 		shard.rmu.Lock()
@@ -79,7 +79,7 @@ func (idx *BitmapIndex) Add(nodeId uint32, metadata map[string]interface{}) erro
 	return nil
 }
 
-func (idx *BitmapIndex) Remove(nodeId uint32, metadata map[string]interface{}) error {
+func (idx *BitmapIndex) Remove(nodeId uint64, metadata map[string]interface{}) error {
 	for key, value := range metadata {
 		val := forcedStringTypeChanger(value)
 

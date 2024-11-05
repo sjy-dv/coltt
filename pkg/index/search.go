@@ -1,11 +1,11 @@
 package index
 
-import "github.com/RoaringBitmap/roaring"
+import roaring "github.com/RoaringBitmap/roaring/roaring64"
 
 // using hybrid search
 func (idx *BitmapIndex) SearchWitCandidates(
-	candidatsIds []uint32, filter map[string]string,
-) []uint32 {
+	candidatsIds []uint64, filter map[string]string,
+) []uint64 {
 	if len(filter) == 0 {
 		return candidatsIds
 	}
@@ -19,7 +19,7 @@ func (idx *BitmapIndex) SearchWitCandidates(
 		bm, exists := shard.ShardIndex[value]
 		if !exists {
 			shard.rmu.RUnlock()
-			return []uint32{}
+			return []uint64{}
 		}
 		newBitmap.And(bm)
 		shard.rmu.RUnlock()
@@ -28,7 +28,7 @@ func (idx *BitmapIndex) SearchWitCandidates(
 }
 
 // using pure search
-func (idx *BitmapIndex) PureSearch(filter map[string]string) []uint32 {
+func (idx *BitmapIndex) PureSearch(filter map[string]string) []uint64 {
 	var result *roaring.Bitmap
 	first := true
 
@@ -38,7 +38,7 @@ func (idx *BitmapIndex) PureSearch(filter map[string]string) []uint32 {
 		bm, exists := shard.ShardIndex[value]
 		if !exists {
 			shard.rmu.RUnlock()
-			return []uint32{}
+			return []uint64{}
 		}
 		if first {
 			result = bm.Clone()
@@ -51,5 +51,5 @@ func (idx *BitmapIndex) PureSearch(filter map[string]string) []uint32 {
 	if result != nil {
 		return result.ToArray()
 	}
-	return []uint32{}
+	return []uint64{}
 }

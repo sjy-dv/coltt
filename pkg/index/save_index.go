@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/RoaringBitmap/roaring"
+	roaring "github.com/RoaringBitmap/roaring/roaring64"
 )
 
 func (idx *BitmapIndex) ValidateIndex() error {

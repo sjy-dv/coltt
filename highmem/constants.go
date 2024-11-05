@@ -1,4 +1,4 @@
-package highspeedmemory
+package highmem
 
 import "errors"
 
@@ -20,6 +20,7 @@ var (
 )
 
 var errUnrecoverable = errors.New("unrecoverable error")
+var UncaughtPanicError = "uncaught panic error: %v"
 var collections = []string{}
 
 var tensorCapacity uint = 0

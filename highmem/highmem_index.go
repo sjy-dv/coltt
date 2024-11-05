@@ -1,4 +1,4 @@
-package highspeedmemory
+package highmem
 
 import (
 	"errors"

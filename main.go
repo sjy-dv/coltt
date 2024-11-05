@@ -16,7 +16,6 @@ func main() {
 	if err != nil {
 		panic("Failed to create Index")
 	}
-	defer index.Destroy()
 
 	// Add to Index
 	err = index.Reserve(uint(vectorsCount * 10))
@@ -26,6 +25,8 @@ func main() {
 			panic("Failed to add")
 		}
 	}
+	err = index.Destroy()
+	fmt.Println("dddd", err)
 	keys, distances, err := index.Search([]float32{0.0, 1.0, 2.0}, 3)
 	if err != nil {
 		panic("Failed to search")

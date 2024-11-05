@@ -1,4 +1,4 @@
-package highspeedmemory
+package highmem
 
 import (
 	"errors"
@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-type HighSpeedMem struct {
+type HighMem struct {
 	Collections  map[string]*CollectionMem
 	groupLock    sync.RWMutex
 	commiter     *time.Ticker
@@ -40,17 +40,30 @@ type CollectionConfig struct {
 	Storage         string
 }
 
-func NewHighSpeedMemory() *HighSpeedMem {
+type CollectionInfo struct {
+	CollectionName  string
+	Distance        string
+	Quantization    string
+	Dim             uint32
+	Connectivity    uint32
+	ExpansionAdd    uint32
+	ExpansionSearch uint32
+	Multi           bool
+	DataSize        int
+	Storage         string
+}
+
+func NewHighMemory() *HighMem {
 	NewTensorLink()
 	NewIndexDB()
-	return &HighSpeedMem{
+	return &HighMem{
 		Collections:  map[string]*CollectionMem{},
 		stopCommiter: make(chan bool),
 	}
 }
 
 // return nil not exists collection
-func (xx *HighSpeedMem) getCollection(collectionName string) *CollectionMem {
+func (xx *HighMem) getCollection(collectionName string) *CollectionMem {
 	xx.groupLock.RLock()
 	col, exists := xx.Collections[collectionName]
 	xx.groupLock.RUnlock()
@@ -60,14 +73,14 @@ func (xx *HighSpeedMem) getCollection(collectionName string) *CollectionMem {
 	return nil
 }
 
-func (xx *HighSpeedMem) existsCollection(collectionName string) bool {
+func (xx *HighMem) existsCollection(collectionName string) bool {
 	xx.groupLock.RLock()
 	_, exists := xx.Collections[collectionName]
 	xx.groupLock.RUnlock()
 	return exists
 }
 
-func (xx *HighSpeedMem) CreateCollection(collectionName string, cfg CollectionConfig) error {
+func (xx *HighMem) CreateCollection(collectionName string, cfg CollectionConfig) error {
 	c := make(chan error, 1)
 
 	go func() {
@@ -120,7 +133,7 @@ func (xx *HighSpeedMem) CreateCollection(collectionName string, cfg CollectionCo
 	return <-c
 }
 
-func (xx *HighSpeedMem) DropCollection(collectionName string) error {
+func (xx *HighMem) DropCollection(collectionName string) error {
 	c := make(chan error, 1)
 	go func() {
 		defer func() {
@@ -146,7 +159,7 @@ func (xx *HighSpeedMem) DropCollection(collectionName string) error {
 	return <-c
 }
 
-func (xx *HighSpeedMem) GetCollection(collectionName string) (CollectionConfig, error) {
+func (xx *HighMem) GetCollection(collectionName string) (CollectionConfig, error) {
 	type cc struct {
 		Result CollectionConfig
 		Error  error
@@ -185,7 +198,7 @@ func (xx *HighSpeedMem) GetCollection(collectionName string) (CollectionConfig, 
 	return out.Result, out.Error
 }
 
-func (xx *HighSpeedMem) GetCollections() ([]CollectionConfig, error) {
+func (xx *HighMem) GetCollections() ([]CollectionConfig, error) {
 	type cc struct {
 		Result []CollectionConfig
 		Error  error
@@ -227,4 +240,116 @@ func (xx *HighSpeedMem) GetCollections() ([]CollectionConfig, error) {
 	}()
 	out := <-c
 	return out.Result, out.Error
+}
+
+func (xx *HighMem) LoadCollection(collectionName string) (CollectionInfo, error) {
+	xx.groupLock.RLock()
+	collections, exists := xx.Collections[collectionName]
+	xx.groupLock.RUnlock()
+	if exists {
+		return CollectionInfo{
+			CollectionName:  collections.CollectionName,
+			Distance:        collections.Distance,
+			Quantization:    collections.Distance,
+			Dim:             collections.Dim,
+			Connectivity:    collections.Connectivity,
+			ExpansionAdd:    collections.ExpansionAdd,
+			ExpansionSearch: collections.ExpansionSearch,
+			Multi:           collections.Multi,
+			DataSize:        len(collections.Data),
+			Storage:         collections.Storage,
+		}, nil
+	}
+	loadData, err := xx.LoadCommitData(collectionName)
+	if err != nil {
+		return CollectionInfo{}, err
+	}
+	loadConfig, err := xx.LoadCommitCollectionConfig(collectionName)
+	if err != nil {
+		return CollectionInfo{}, err
+	}
+	// loadindex
+	err = xx.LoadCommitIndex(collectionName)
+	if err != nil {
+		return CollectionInfo{}, err
+	}
+	// loadtensor
+	err = xx.LoadCommitTensor(collectionName, loadConfig, uint(len(loadData)))
+	if err != nil {
+		return CollectionInfo{}, err
+	}
+	// not error
+	mergeCommit := &CollectionMem{
+		Data:            loadData,
+		CollectionName:  collectionName,
+		Distance:        loadConfig.Distance,
+		Quantization:    loadConfig.Quantization,
+		Dim:             loadConfig.Dim,
+		Connectivity:    loadConfig.Connectivity,
+		ExpansionAdd:    loadConfig.ExpansionAdd,
+		ExpansionSearch: loadConfig.ExpansionSearch,
+		Multi:           loadConfig.Multi,
+		Storage:         loadConfig.Storage,
+	}
+	xx.groupLock.Lock()
+	xx.Collections[collectionName] = &CollectionMem{}
+	xx.Collections[collectionName] = mergeCommit
+	xx.groupLock.Unlock()
+	return CollectionInfo{
+		CollectionName:  collectionName,
+		Distance:        loadConfig.Distance,
+		Quantization:    loadConfig.Quantization,
+		Dim:             loadConfig.Dim,
+		Connectivity:    loadConfig.Connectivity,
+		ExpansionAdd:    loadConfig.ExpansionAdd,
+		ExpansionSearch: loadConfig.ExpansionSearch,
+		Multi:           loadConfig.Multi,
+		DataSize:        len(mergeCommit.Data),
+		Storage:         loadConfig.Storage,
+	}, nil
+}
+
+func (xx *HighMem) ReleaseCollection(collectionName string) error {
+	xx.groupLock.RLock()
+	_, exists := xx.Collections[collectionName]
+	xx.groupLock.RUnlock()
+	if !exists {
+		return nil
+	}
+	//if exists
+	err := xx.CommitData(collectionName)
+	if err != nil {
+		return err
+	}
+	err = xx.CommitCollectionConfig(collectionName)
+	if err != nil {
+		return err
+	}
+	err = xx.CommitIndex(collectionName)
+	if err != nil {
+		return err
+	}
+	err = xx.CommitTensor(collectionName)
+	if err != nil {
+		return err
+	}
+	//release memory
+	xx.groupLock.Lock()
+	delete(xx.Collections, collectionName)
+	xx.groupLock.Unlock()
+
+	indexdb.indexLock.Lock()
+	delete(indexdb.indexes, collectionName)
+	indexdb.indexLock.Unlock()
+
+	tensorLinker.tensorLock.Lock()
+	//release c++ runtime
+	err = tensorLinker.tensors[collectionName].Destroy()
+	if err != nil {
+		tensorLinker.tensorLock.Unlock()
+		return err
+	}
+	delete(tensorLinker.tensors, collectionName)
+	tensorLinker.tensorLock.Unlock()
+	return nil
 }

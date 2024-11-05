@@ -1,4 +1,4 @@
-package highspeedmemory
+package highmem
 
 import (
 	"compress/flate"
@@ -30,7 +30,7 @@ check (origin) <- if exists
 
 new file write {origin}.cdat
 */
-func (xx *HighSpeedMem) CommitData(collectionName string) error {
+func (xx *HighMem) CommitData(collectionName string) error {
 	// check origin file
 	_, err := os.Stat(fmt.Sprintf(fLinkCdat, collectionName))
 	if err != nil {
@@ -89,7 +89,7 @@ func (xx *HighSpeedMem) CommitData(collectionName string) error {
 	return nil
 }
 
-func (xx *HighSpeedMem) CommitCollectionConfig(collectionName string) error {
+func (xx *HighMem) CommitCollectionConfig(collectionName string) error {
 
 	_, err := os.Stat(fmt.Sprintf(confJson, collectionName))
 	if err != nil {
@@ -129,7 +129,7 @@ func (xx *HighSpeedMem) CommitCollectionConfig(collectionName string) error {
 	return nil
 }
 
-func (xx *HighSpeedMem) CommitIndex(collectionName string) error {
+func (xx *HighMem) CommitIndex(collectionName string) error {
 
 	_, err := os.Stat(fmt.Sprintf(indexBin, collectionName))
 	if err != nil {
@@ -151,7 +151,7 @@ func (xx *HighSpeedMem) CommitIndex(collectionName string) error {
 	return indexdb.indexes[collectionName].SerializeBinary(fmt.Sprintf(indexBin, collectionName))
 }
 
-func (xx *HighSpeedMem) CommitTensor(collectionName string) error {
+func (xx *HighMem) CommitTensor(collectionName string) error {
 
 	_, err := os.Stat(fmt.Sprintf(tensorLink, collectionName))
 	if err != nil {
@@ -173,7 +173,7 @@ func (xx *HighSpeedMem) CommitTensor(collectionName string) error {
 	return tensorLinker.tensors[collectionName].Save(fmt.Sprintf(tensorLink, collectionName))
 }
 
-func (xx *HighSpeedMem) CommitCollection() error {
+func (xx *HighMem) CommitCollection() error {
 	_, err := os.Stat(collectionJson)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -213,7 +213,7 @@ func (xx *HighSpeedMem) CommitCollection() error {
    when user request
 */
 
-func (xx *HighSpeedMem) LoadCommitCollection() error {
+func (xx *HighMem) LoadCommitCollection() error {
 
 	collectionJsonData, err := os.ReadFile(collectionJson)
 	if err != nil {
@@ -234,7 +234,7 @@ func (xx *HighSpeedMem) LoadCommitCollection() error {
 	return nil
 }
 
-func (xx *HighSpeedMem) LoadCommitData(collectionName string) (map[uint64]interface{}, error) {
+func (xx *HighMem) LoadCommitData(collectionName string) (map[uint64]interface{}, error) {
 	_, err := os.Stat(fmt.Sprintf(fLinkCdat, collectionName))
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -276,7 +276,7 @@ ExistsData:
 	return cdat, nil
 }
 
-func (xx *HighSpeedMem) LoadCommitCollectionConfig(collectionName string) (
+func (xx *HighMem) LoadCommitCollectionConfig(collectionName string) (
 	CollectionConfig, error) {
 	configJsonData, err := os.ReadFile(fmt.Sprintf(confJson, collectionName))
 	if err != nil {
@@ -299,7 +299,7 @@ func (xx *HighSpeedMem) LoadCommitCollectionConfig(collectionName string) (
 	return cfg, nil
 }
 
-func (xx *HighSpeedMem) LoadCommitIndex(collectionName string) error {
+func (xx *HighMem) LoadCommitIndex(collectionName string) error {
 	_, err := os.Stat(fmt.Sprintf(indexBin, collectionName))
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -336,7 +336,7 @@ ExistsIndex:
 	return nil
 }
 
-func (xx *HighSpeedMem) LoadCommitTensor(collectionName string, cfg CollectionConfig, cap uint) error {
+func (xx *HighMem) LoadCommitTensor(collectionName string, cfg CollectionConfig, cap uint) error {
 	tcfg := fasthnsw.DefaultConfig(uint(cfg.Dim))
 	tcfg.Connectivity = uint(cfg.Connectivity)
 	tcfg.ExpansionAdd = uint(cfg.ExpansionAdd)
