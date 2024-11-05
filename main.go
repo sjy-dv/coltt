@@ -10,7 +10,7 @@ func main() {
 
 	// Create Index
 	vectorSize := 3
-	vectorsCount := 100
+	vectorsCount := 10
 	conf := fasthnsw.DefaultConfig(uint(vectorSize))
 	index, err := fasthnsw.NewIndex(conf)
 	if err != nil {
@@ -25,9 +25,7 @@ func main() {
 			panic("Failed to add")
 		}
 	}
-	err = index.Destroy()
-	fmt.Println("dddd", err)
-	keys, distances, err := index.Search([]float32{0.0, 1.0, 2.0}, 3)
+	keys, distances, err := index.Search([]float32{0.0, 1.0, 2.0}, 20000)
 	if err != nil {
 		panic("Failed to search")
 	}

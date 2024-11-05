@@ -197,7 +197,13 @@ func (xx *HighMem) CommitCollection() error {
 		Collections []string
 	}
 	c := collectionJsonF{}
-	c.Collections = collections
+	cols := make([]string, 0)
+	for c, ok := range stateManager.checker.collections {
+		if ok {
+			cols = append(cols, c)
+		}
+	}
+	c.Collections = cols
 	f, err := os.Create(collectionJson)
 	if err != nil {
 		return err
@@ -218,7 +224,6 @@ func (xx *HighMem) LoadCommitCollection() error {
 	collectionJsonData, err := os.ReadFile(collectionJson)
 	if err != nil {
 		if os.IsNotExist(err) {
-			collections = make([]string, 0)
 			return nil
 		}
 		return err
@@ -230,7 +235,9 @@ func (xx *HighMem) LoadCommitCollection() error {
 	if err := json.Unmarshal(collectionJsonData, &c); err != nil {
 		return err
 	}
-	collections = append(collections, c.Collections...)
+	for _, col := range c.Collections {
+		stateManager.checker.collections[col] = true
+	}
 	return nil
 }
 
@@ -238,10 +245,13 @@ func (xx *HighMem) LoadCommitData(collectionName string) (map[uint64]interface{}
 	_, err := os.Stat(fmt.Sprintf(fLinkCdat, collectionName))
 	if err != nil {
 		if os.IsNotExist(err) {
-			for _, col := range collections {
-				if col == collectionName {
-					goto EmptyData
-				}
+			// for _, col := range collections {
+			// 	if col == collectionName {
+			// 		goto EmptyData
+			// 	}
+			// }
+			if stateManager.checker.collections[collectionName] {
+				goto EmptyData
 			}
 			return nil, fmt.Errorf("collection: %s is not defined [Not Found Collection Error]", collectionName)
 		}
@@ -281,13 +291,12 @@ func (xx *HighMem) LoadCommitCollectionConfig(collectionName string) (
 	configJsonData, err := os.ReadFile(fmt.Sprintf(confJson, collectionName))
 	if err != nil {
 		if os.IsNotExist(err) {
-			for _, col := range collections {
-				if collectionName == col {
-					//damaged data file
-					// recovery logic add
-					return CollectionConfig{}, fmt.Errorf("file %s.conf is damaged", collectionName)
-				}
+			if stateManager.checker.collections[collectionName] {
+				//damaged data file
+				// recovery logic add
+				return CollectionConfig{}, fmt.Errorf("file %s.conf is damaged", collectionName)
 			}
+
 			return CollectionConfig{}, fmt.Errorf("collection Config: %s is not defined [Not Found Collection Error]", collectionName)
 		}
 		return CollectionConfig{}, err
@@ -303,11 +312,10 @@ func (xx *HighMem) LoadCommitIndex(collectionName string) error {
 	_, err := os.Stat(fmt.Sprintf(indexBin, collectionName))
 	if err != nil {
 		if os.IsNotExist(err) {
-			for _, col := range collections {
-				if col == collectionName {
-					goto EmptyIndex
-				}
+			if stateManager.checker.collections[collectionName] {
+				goto EmptyIndex
 			}
+
 			return fmt.Errorf("collection BitmapIndex: %s is not defined [Not Found Collection Error]", collectionName)
 		}
 		return err
@@ -389,11 +397,8 @@ func (xx *HighMem) LoadCommitTensor(collectionName string, cfg CollectionConfig,
 	_, err = os.Stat(fmt.Sprintf(tensorLink, collectionName))
 	if err != nil {
 		if os.IsNotExist(err) {
-			for _, col := range collections {
-				//
-				if col == collectionName {
-					goto EmptyTensor
-				}
+			if stateManager.checker.collections[collectionName] {
+				goto EmptyTensor
 			}
 			return fmt.Errorf("collection TensorSearch: %s is not defined [Not Found Collection Error]", collectionName)
 		}

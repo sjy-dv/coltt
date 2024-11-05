@@ -1,6 +1,9 @@
 package highmem
 
-import "errors"
+import (
+	"errors"
+	"sync"
+)
 
 var (
 	fLinkCdat            = "./data_dir/%s.cdat"
@@ -21,7 +24,42 @@ var (
 
 var errUnrecoverable = errors.New("unrecoverable error")
 var UncaughtPanicError = "uncaught panic error: %v"
-var collections = []string{}
+var notFoundCollection = "collection: %s is not defined [NOT FOUND COLLECTION]"
+var notLoadCollection = "collection: %s is not load. please try to `LoadCollection` [NOT FOUND COLLECTION IN MEMORY]"
+var stateManager *collectionCoordinator
+
+func NewStateManager() {
+	stateManager = &collectionCoordinator{
+		loadchecker: &collectionLoadChecker{
+			collections: make(map[string]bool),
+		},
+		checker: &collectionExistChecker{
+			collections: make(map[string]bool),
+		},
+		auth: &authorizationCollection{
+			collections: make(map[string]bool),
+		},
+	}
+}
+
+type collectionCoordinator struct {
+	loadchecker *collectionLoadChecker
+	checker     *collectionExistChecker
+	auth        *authorizationCollection
+}
+type collectionLoadChecker struct {
+	clcLock     sync.RWMutex
+	collections map[string]bool
+}
+type collectionExistChecker struct {
+	cecLock     sync.RWMutex
+	collections map[string]bool
+}
+
+type authorizationCollection struct {
+	collections map[string]bool
+	authLock    sync.RWMutex
+}
 
 var tensorCapacity uint = 0
 
