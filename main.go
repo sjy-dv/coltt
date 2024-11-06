@@ -3,70 +3,33 @@ package main
 import (
 	"fmt"
 
-	"github.com/sjy-dv/nnv/pkg/fasthnsw"
+	"github.com/sjy-dv/nnv/backup"
+	"github.com/sjy-dv/nnv/backup/document"
+	"github.com/sjy-dv/nnv/backup/query"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 func main() {
 
-	// Create Index
-	vectorSize := 3
-	vectorsCount := 10
-	conf := fasthnsw.DefaultConfig(uint(vectorSize))
-	index, err := fasthnsw.NewIndex(conf)
-	if err != nil {
-		panic("Failed to create Index")
-	}
+	db, _ := backup.Open("test-db")
 
-	// Add to Index
-	err = index.Reserve(uint(vectorsCount * 10))
-	for i := 0; i < vectorsCount; i++ {
-		err = index.Add(fasthnsw.Key(i), []float32{float32(i), float32(i + 1), float32(i + 2)})
-		if err != nil {
-			panic("Failed to add")
-		}
-	}
-	keys, distances, err := index.Search([]float32{0.0, 1.0, 2.0}, 20000)
-	if err != nil {
-		panic("Failed to search")
-	}
-	fmt.Println(keys, distances)
-	fmt.Println("111111111")
-	err = index.Save("index.tensor")
-	if err != nil {
-		panic("Failed to save index")
-	}
+	db.CreateCollection("test")
 
-	// index.Destroy()
-	index, err = fasthnsw.NewIndex(conf)
-	if err != nil {
-		panic("111")
+	d := document.NewDocument()
+	type A struct {
+		ID   string
+		Name string
 	}
-	fmt.Println("22222222222222222")
-	err = index.Reserve(uint(vectorsCount * 10))
-	err = index.Load("index.tensor")
-	if err != nil {
-		panic("Failed to save index")
-	}
-	fmt.Println("33333333333333333333")
-	keys, distances, err = index.Search([]float32{0.0, 1.0, 2.0}, 3)
-	if err != nil {
-		panic("Failed to search")
-	}
-	fmt.Println(keys, distances)
-	fmt.Println("44444444444444444444444")
-	// err = index.Reserve(uint(vectorsCount * 10))
+	a := A{}
+	a.ID = "aaa"
+	a.Name = "name_aaa"
+	d.Set("struct", a)
+	db.InsertOne("test", d)
 
-	for i := 0; i < vectorsCount; i++ {
-		err = index.Add(fasthnsw.Key(i*30+8124), []float32{float32(i), float32(i + 1), float32(i + 2)})
-		if err != nil {
-			fmt.Println(err)
-			panic("Failed to add")
-		}
-	}
-	// Search
-	keys, distances, err = index.Search([]float32{0.0, 1.0, 2.0}, 3)
-	if err != nil {
-		panic("Failed to search")
-	}
-	fmt.Println(keys, distances)
+	data, _ := db.FindAll(query.NewQuery("test"))
+	fmt.Println(data[0].Get("struct"))
+	cc, _ := msgpack.Marshal(data[0].Get("struct"))
+	a2 := A{}
+	msgpack.Unmarshal(cc, &a2)
+	fmt.Println(a2.ID, a2.Name)
 }

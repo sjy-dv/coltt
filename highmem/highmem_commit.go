@@ -27,17 +27,42 @@ func (xx *HighMem) CommitAll() {
 		log.Error().Err(err).Msg("failed to commit collection list")
 	}
 	//Efficiently stores only collections with predictable changes that are loaded into memory
+	attemptCount := 0
+	failedCount := 0
 	for collection, ok := range stateManager.loadchecker.collections {
 		// only commit true collection
 		//Because collections that are false are committed during the Release process.
 		if ok {
+			attemptCount++
 			err := xx.ReleaseCollection(collection)
 			if err != nil {
+				failedCount++
 				// add to commit logger fatal init
 				log.Error().Err(err).Msgf("failed to commit collection: %s", collection)
+				cloneCollection := xx.getCollection(collection)
+				if cloneCollection == nil {
+					log.Warn().Msgf("collection: %s is alreay release memory", collection)
+					continue
+				}
+				err := commitLogger.CommitCrashCollection(CollectionConfig{
+					CollectionName:  cloneCollection.CollectionName,
+					Distance:        cloneCollection.Distance,
+					Quantization:    cloneCollection.Quantization,
+					Dim:             cloneCollection.Dim,
+					Connectivity:    cloneCollection.Connectivity,
+					ExpansionAdd:    cloneCollection.ExpansionAdd,
+					ExpansionSearch: cloneCollection.ExpansionSearch,
+					Multi:           cloneCollection.Multi,
+					Storage:         cloneCollection.Storage,
+				})
+				if err != nil {
+					log.Error().Err(err).Msgf("recovery collection config data also broken: %s", collection)
+				}
+				log.Info().Msgf("recovery data saved collection: %s", collection)
 			}
 		}
 	}
+	log.Info().Msgf("all collection commit attempt:%d failed:%d", attemptCount, failedCount)
 }
 
 /*

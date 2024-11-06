@@ -59,6 +59,26 @@ func StartCommitLogger() error {
 	if err != nil {
 		return err
 	}
+	ok, err := commitdb.HasCollection(commitCollection)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		err = commitdb.CreateCollection(commitCollection)
+		if err != nil {
+			return err
+		}
+	}
+	ok, err = commitdb.HasCollection(fatalCommit)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		err = commitdb.CreateCollection(fatalCommit)
+		if err != nil {
+			return err
+		}
+	}
 	commitLogger = &CommitLogger{
 		commitDB:   commitdb,
 		stopDiskGC: make(chan bool),
@@ -69,6 +89,21 @@ func StartCommitLogger() error {
 
 func (xx *CommitLogger) Commit(data *document.Document) error {
 	_, err := xx.commitDB.InsertOne(commitCollection, data)
+	return err
+}
+
+// using saved crash collection
+func (xx *CommitLogger) CommitCrashCollection(config CollectionConfig) error {
+	log := document.NewDocument()
+	// watch is using.. this collection is fixed? true or false?
+	log.Set("watch", false)
+	log.Set("collectionName", config.CollectionName)
+	// alreay log, why saved config??
+	// when build firts collection..
+	// not backup-data
+	// using config & log  => completely backup collection
+	log.Set("config", config)
+	_, err := xx.commitDB.InsertOne(fatalCommit, log)
 	return err
 }
 

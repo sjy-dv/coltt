@@ -126,6 +126,12 @@ func (xx *HighMem) CreateCollection(collectionName string, cfg CollectionConfig)
 			c <- tensorLinker.DropTensorIndex(collectionName)
 			return
 		}
+		stateManager.loadchecker.clcLock.Lock()
+		stateManager.loadchecker.collections[collectionName] = true
+		stateManager.loadchecker.clcLock.Unlock()
+		stateManager.auth.authLock.Lock()
+		stateManager.auth.collections[collectionName] = true
+		stateManager.auth.authLock.Unlock()
 		c <- nil
 	}()
 	return <-c
@@ -174,7 +180,7 @@ func (xx *HighMem) GetCollection(collectionName string) (CollectionConfig, error
 		col := xx.getCollection(collectionName)
 		if col == nil {
 			c <- cc{
-				Error: fmt.Errorf("not found collection: %s", collectionName),
+				Error: fmt.Errorf("not found collection: %s. check load collection first", collectionName),
 			}
 			return
 		}
@@ -216,7 +222,7 @@ func (xx *HighMem) GetCollections() ([]CollectionConfig, error) {
 			col := xx.getCollection(collectionName)
 			if col == nil {
 				c <- cc{
-					Error: fmt.Errorf("not found collection %s", collectionName),
+					Error: fmt.Errorf("not found collection %s check laod collection first", collectionName),
 				}
 				return
 			}
@@ -293,6 +299,12 @@ func (xx *HighMem) LoadCollection(collectionName string) (CollectionInfo, error)
 	xx.Collections[collectionName] = &CollectionMem{}
 	xx.Collections[collectionName] = mergeCommit
 	xx.groupLock.Unlock()
+	stateManager.loadchecker.clcLock.Lock()
+	stateManager.loadchecker.collections[collectionName] = true
+	stateManager.loadchecker.clcLock.Unlock()
+	stateManager.auth.authLock.Lock()
+	stateManager.auth.collections[collectionName] = true
+	stateManager.auth.authLock.Unlock()
 	return CollectionInfo{
 		CollectionName:  collectionName,
 		Distance:        loadConfig.Distance,
@@ -349,5 +361,12 @@ func (xx *HighMem) ReleaseCollection(collectionName string) error {
 	}
 	delete(tensorLinker.tensors, collectionName)
 	tensorLinker.tensorLock.Unlock()
+
+	stateManager.loadchecker.clcLock.Lock()
+	stateManager.loadchecker.collections[collectionName] = false
+	stateManager.loadchecker.clcLock.Unlock()
+	stateManager.auth.authLock.Lock()
+	stateManager.auth.collections[collectionName] = false
+	stateManager.auth.authLock.Unlock()
 	return nil
 }

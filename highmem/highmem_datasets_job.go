@@ -98,6 +98,7 @@ scripts:
 			}
 			return
 		}
+
 		c <- reply{
 			Result: &dataCoordinatorV2.Response{
 				Status: true,
