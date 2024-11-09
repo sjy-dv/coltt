@@ -13,8 +13,8 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/rs/zerolog/log"
 	"github.com/sjy-dv/nnv/config"
-	"github.com/sjy-dv/nnv/gen/protoc/v1/dataCoordinatorV1"
-	"github.com/sjy-dv/nnv/gen/protoc/v1/resourceCoordinatorV1"
+	"github.com/sjy-dv/nnv/gen/protoc/v2/dataCoordinatorV2"
+	"github.com/sjy-dv/nnv/gen/protoc/v2/resourceCoordinatorV2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -90,8 +90,8 @@ func gRpcStart() error {
 	rpcLayer.X1 = &datasetCoordinator{rpcLayer: rpcLayer}
 	rpcLayer.X2 = &resourceCoordinator{rpcLayer: rpcLayer}
 	//rpcLayer.rootClone = xx
-	dataCoordinatorV1.RegisterDatasetCoordinatorServer(roots.S, rpcLayer.X1)
-	resourceCoordinatorV1.RegisterResourceCoordinatorServer(roots.S, rpcLayer.X2)
+	dataCoordinatorV2.RegisterDatasetCoordinatorServer(roots.S, rpcLayer.X1)
+	resourceCoordinatorV2.RegisterResourceCoordinatorServer(roots.S, rpcLayer.X2)
 	log.Debug().Msgf("grpc_startup bind_addr : %s", config.Config.RootLayer.BindAddress)
 	if err := roots.S.Serve(lis); err != nil {
 		log.Warn().Err(err).Msg("grpc_startup failed")

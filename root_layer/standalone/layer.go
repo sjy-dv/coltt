@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/sjy-dv/nnv/gen/protoc/v1/dataCoordinatorV1"
-	"github.com/sjy-dv/nnv/gen/protoc/v1/resourceCoordinatorV1"
+	"github.com/sjy-dv/nnv/gen/protoc/v2/dataCoordinatorV2"
+	"github.com/sjy-dv/nnv/gen/protoc/v2/resourceCoordinatorV2"
 	"github.com/sjy-dv/nnv/highmem"
 	"google.golang.org/grpc"
 )
@@ -30,12 +30,12 @@ type rpcLayer struct {
 }
 
 type datasetCoordinator struct {
-	dataCoordinatorV1.UnimplementedDatasetCoordinatorServer
+	dataCoordinatorV2.UnimplementedDatasetCoordinatorServer
 	rpcLayer
 }
 
 type resourceCoordinator struct {
-	resourceCoordinatorV1.UnimplementedResourceCoordinatorServer
+	resourceCoordinatorV2.UnimplementedResourceCoordinatorServer
 	rpcLayer
 }
 

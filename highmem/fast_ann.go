@@ -96,6 +96,8 @@ func (xx *Tensor) CreateTensorIndex(collectionName string, cfg CollectionConfig)
 				return fasthnsw.Tanimoto
 			case "Sorensen":
 				return fasthnsw.Sorensen
+			case "L2sq":
+				return fasthnsw.L2sq
 			}
 			return fasthnsw.Cosine
 		}()

@@ -99,7 +99,7 @@ func (xx *CommitLogger) CommitCrashCollection(config CollectionConfig) error {
 	log.Set("watch", false)
 	log.Set("collectionName", config.CollectionName)
 	// alreay log, why saved config??
-	// when build firts collection..
+	// when build first collection..
 	// not backup-data
 	// using config & log  => completely backup collection
 	log.Set("config", config)
