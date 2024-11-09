@@ -32,7 +32,7 @@ func NewRootLayer() error {
 	}
 	log.Info().Msg("root_layer.startcommitlogger init")
 	//-----------------------------------------------//
-	highmem.BackLogging()
+	go highmem.BackLogging()
 	log.Info().Msg("root_layer.backlogging init")
 	//-----------------------------------------------//
 	err = roots.HighMem.LoadCommitCollection()

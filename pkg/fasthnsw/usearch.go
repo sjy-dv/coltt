@@ -331,7 +331,6 @@ func (index *Index) Add(key Key, vec []float32) error {
 	if index.opaque_handle == nil {
 		panic("Index is uninitialized")
 	}
-
 	var errorMessage *C.char
 	C.usearch_add((C.usearch_index_t)(unsafe.Pointer(index.opaque_handle)), (C.usearch_key_t)(key), unsafe.Pointer(&vec[0]), C.usearch_scalar_f32_k, (*C.usearch_error_t)(&errorMessage))
 	if errorMessage != nil {
