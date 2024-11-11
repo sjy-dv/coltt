@@ -55,6 +55,7 @@ func (qx *QuantizedEdgeVectors) CreateCollection(config CollectionConfig) error 
 		return fmt.Errorf(ErrCollectionExists, config.CollectionName)
 	}
 	qx.lock.Lock()
+	qx.Edges[config.CollectionName] = new(EdgeVectorQ)
 	qx.Edges[config.CollectionName].collectionName = config.CollectionName
 	qx.Edges[config.CollectionName].dimension = config.Dimension
 	qx.Edges[config.CollectionName].distance = &distance.Cosine{}

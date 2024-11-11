@@ -167,11 +167,11 @@ func (xx *Edge) CommitQuantizedVector(collectionName string) error {
 
 	}
 	var iow io.Writer
-	normalEdgeV.lock.RLock()
-	normalEdgeV.Edges[collectionName].lock.RLock()
+	quantizedEdgeV.lock.RLock()
+	quantizedEdgeV.Edges[collectionName].lock.RLock()
 	flushData := quantizedEdgeV.Edges[collectionName].vectors
-	normalEdgeV.lock.RUnlock()
-	normalEdgeV.Edges[collectionName].lock.RUnlock()
+	quantizedEdgeV.lock.RUnlock()
+	quantizedEdgeV.Edges[collectionName].lock.RUnlock()
 
 	f, err := os.OpenFile(fmt.Sprintf(edgeVector, collectionName), os.O_TRUNC|
 		os.O_CREATE|os.O_WRONLY, 0644)

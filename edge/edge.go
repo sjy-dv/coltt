@@ -590,6 +590,7 @@ func (xx *Edge) Flush(ctx context.Context, req *edgeproto.CollectionName) (
 			return
 		}
 		q := xx.getQuantization(req.GetCollectionName())
+		fmt.Println(q)
 		if q == NONE_QAUNTIZATION {
 			err = xx.CommitNormalVector(req.GetCollectionName())
 		} else {
