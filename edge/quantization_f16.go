@@ -48,7 +48,7 @@ func (q Float16Quantization) Similarity(x, y float16Vec, dist distance.Space) fl
 func (q Float16Quantization) Lower(v gomath.Vector) (float16Vec, error) {
 	out := make(float16Vec, len(v))
 	for i, x := range v {
-		out[i] = float16.Float16(x)
+		out[i] = float16.Fromfloat32(x)
 	}
 	return out, nil
 }

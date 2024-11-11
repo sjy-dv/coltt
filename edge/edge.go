@@ -982,6 +982,7 @@ func (xx *Edge) VectorSearch(ctx context.Context, req *edgeproto.SearchReq) (
 				}
 				return float32(math.Max(0, float64(100-rs.sims[rank])))
 			}()
+
 			retval = append(retval, candidate)
 		}
 		c <- reply{
