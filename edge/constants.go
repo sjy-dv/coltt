@@ -33,7 +33,7 @@ var (
 	ErrQuantizedFailed    = "quantized failed vector : "
 	edgeData              = "./data_dir/%s-edge.cdat"
 	edgeIndex             = "./data_dir/%s-edge.bin"
-	edgeVector            = "./data_dir/%s-edge.cdat"
+	edgeVector            = "./data_dir/%s-vec-edge.cdat"
 	edgeConfig            = "./data_dir/%s-edge_conf.json"
 	collectionEdgeJson    = "./data_dir/collection-edge.json"
 )

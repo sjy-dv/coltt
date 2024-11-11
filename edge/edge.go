@@ -91,7 +91,6 @@ func (xx *Edge) CreateCollection(ctx context.Context, req *edgeproto.Collection)
 				}
 			}
 		}()
-
 		//scripts
 		if existsCollection(req.GetCollectionName()) {
 			c <- reply{
@@ -125,13 +124,12 @@ func (xx *Edge) CreateCollection(ctx context.Context, req *edgeproto.Collection)
 			Data:         make(map[uint64]interface{}),
 		}
 		xx.lock.Unlock()
-
 		//=========vector============
 		cfg := CollectionConfig{
-			dimension:      int(req.GetDim()),
-			collectionName: req.GetCollectionName(),
-			distance:       dist,
-			quantization:   q,
+			Dimension:      int(req.GetDim()),
+			CollectionName: req.GetCollectionName(),
+			Distance:       dist,
+			Quantization:   q,
 		}
 		if q == NONE_QAUNTIZATION {
 			err := normalEdgeV.CreateCollection(cfg)
@@ -190,6 +188,24 @@ func (xx *Edge) CreateCollection(ctx context.Context, req *edgeproto.Collection)
 		stateManager.auth.authLock.Lock()
 		stateManager.auth.collections[req.GetCollectionName()] = true
 		stateManager.auth.authLock.Unlock()
+		err = xx.CommitCollection()
+		if err != nil {
+			xx.lock.Lock()
+			delete(xx.Datas, req.GetCollectionName())
+			xx.lock.Unlock()
+			if q == NONE_QAUNTIZATION {
+				normalEdgeV.DropCollection(req.GetCollectionName())
+			} else {
+				quantizedEdgeV.DropCollection(req.GetCollectionName())
+			}
+			c <- reply{
+				Result: &edgeproto.CollectionResponse{
+					Status: false,
+					Error:  &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR},
+				},
+			}
+			return
+		}
 		c <- reply{
 			Result: &edgeproto.CollectionResponse{
 				Status: true,
@@ -386,7 +402,7 @@ func (xx *Edge) LoadCollection(ctx context.Context, req *edgeproto.CollectionNam
 			c <- reply{Result: &edgeproto.CollectionDetail{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
 			return
 		}
-		if loadConfig.quantization == NONE_QAUNTIZATION {
+		if loadConfig.Quantization == NONE_QAUNTIZATION {
 			err = xx.LoadCommitNormalVector(req.GetCollectionName(), loadConfig)
 		} else {
 			err = xx.LoadCommitQuantizedVector(req.GetCollectionName(), loadConfig)
@@ -397,9 +413,9 @@ func (xx *Edge) LoadCollection(ctx context.Context, req *edgeproto.CollectionNam
 		}
 		merge := &EdgeData{
 			Data:         loadData,
-			dim:          int32(loadConfig.dimension),
-			distance:     loadConfig.distance,
-			quantization: loadConfig.quantization,
+			dim:          int32(loadConfig.Dimension),
+			distance:     loadConfig.Distance,
+			quantization: loadConfig.Quantization,
 		}
 		xx.lock.Lock()
 		xx.Datas[req.GetCollectionName()] = &EdgeData{}
@@ -946,7 +962,7 @@ func (xx *Edge) VectorSearch(ctx context.Context, req *edgeproto.SearchReq) (
 			xx.Datas[req.GetCollectionName()].lock.RUnlock()
 
 			candidate := new(edgeproto.Candidates)
-			candidate.Id = clone.(map[string]interface{})["id"].(string)
+			candidate.Id = clone.(map[string]interface{})["_id"].(string)
 			candidate.Metadata, err = structpb.NewStruct(clone.(map[string]interface{}))
 			if err != nil {
 				c <- reply{
@@ -1029,7 +1045,7 @@ func (xx *Edge) FilterSearch(ctx context.Context, req *edgeproto.SearchReq) (
 			xx.Datas[req.GetCollectionName()].lock.RUnlock()
 
 			candidate := new(edgeproto.Candidates)
-			candidate.Id = clone.(map[string]interface{})["id"].(string)
+			candidate.Id = clone.(map[string]interface{})["_id"].(string)
 			candidate.Metadata, err = structpb.NewStruct(clone.(map[string]interface{}))
 			if err != nil {
 				c <- reply{
@@ -1145,7 +1161,7 @@ func (xx *Edge) HybridSearch(ctx context.Context, req *edgeproto.SearchReq) (
 			clone := xx.Datas[req.GetCollectionName()].Data[nodeId]
 			xx.Datas[req.GetCollectionName()].lock.RUnlock()
 			candidate := new(edgeproto.Candidates)
-			candidate.Id = clone.(map[string]interface{})["id"].(string)
+			candidate.Id = clone.(map[string]interface{})["_id"].(string)
 			candidate.Metadata, err = structpb.NewStruct(clone.(map[string]interface{}))
 			if err != nil {
 				c <- reply{

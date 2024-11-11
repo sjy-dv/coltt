@@ -49,24 +49,25 @@ func NewQuantizedEdgeVectorCollection() {
 
 func (qx *QuantizedEdgeVectors) CreateCollection(config CollectionConfig) error {
 	qx.lock.RLock()
-	_, ok := qx.Edges[config.collectionName]
+	_, ok := qx.Edges[config.CollectionName]
 	qx.lock.RUnlock()
 	if ok {
-		return fmt.Errorf(ErrCollectionExists, config.collectionName)
+		return fmt.Errorf(ErrCollectionExists, config.CollectionName)
 	}
 	qx.lock.Lock()
-	qx.Edges[config.collectionName].collectionName = config.collectionName
-	qx.Edges[config.collectionName].dimension = config.dimension
-	qx.Edges[config.collectionName].distance = func() distance.Space {
-		if config.distance == COSINE {
+	qx.Edges[config.CollectionName].collectionName = config.CollectionName
+	qx.Edges[config.CollectionName].dimension = config.Dimension
+	qx.Edges[config.CollectionName].distance = &distance.Cosine{}
+	qx.Edges[config.CollectionName].distance = func() distance.Space {
+		if config.Distance == COSINE {
 			return distance.NewCosine()
-		} else if config.distance == EUCLIDEAN {
+		} else if config.Distance == EUCLIDEAN {
 			return distance.NewEuclidean()
 		}
 		return distance.NewCosine()
 	}()
-	qx.Edges[config.collectionName].quantization = Float16Quantization{}
-	qx.Edges[config.collectionName].vectors = make(map[uint64]float16Vec)
+	qx.Edges[config.CollectionName].quantization = Float16Quantization{}
+	qx.Edges[config.CollectionName].vectors = make(map[uint64]float16Vec)
 	qx.lock.Unlock()
 	return nil
 }

@@ -47,31 +47,33 @@ func NewEdgeVectorCollection() {
 }
 
 type CollectionConfig struct {
-	dimension      int    `json:"dimension"`
-	collectionName string `json:"collection_name"`
-	distance       string `json:"distance"`
-	quantization   string `json:"quantization"`
+	Dimension      int    `json:"dimension"`
+	CollectionName string `json:"collection_name"`
+	Distance       string `json:"distance"`
+	Quantization   string `json:"quantization"`
 }
 
 func (xx *EdgeVectors) CreateCollection(config CollectionConfig) error {
 	xx.lock.RLock()
-	_, ok := xx.Edges[config.collectionName]
+	_, ok := xx.Edges[config.CollectionName]
 	xx.lock.RUnlock()
 	if ok {
-		return fmt.Errorf(ErrCollectionExists, config.collectionName)
+		return fmt.Errorf(ErrCollectionExists, config.CollectionName)
 	}
 	xx.lock.Lock()
-	xx.Edges[config.collectionName].collectionName = config.collectionName
-	xx.Edges[config.collectionName].dimension = config.dimension
-	xx.Edges[config.collectionName].distance = func() distance.Space {
-		if config.distance == COSINE {
+	xx.Edges[config.CollectionName] = new(EdgeVector)
+	xx.Edges[config.CollectionName].collectionName = config.CollectionName
+	xx.Edges[config.CollectionName].dimension = config.Dimension
+	xx.Edges[config.CollectionName].distance = &distance.Cosine{}
+	xx.Edges[config.CollectionName].distance = func() distance.Space {
+		if config.Distance == COSINE {
 			return distance.NewCosine()
-		} else if config.distance == EUCLIDEAN {
+		} else if config.Distance == EUCLIDEAN {
 			return distance.NewEuclidean()
 		}
 		return distance.NewCosine()
 	}()
-	xx.Edges[config.collectionName].vectors = make(map[uint64]gomath.Vector)
+	xx.Edges[config.CollectionName].vectors = make(map[uint64]gomath.Vector)
 	xx.lock.Unlock()
 	return nil
 }

@@ -35,6 +35,10 @@ func init() {
 	gob.Register(map[uint64]gomath.Vector{})
 	gob.Register(float16Vec{})
 	gob.Register(map[uint64]float16Vec{})
+	gob.Register(map[string]interface{}{})
+	gob.Register(map[uint64]interface{}{})
+	gob.Register([]interface{}{})
+
 }
 
 func (xx *Edge) CommitData(collectionName string) error {
@@ -83,12 +87,12 @@ func (xx *Edge) CommitConfig(collectionName string) error {
 		os.Remove(fmt.Sprintf(edgeConfig, collectionName))
 	}
 	conf := CollectionConfig{}
-	conf.collectionName = collectionName
+	conf.CollectionName = collectionName
 	xx.lock.RLock()
 	xx.Datas[collectionName].lock.RLock()
-	conf.dimension = int(xx.Datas[collectionName].dim)
-	conf.distance = xx.Datas[collectionName].distance
-	conf.quantization = xx.Datas[collectionName].quantization
+	conf.Dimension = int(xx.Datas[collectionName].dim)
+	conf.Distance = xx.Datas[collectionName].distance
+	conf.Quantization = xx.Datas[collectionName].quantization
 	xx.lock.RUnlock()
 	xx.Datas[collectionName].lock.RUnlock()
 	f, err := os.Create(fmt.Sprintf(edgeConfig, collectionName))
@@ -355,13 +359,13 @@ func (xx *Edge) LoadCommitNormalVector(collectionName string, cfg CollectionConf
 EmptyData:
 	normalEdgeV.lock.Lock()
 	normalEdgeV.Edges[collectionName] = &EdgeVector{
-		dimension:      cfg.dimension,
+		dimension:      cfg.Dimension,
 		vectors:        make(map[uint64]gomath.Vector),
 		collectionName: collectionName,
 		distance: func() distance.Space {
-			if cfg.distance == COSINE {
+			if cfg.Distance == COSINE {
 				return distance.NewCosine()
-			} else if cfg.distance == EUCLIDEAN {
+			} else if cfg.Distance == EUCLIDEAN {
 				return distance.NewEuclidean()
 			}
 			return distance.NewCosine()
@@ -394,13 +398,13 @@ ExistsData:
 	}
 	normalEdgeV.lock.Lock()
 	normalEdgeV.Edges[collectionName] = &EdgeVector{
-		dimension:      cfg.dimension,
+		dimension:      cfg.Dimension,
 		vectors:        cdat,
 		collectionName: collectionName,
 		distance: func() distance.Space {
-			if cfg.distance == COSINE {
+			if cfg.Distance == COSINE {
 				return distance.NewCosine()
-			} else if cfg.distance == EUCLIDEAN {
+			} else if cfg.Distance == EUCLIDEAN {
 				return distance.NewEuclidean()
 			}
 			return distance.NewCosine()
@@ -430,13 +434,13 @@ func (xx *Edge) LoadCommitQuantizedVector(collectionName string, cfg CollectionC
 EmptyData:
 	quantizedEdgeV.lock.Lock()
 	quantizedEdgeV.Edges[collectionName] = &EdgeVectorQ{
-		dimension:      cfg.dimension,
+		dimension:      cfg.Dimension,
 		vectors:        make(map[uint64]float16Vec),
 		collectionName: collectionName,
 		distance: func() distance.Space {
-			if cfg.distance == COSINE {
+			if cfg.Distance == COSINE {
 				return distance.NewCosine()
-			} else if cfg.distance == EUCLIDEAN {
+			} else if cfg.Distance == EUCLIDEAN {
 				return distance.NewEuclidean()
 			}
 			return distance.NewCosine()
@@ -469,13 +473,13 @@ ExistsData:
 	}
 	quantizedEdgeV.lock.Lock()
 	quantizedEdgeV.Edges[collectionName] = &EdgeVectorQ{
-		dimension:      cfg.dimension,
+		dimension:      cfg.Dimension,
 		vectors:        cdat,
 		collectionName: collectionName,
 		distance: func() distance.Space {
-			if cfg.distance == COSINE {
+			if cfg.Distance == COSINE {
 				return distance.NewCosine()
-			} else if cfg.distance == EUCLIDEAN {
+			} else if cfg.Distance == EUCLIDEAN {
 				return distance.NewEuclidean()
 			}
 			return distance.NewCosine()

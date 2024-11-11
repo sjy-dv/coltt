@@ -32,6 +32,16 @@ import (
 )
 
 func main() {
+	log.Info().Msg("setup directory..")
+	dirPath := "./data_dir"
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		err := os.Mkdir(dirPath, os.ModePerm)
+		if err != nil {
+			log.Error().Err(err).Msg("create directory failed")
+			os.Exit(1)
+		}
+	}
+	log.Info().Msg("setup complete directory")
 	log.Info().Msg("rootlayer start")
 	go func() {
 		err := rootlayer.NewRootLayer()
