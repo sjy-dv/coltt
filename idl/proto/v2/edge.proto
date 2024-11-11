@@ -1,0 +1,121 @@
+syntax="proto3";
+package edgeproto;
+option go_package="./edgeproto";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
+
+
+service EdgeRpc {
+    rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+
+    rpc CreateCollection(Collection) returns (CollectionResponse) {}
+    rpc DeleteCollection(CollectionName) returns (DeleteCollectionResponse) {}
+    rpc GetCollection(CollectionName) returns (CollectionDetail) {}
+
+    rpc LoadCollection(CollectionName) returns (CollectionDetail) {}
+    rpc ReleaseCollection(CollectionName) returns (Response) {}
+
+    rpc Insert(ModifyDataset) returns (Response) {}
+    rpc Update(ModifyDataset) returns (Response) {}
+    rpc Delete(DeleteDataset) returns (Response) {}
+
+    rpc VectorSearch(SearchReq) returns (SearchResponse) {}
+    rpc FilterSearch(SearchReq) returns (SearchResponse) {}
+    rpc HybridSearch(SearchReq) returns (SearchResponse) {}
+}
+
+message Collection {
+    string collection_name=1;
+    Distance distance=2;
+    Quantization quantization=3;
+    uint32 dim=4;
+}
+
+
+enum Distance {
+    Cosine=0;
+    Euclidean=1;
+}
+
+enum Quantization {
+    None=0;
+    F16=1;
+}
+
+message CollectionResponse {
+    Collection collection=1;
+    bool status=2;
+    Error error=3;
+}
+
+message CollectionDetail {
+    Collection collection=1;
+    uint32 collection_size=2;
+    uint64 collection_memory=3;
+    bool status=4;
+    Error error=5;
+}
+
+message DeleteCollectionResponse {
+    bool status=1;
+    Error error=2;
+}
+
+message ModifyDataset {
+    string id=1;
+    string collection_name=2;
+    repeated float vector=3;
+    google.protobuf.Struct metadata=4;
+}
+
+message CollectionName {
+    string collection_name=1;
+    bool with_size=2;
+}
+
+message DeleteDataset {
+    string id=1;
+    string collection_name=2;
+}
+
+message Response {
+    bool status=1;
+    Error error=2;
+}
+
+message Error {
+    string error_message=1;
+    ErrorCode error_code=2;
+}
+
+
+enum ErrorCode {
+    UNDEFINED=0; // check error message
+    RPC_ERROR=1;
+    COMMUNICATION_SHARD_RPC_ERROR=2;
+    COMMUNICATION_SHARD_ERROR=3;
+    MARSHAL_ERROR=4;
+    INTERNAL_FUNC_ERROR=5;
+}
+
+message SearchReq {
+    string collection_name=1;
+    repeated float vector=2;
+    uint64 topK=3;
+    map<string,string> filter=4;
+    bool with_latency=5;
+}
+
+message SearchResponse {
+    bool status = 1;
+    Error error=2;
+    repeated Candidates candidates=3;
+    string latency=4;
+}
+
+message Candidates {
+    string id = 1;
+    google.protobuf.Struct metadata = 2;
+    float score=3;
+}

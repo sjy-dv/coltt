@@ -1,3 +1,20 @@
+// Licensed to sjy-dv under one or more contributor
+// license agreements. See the NOTICE file distributed with
+// this work for additional information regarding copyright
+// ownership. sjy-dv licenses this file to you under
+// the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
 package edge
 
 import (
@@ -21,16 +38,19 @@ type EdgeVectors struct {
 	lock  sync.RWMutex
 }
 
-func NewEdgeVectorCollection() *EdgeVectors {
-	return &EdgeVectors{
+var normalEdgeV *EdgeVectors
+
+func NewEdgeVectorCollection() {
+	normalEdgeV = &EdgeVectors{
 		Edges: make(map[string]*EdgeVector),
 	}
 }
 
 type CollectionConfig struct {
-	dimension      int
-	collectionName string
-	distance       distance.Space
+	dimension      int    `json:"dimension"`
+	collectionName string `json:"collection_name"`
+	distance       string `json:"distance"`
+	quantization   string `json:"quantization"`
 }
 
 func (xx *EdgeVectors) CreateCollection(config CollectionConfig) error {
@@ -43,7 +63,14 @@ func (xx *EdgeVectors) CreateCollection(config CollectionConfig) error {
 	xx.lock.Lock()
 	xx.Edges[config.collectionName].collectionName = config.collectionName
 	xx.Edges[config.collectionName].dimension = config.dimension
-	xx.Edges[config.collectionName].distance = config.distance
+	xx.Edges[config.collectionName].distance = func() distance.Space {
+		if config.distance == "cosine" {
+			return distance.NewCosine()
+		} else if config.distance == "euclidean" {
+			return distance.NewEuclidean()
+		}
+		return distance.NewCosine()
+	}()
 	xx.Edges[config.collectionName].vectors = make(map[uint64]gomath.Vector)
 	xx.lock.Unlock()
 	return nil
