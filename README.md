@@ -6,18 +6,39 @@
 
 NNV (No-Named.V) is a database designed to be implemented from scratch to production. NNV can be deployed in edge environments and used in small-scale production settings. Through the innovative architectural approach described below, it is envisioned and developed to be used reliably in large-scale production environments as well.
 
-### Release Update (2024.11.10) [UPDATE HISTORY](./UPDATE-LOG.md)
+### Release Update (2024.11.11) [UPDATE HISTORY](./UPDATE-LOG.md)
 
-- We intended to incorporate usearch for its enhanced HNSW capabilities. However, the documentation is still immature, there are critical aspects that prevent direct error handling, and there is a lack of C++ domain expertise to enable the developer to modify and update it directly. Therefore, we need to develop a more mature HNSW than the existing implementation.
+#### NNV-Edge
+
+[Please check the detailed results and changes.](./examples/2024_11_11_release.md)
+
+- The Edge version has been released first (currently still in the RC stage).
+- For detailed information on the Edge version, please refer to the **[Edge section]**.
+- The Edge version is written entirely in pure Go.
+- It includes F16 quantization.
+- Due to the nature of the Edge version, several conveniences have been removed, requiring more adjustments from the user.
+
+#### NNV
+
+- With the removal of Usearch, the CGO dependency is also eliminated.
+- We are reviewing speed and accuracy while revising the existing HNSW.
+- Development may slow significantly until the project is transitioned to using Edge.
 
 ### Update Preview
 
 **⚠️I don't know when it will be updated. (I just want to develop 😭)**
 
+#### NNV-Edge
+
+- I need to add detailed logging.
+- I’m planning to work on a project using Edge and will improve any areas that need adjustments based on progress and feedback.
+
+#### NNV
+
 - Quantization functionality will be added.
 - HNSW will be faster.
 - More vector distance algorithms will be added.
-- CGO dependency will be introduced.
+- CGO dependency will be introduced. => The introduction of Usearch has failed, and as a result, the CGO dependency is planned to be removed.
 - Fast in-memory storage and reliable disk storage will be added.
 - A process to periodically save data must be added after checking the system's idle state.
 - An automatic recovery feature must be added.
@@ -56,6 +77,7 @@ make simple-docker
   - [JetStream(Nats)Multi-Leader](#jetstreamnats-multi-leader)
   - [InternalDataFlow](#i-will-explain-the-internal-data-storage-flow)
   - [cache-data-is-safe?](#disk-files-can-sometimes-become-corrupted-and-fail-to-open-leading-to-significant-issues-is-cached-data-safe)
+  - [Edge](#what-is-nnv-edge)
 
 - [BugFix](#-bugfix)
 
@@ -143,3 +165,15 @@ This approach ensures stable data management.
 ### Does disk storage also have structural flexibility?
 
 Disk storage will not initially have structural flexibility. However, in the long term, we aim to either introduce flexibility for the disk structure or, unfortunately, impose some restrictions on the memory side. While no final decision has been made, we believe memory storage should maintain flexibility, so we’re likely to design disk storage with some degree of structural flexibility in the future. SQLite will be supported as the disk storage option.
+
+#### What is NNV-Edge?
+
+Edge refers to the ability to transmit and receive data on nearby devices without communication with a central server. However, in practice, "Edge" in software may sometimes differ from this concept, as it is often deployed in lighter, resource-constrained environments compared to a central server.
+
+NNV-Edge is designed to operate quickly on smaller-scale vector datasets (up to 1 million vectors) in a lightweight manner, transferring automated tasks from the original NNV back to the user for greater control.
+
+Advanced algorithms like HNSW, Faiss, and Annoy are excellent, but don’t you think they may be a bit heavy for smaller-scale specs? And setting aside algorithms, while projects like Milvus, Weaviate, and Qdrant are built by brilliant minds, aren’t they somewhat too resource-intensive to run alongside other software on small, portable devices?
+![arch9](./examples/assets/arch9.png)
+That’s where NNV-Edge comes in.
+
+What if you distribute multiple edges? By using NNV-Edge with the previously mentioned load balancer, you can create an advanced setup that shards data across multiple edges and aggregates it seamlessly!
