@@ -1,7 +1,5 @@
 # NNV (No-Named.V)
 
-# ⚠️Currently, the project has become more unstable due to migrating to FastHnsw.
-
 ![logo](./examples/assets/logo.png)
 
 NNV (No-Named.V) is a database designed to be implemented from scratch to production. NNV can be deployed in edge environments and used in small-scale production settings. Through the innovative architectural approach described below, it is envisioned and developed to be used reliably in large-scale production environments as well.
@@ -166,7 +164,7 @@ This approach ensures stable data management.
 
 Disk storage will not initially have structural flexibility. However, in the long term, we aim to either introduce flexibility for the disk structure or, unfortunately, impose some restrictions on the memory side. While no final decision has been made, we believe memory storage should maintain flexibility, so we’re likely to design disk storage with some degree of structural flexibility in the future. SQLite will be supported as the disk storage option.
 
-#### What is NNV-Edge?
+## What is NNV-Edge?
 
 Edge refers to the ability to transmit and receive data on nearby devices without communication with a central server. However, in practice, "Edge" in software may sometimes differ from this concept, as it is often deployed in lighter, resource-constrained environments compared to a central server.
 
