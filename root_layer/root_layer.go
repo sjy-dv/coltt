@@ -20,15 +20,15 @@ package rootlayer
 import (
 	"context"
 
-	"github.com/sjy-dv/nnv/root_layer/standalone"
+	edgelite "github.com/sjy-dv/nnv/root_layer/edge-lite"
 )
 
 // after code refactoring
 
 func NewRootLayer() error {
-	return standalone.NewRootLayer()
+	return edgelite.NewEdgeLite()
 }
 
 func StableRelease(ctx context.Context) error {
-	return standalone.StableRelease(ctx)
+	return edgelite.StableRelease(ctx)
 }

@@ -29,12 +29,20 @@ var (
 	ErrCollectionNotFound = "collection: %s not found"
 	panicr                = "panic %v"
 	ErrCollectionExists   = "collection: %s is already exists"
+	ErrCollectionNotLoad  = "collection: %s is not loaded in memory"
 	ErrQuantizedFailed    = "quantized failed vector : "
 	edgeData              = "./data_dir/%s-edge.cdat"
 	edgeIndex             = "./data_dir/%s-edge.bin"
 	edgeVector            = "./data_dir/%s-edge.cdat"
 	edgeConfig            = "./data_dir/%s-edge_conf.json"
 	collectionEdgeJson    = "./data_dir/collection-edge.json"
+)
+
+const (
+	COSINE            = "cosine"
+	EUCLIDEAN         = "euclidean"
+	NONE_QAUNTIZATION = "none"
+	F16_QUANTIZATION  = "f16"
 )
 
 type ID uint64

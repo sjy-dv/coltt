@@ -64,9 +64,9 @@ func (xx *EdgeVectors) CreateCollection(config CollectionConfig) error {
 	xx.Edges[config.collectionName].collectionName = config.collectionName
 	xx.Edges[config.collectionName].dimension = config.dimension
 	xx.Edges[config.collectionName].distance = func() distance.Space {
-		if config.distance == "cosine" {
+		if config.distance == COSINE {
 			return distance.NewCosine()
-		} else if config.distance == "euclidean" {
+		} else if config.distance == EUCLIDEAN {
 			return distance.NewEuclidean()
 		}
 		return distance.NewCosine()

@@ -15,6 +15,7 @@ service EdgeRpc {
 
     rpc LoadCollection(CollectionName) returns (CollectionDetail) {}
     rpc ReleaseCollection(CollectionName) returns (Response) {}
+    rpc Flush(CollectionName) returns (Response) {}
 
     rpc Insert(ModifyDataset) returns (Response) {}
     rpc Update(ModifyDataset) returns (Response) {}

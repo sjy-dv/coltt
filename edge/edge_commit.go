@@ -33,6 +33,8 @@ import (
 func init() {
 	gob.Register(gomath.Vector{})
 	gob.Register(map[uint64]gomath.Vector{})
+	gob.Register(float16Vec{})
+	gob.Register(map[uint64]float16Vec{})
 }
 
 func (xx *Edge) CommitData(collectionName string) error {
@@ -126,6 +128,44 @@ func (xx *Edge) CommitNormalVector(collectionName string) error {
 	normalEdgeV.lock.RLock()
 	normalEdgeV.Edges[collectionName].lock.RLock()
 	flushData := normalEdgeV.Edges[collectionName].vectors
+	normalEdgeV.lock.RUnlock()
+	normalEdgeV.Edges[collectionName].lock.RUnlock()
+
+	f, err := os.OpenFile(fmt.Sprintf(edgeVector, collectionName), os.O_TRUNC|
+		os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	iow, _ = flate.NewWriter(f, flate.BestCompression)
+	enc := gob.NewEncoder(iow)
+	if err := enc.Encode(flushData); err != nil {
+		return err
+	}
+	if flusher, ok := iow.(interface{ Flush() error }); ok {
+		if err := flusher.Flush(); err != nil {
+			return err
+		}
+	}
+	if err := iow.(io.Closer).Close(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (xx *Edge) CommitQuantizedVector(collectionName string) error {
+	_, err := os.Stat(fmt.Sprintf(edgeVector, collectionName))
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+	} else {
+		os.Remove(fmt.Sprintf(edgeVector, collectionName))
+
+	}
+	var iow io.Writer
+	normalEdgeV.lock.RLock()
+	normalEdgeV.Edges[collectionName].lock.RLock()
+	flushData := quantizedEdgeV.Edges[collectionName].vectors
 	normalEdgeV.lock.RUnlock()
 	normalEdgeV.Edges[collectionName].lock.RUnlock()
 
@@ -319,9 +359,9 @@ EmptyData:
 		vectors:        make(map[uint64]gomath.Vector),
 		collectionName: collectionName,
 		distance: func() distance.Space {
-			if cfg.distance == "cosine" {
+			if cfg.distance == COSINE {
 				return distance.NewCosine()
-			} else if cfg.distance == "euclidean" {
+			} else if cfg.distance == EUCLIDEAN {
 				return distance.NewEuclidean()
 			}
 			return distance.NewCosine()
@@ -358,9 +398,9 @@ ExistsData:
 		vectors:        cdat,
 		collectionName: collectionName,
 		distance: func() distance.Space {
-			if cfg.distance == "cosine" {
+			if cfg.distance == COSINE {
 				return distance.NewCosine()
-			} else if cfg.distance == "euclidean" {
+			} else if cfg.distance == EUCLIDEAN {
 				return distance.NewEuclidean()
 			}
 			return distance.NewCosine()
@@ -368,4 +408,86 @@ ExistsData:
 	}
 	normalEdgeV.lock.Unlock()
 	return nil
+}
+
+func (xx *Edge) LoadCommitQuantizedVector(collectionName string, cfg CollectionConfig) error {
+	_, err := os.Stat(fmt.Sprintf(edgeVector, collectionName))
+	if err != nil {
+		if os.IsNotExist(err) {
+			// for _, col := range collections {
+			// 	if col == collectionName {
+			// 		goto EmptyData
+			// 	}
+			// }
+			if stateManager.checker.collections[collectionName] {
+				goto EmptyData
+			}
+			return fmt.Errorf("collection[vector]: %s is not defined [Not Found Collection Error]", collectionName)
+		}
+		return err
+	}
+	goto ExistsData
+EmptyData:
+	quantizedEdgeV.lock.Lock()
+	quantizedEdgeV.Edges[collectionName] = &EdgeVectorQ{
+		dimension:      cfg.dimension,
+		vectors:        make(map[uint64]float16Vec),
+		collectionName: collectionName,
+		distance: func() distance.Space {
+			if cfg.distance == COSINE {
+				return distance.NewCosine()
+			} else if cfg.distance == EUCLIDEAN {
+				return distance.NewEuclidean()
+			}
+			return distance.NewCosine()
+		}(),
+	}
+	quantizedEdgeV.lock.Unlock()
+	return nil
+ExistsData:
+	commitCdat, err := os.OpenFile(fmt.Sprintf(edgeVector, collectionName), os.O_RDONLY, 0777)
+	if err != nil {
+		// cdat is damaged
+		// after add recovery logic
+		return err
+	}
+	cdat := make(map[uint64]float16Vec)
+
+	var readIo io.Reader
+
+	readIo = flate.NewReader(commitCdat)
+
+	dataDec := gob.NewDecoder(readIo)
+	err = dataDec.Decode(&cdat)
+	if err != nil {
+		// also cdat is damaged guess
+		return err
+	}
+	err = readIo.(io.Closer).Close()
+	if err != nil {
+		return err
+	}
+	quantizedEdgeV.lock.Lock()
+	quantizedEdgeV.Edges[collectionName] = &EdgeVectorQ{
+		dimension:      cfg.dimension,
+		vectors:        cdat,
+		collectionName: collectionName,
+		distance: func() distance.Space {
+			if cfg.distance == COSINE {
+				return distance.NewCosine()
+			} else if cfg.distance == EUCLIDEAN {
+				return distance.NewEuclidean()
+			}
+			return distance.NewCosine()
+		}(),
+	}
+	quantizedEdgeV.lock.Unlock()
+	return nil
+}
+
+func allremover(collectionName string) {
+	os.Remove(fmt.Sprintf(edgeData, collectionName))
+	os.Remove(fmt.Sprintf(edgeIndex, collectionName))
+	os.Remove(fmt.Sprintf(edgeVector, collectionName))
+	os.Remove(fmt.Sprintf(edgeConfig, collectionName))
 }

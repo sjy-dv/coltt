@@ -58,9 +58,9 @@ func (qx *QuantizedEdgeVectors) CreateCollection(config CollectionConfig) error 
 	qx.Edges[config.collectionName].collectionName = config.collectionName
 	qx.Edges[config.collectionName].dimension = config.dimension
 	qx.Edges[config.collectionName].distance = func() distance.Space {
-		if config.distance == "cosine" {
+		if config.distance == COSINE {
 			return distance.NewCosine()
-		} else if config.distance == "euclidean" {
+		} else if config.distance == EUCLIDEAN {
 			return distance.NewEuclidean()
 		}
 		return distance.NewCosine()
