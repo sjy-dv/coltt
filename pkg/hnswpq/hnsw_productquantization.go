@@ -17,13 +17,13 @@ type HnswPQs struct {
 	gLock       sync.RWMutex
 }
 
-func (xx *HnswPQs) NewProductQuantizationHnsw() *HnswPQs {
+func NewProductQuantizationHnsw() *HnswPQs {
 	return &HnswPQs{
 		Collections: make(map[string]*Hnsw),
 	}
 }
 
-func (xx *HnswPQs) CreateCollection(genesisId uint64, collectionName string, config hnsw.HnswConfig, params ProductQuantizerParameters) error {
+func (xx *HnswPQs) CreateCollection(collectionName string, config hnsw.HnswConfig, params ProductQuantizerParameters) error {
 	//[exists collection] already check in highmem <-
 
 	pq, err := newProductQuantizer(config.DistanceType, params, int(config.Dim))
@@ -50,17 +50,22 @@ func (xx *HnswPQs) CreateCollection(genesisId uint64, collectionName string, con
 		PQ:             pq,
 	}
 	xx.gLock.Unlock()
+
+	return nil
+}
+
+func (xx *HnswPQs) Genesis(collectionName string, config hnsw.HnswConfig) {
+	dummyVector := make(gomath.Vector, config.Dim)
 	genesisNode := Node{
 		Id:        0,
 		Layer:     0,
-		Vectors:   make(gomath.Vector, config.Dim),
+		Vectors:   dummyVector,
 		LinkNodes: make([][]uint64, config.Mmax0+1),
+		Centroids: xx.Collections[collectionName].PQ.encode(dummyVector),
 	}
 	xx.Collections[collectionName].NodeList.lock.Lock()
 	xx.Collections[collectionName].NodeList.Nodes[0] = genesisNode
 	xx.Collections[collectionName].NodeList.lock.Unlock()
-
-	return nil
 }
 
 func (xx *HnswPQs) DropCollection(collectionName string) error {
@@ -76,7 +81,6 @@ func (xx *HnswPQs) DropCollection(collectionName string) error {
 func (xx *HnswPQs) Insert(collectionName string, commitID uint64, vec gomath.Vector) error {
 
 	centroidIds := xx.Collections[collectionName].PQ.encode(vec)
-
 	node := Node{
 		Vectors:   vec,
 		Layer:     int(math.Floor(-math.Log(rand.Float64()) * xx.Collections[collectionName].Ml)),
@@ -135,6 +139,7 @@ func (xx *HnswPQs) Insert(collectionName string, commitID uint64, vec gomath.Vec
 		case true:
 			xx.Collections[collectionName].SelectNeighboursHeuristic(heapCandidates, int(xx.Collections[collectionName].M), false)
 		}
+		node.LinkNodes[level] = make([]uint64, heapCandidates.Len())
 		for i := heapCandidates.Len() - 1; i >= 0; i-- {
 			candidate := heap.Pop(heapCandidates).(*Item)
 			node.LinkNodes[level][i] = candidate.NodeID

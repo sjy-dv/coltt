@@ -5,3 +5,5 @@
 /usearch
 *.dll
 # *.h
+*.csv
+/examples/dataset.json

@@ -37,6 +37,10 @@ func (xx *Hnsw) searchLayer(vec gomath.Vector, ep *Item, topCandidates *Priority
 	heap.Init(candidates)
 	heap.Push(candidates, ep)
 
+	topCandidates.Order = true
+	heap.Init(topCandidates)
+	heap.Push(topCandidates, ep)
+
 	for candidates.Len() > 0 {
 
 		lowerBound := topCandidates.Top().(*Item).Distance

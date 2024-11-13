@@ -2,7 +2,9 @@ package hnswpq
 
 import (
 	"errors"
+	"fmt"
 	"math"
+	"sync"
 
 	"github.com/sjy-dv/nnv/edge"
 	"github.com/sjy-dv/nnv/pkg/distancepq"
@@ -22,6 +24,9 @@ type productQuantizer struct {
 	caches        *ProductQuantizerCache
 	centroidDists []float32
 	flatCentroids []float32
+
+	//
+	isFit bool
 }
 
 func newProductQuantizer(distFnName string, params ProductQuantizerParameters, vectorLen int) (
@@ -95,6 +100,9 @@ func newProductQuantizer(distFnName string, params ProductQuantizerParameters, v
 		distFnName:        distFnName,
 		originalVectorLen: vectorLen,
 		subVectorLen:      vectorLen / params.NumSubVectors,
+		centroidDists:     make([]float32, 0),
+		flatCentroids:     make([]float32, 0),
+		caches:            newCachePQ(),
 	}
 	// if alraedy centroid info => load
 
@@ -226,4 +234,67 @@ func (pq *productQuantizer) DistanceFromCentroidIDs(queryVec []float32, centroid
 		dist += pq.distFn(subQueryVec, centroidVec)
 	}
 	return dist
+}
+
+func (pq *productQuantizer) Fit() error {
+
+	if len(pq.flatCentroids) != 0 {
+		return nil
+	}
+	itemCount := pq.caches.Count()
+	if itemCount < pq.params.TriggerThreshold {
+		return nil
+	}
+
+	allVectors := make([][]float32, 0, itemCount)
+	allPoints := make([]*productQuantizedPoint, 0, itemCount)
+	err := pq.caches.ForEach(func(id uint64, point *productQuantizedPoint) error {
+		allVectors = append(allVectors, point.Vector)
+		allPoints = append(allPoints, point)
+		point.CentroidIds = make([]uint8, pq.params.NumSubVectors)
+		point.isDirty = true
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("collect vectors in cache memory fails : %v", err)
+	}
+
+	pq.flatCentroids = make([]float32, pq.params.NumCentroids*pq.params.NumSubVectors*pq.subVectorLen)
+	pq.centroidDists = make([]float32, pq.params.NumCentroids*pq.params.NumCentroids*pq.params.NumSubVectors)
+
+	var wg sync.WaitGroup
+	for i := 0; i < pq.params.NumSubVectors; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+
+			kmeans := KMeans{
+				K:         pq.params.NumCentroids,
+				MaxIter:   100,
+				Offset:    i * pq.subVectorLen,
+				VectorLen: pq.subVectorLen,
+			}
+			kmeans.Fit(allVectors)
+
+			for j := 0; j < len(allPoints); j++ {
+				allPoints[j].CentroidIds[i] = kmeans.Labels[j]
+			}
+
+			for j := 0; j < pq.params.NumCentroids; j++ {
+				start, end := pq.flatCentroidSlice(i, j)
+				copy(pq.flatCentroids[start:end], kmeans.Centroids[j])
+			}
+
+			for j := 0; j < pq.params.NumCentroids; j++ {
+				for k := 0; k < pq.params.NumCentroids; k++ {
+					idx := pq.centroidDistIdx(i, j, k)
+					pq.centroidDists[idx] = pq.distFn(kmeans.Centroids[j], kmeans.Centroids[k])
+				}
+			}
+		}(i)
+	}
+	wg.Wait()
+	pq.isFit = true
+	return nil
 }

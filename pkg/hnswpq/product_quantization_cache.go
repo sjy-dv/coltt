@@ -17,6 +17,12 @@ type itemCacheElem struct {
 	IsDirty bool
 }
 
+func newCachePQ() *ProductQuantizerCache {
+	return &ProductQuantizerCache{
+		caches: make(map[uint64]*itemCacheElem),
+	}
+}
+
 func (xx *ProductQuantizerCache) Get(id uint64) (*productQuantizedPoint, error) {
 	xx.cLock.RLock()
 	defer xx.cLock.RUnlock()
@@ -42,9 +48,27 @@ func (xx *ProductQuantizerCache) Delete(ids ...uint64) error {
 	return nil
 }
 
+func (xx *ProductQuantizerCache) Count() int {
+	xx.cLock.RLock()
+	defer xx.cLock.RUnlock()
+	return len(xx.caches)
+}
+
 func (xx *ProductQuantizerCache) Dirty(id uint64) {
 	xx.cLock.Lock()
 	xx.caches[id].IsDirty = true
 	defer xx.cLock.Unlock()
 	return
+}
+func (xx *ProductQuantizerCache) ForEach(fn func(id uint64, item *productQuantizedPoint) error) error {
+
+	xx.cLock.RLock()
+	defer xx.cLock.RUnlock()
+
+	for id, item := range xx.caches {
+		if err := fn(id, item.value); err != nil {
+			return err
+		}
+	}
+	return nil
 }
