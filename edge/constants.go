@@ -36,6 +36,7 @@ var (
 	edgeVector            = "./data_dir/%s-vec-edge.cdat"
 	edgeConfig            = "./data_dir/%s-edge_conf.json"
 	collectionEdgeJson    = "./data_dir/collection-edge.json"
+	TargetIdNotFound      = "NodeID: %d is not found"
 )
 
 const (
