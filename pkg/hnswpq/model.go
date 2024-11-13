@@ -39,6 +39,7 @@ type Hnsw struct {
 	EmptyNodes     []uint64
 	hlock          sync.RWMutex
 	Wg             sync.WaitGroup
+	PQ             *productQuantizer
 }
 
 type ProductQuantizerParameters struct {

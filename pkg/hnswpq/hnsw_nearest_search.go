@@ -37,10 +37,6 @@ func (xx *Hnsw) searchLayer(vec gomath.Vector, ep *Item, topCandidates *Priority
 	heap.Init(candidates)
 	heap.Push(candidates, ep)
 
-	topCandidates.Order = true
-	heap.Init(topCandidates)
-	heap.Push(topCandidates, ep)
-
 	for candidates.Len() > 0 {
 
 		lowerBound := topCandidates.Top().(*Item).Distance
@@ -53,7 +49,7 @@ func (xx *Hnsw) searchLayer(vec gomath.Vector, ep *Item, topCandidates *Priority
 			if !visited.Test(uint(nodeId)) {
 				visited.Set(uint(nodeId))
 				node := xx.NodeList.Nodes[nodeId]
-				nodeDist := xx.DistFn(vec, node.Vectors)
+				nodeDist := xx.PQ.DistanceFromCentroidIDs(vec, node.Centroids)
 				item := &Item{
 					Distance: nodeDist,
 					NodeID:   node.Id,

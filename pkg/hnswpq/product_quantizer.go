@@ -101,6 +101,18 @@ func newProductQuantizer(distFnName string, params ProductQuantizerParameters, v
 	return pq, nil
 }
 
+func (pq *productQuantizer) NumSubVectors() int {
+	return pq.params.NumSubVectors
+}
+
+func (pq *productQuantizer) NumCentroids() int {
+	return pq.params.NumCentroids
+}
+
+func (pq *productQuantizer) SubVectorLen() int {
+	return pq.subVectorLen
+}
+
 func (pq productQuantizer) centroidDistIdx(subvector, centroidX, centroidY int) int {
 	return subvector*pq.params.NumCentroids*pq.params.NumCentroids + centroidX*pq.params.NumCentroids + centroidY
 }
@@ -183,4 +195,35 @@ func (pq *productQuantizer) DistanceFromFloat(x []float32) PointIdDistFn {
 		}
 		return dist
 	}
+}
+
+func (pq *productQuantizer) DistanceFromPoint(x *productQuantizedPoint) PointIdDistFn {
+	if len(pq.flatCentroids) == 0 {
+		return func(y *productQuantizedPoint) float32 {
+			return pq.distFn(x.Vector, y.Vector)
+		}
+	}
+
+	return func(y *productQuantizedPoint) float32 {
+		var dist float32
+		for i := 0; i < pq.params.NumSubVectors; i++ {
+			dist += pq.centroidDists[pq.centroidDistIdx(i, int(x.CentroidIds[i]), int(y.CentroidIds[i]))]
+		}
+		return dist
+	}
+}
+
+func (pq *productQuantizer) DistanceFromCentroidIDs(queryVec []float32, centroidIDs []uint8) float32 {
+	var dist float32
+	for i := 0; i < pq.NumSubVectors(); i++ {
+		centroidID := int(centroidIDs[i])
+		if centroidID >= pq.NumCentroids() {
+			continue
+		}
+		start, end := pq.flatCentroidSlice(i, centroidID)
+		centroidVec := pq.flatCentroids[start:end]
+		subQueryVec := queryVec[i*pq.subVectorLen : (i+1)*pq.subVectorLen]
+		dist += pq.distFn(subQueryVec, centroidVec)
+	}
+	return dist
 }
