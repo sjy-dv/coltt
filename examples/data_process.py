@@ -6,17 +6,18 @@ import json
 model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
 
 # Load the CSV file
-csv_file_path = 'dataset.csv'
+# csv_file_path = 'dataset.csv'
+csv_file_path = 'reviews.csv'
 df = pd.read_csv(csv_file_path)
 
 # Process the data and generate embeddings
 data = []
-for review in df['review']:
+for review in df['text']:
     embedding = model.encode(review).tolist()  # Convert to list to make JSON serializable
     data.append({'review': review, 'embedding': embedding})
 
 # Save to JSON file
-json_file_path = 'dataset.json'
+json_file_path = 'short_text.json'
 with open(json_file_path, 'w', encoding='utf-8') as f:
     json.dump(data, f, ensure_ascii=False, indent=4)
 
