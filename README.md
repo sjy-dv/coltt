@@ -8,7 +8,7 @@ NNV (No-Named.V) is a database designed to be implemented from scratch to produc
 
 #### NNV-Edge
 
-[Please check the detailed results and changes.](./examples/2024_11_11_release.md)
+[Please check the detailed results and changes.](./examples/release/2024_11_11_release.md)
 
 - The Edge version has been released first (currently still in the RC stage).
 - For detailed information on the Edge version, please refer to the **[Edge section]**.

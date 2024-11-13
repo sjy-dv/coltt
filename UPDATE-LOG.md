@@ -2,6 +2,8 @@
 
 #### NNV-Edge
 
+[Please check the detailed results and changes.](./examples/release/2024_11_11_release.md)
+
 - The Edge version has been released first (currently still in the RC stage).
 - For detailed information on the Edge version, please refer to the **[Edge section]**.
 - The Edge version is written entirely in pure Go.
@@ -20,7 +22,7 @@
 
 ### Release Update (2024.11.02)
 
-[Please also review the test results.](./examples/2024_11_02_release.md)
+[Please also review the test results.](./examples/release/2024_11_02_release.md)
 
 - Automatic indexing is supported.
   - Limitations
