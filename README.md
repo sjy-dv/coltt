@@ -33,7 +33,7 @@ See the [detailed comparison with ChromaDB for search results](./examples/releas
 
 ## 🚀 Update Preview
 
-⚠️ _Expected release date is TBD. Development is ongoing, and updates will be added as we progress._ 😭
+⚠️ _Expected release date is TBD. Development is ongoing, and updates will be added as we progress.(It's slow because I work in my spare time outside of work.)_ 😭
 
 ---
 
