@@ -10,8 +10,9 @@ import (
 	"time"
 
 	"github.com/sjy-dv/nnv/edge"
-	"github.com/sjy-dv/nnv/pkg/hnsw"
 	"github.com/sjy-dv/nnv/pkg/hnswpq"
+	"github.com/sjy-dv/nnv/pkg/models"
+	"github.com/sjy-dv/nnv/pkg/queue"
 )
 
 type JsonReview struct {
@@ -52,13 +53,13 @@ func main() {
 	collection := "review_collection"
 
 	vectorLen := 384
-	pqParams := hnswpq.ProductQuantizerParameters{
+	pqParams := models.ProductQuantizerParameters{
 		NumSubVectors:    16,
 		NumCentroids:     256,
 		TriggerThreshold: 100,
 	}
 
-	cfg := hnsw.HnswConfig{
+	cfg := models.HnswConfig{
 		Efconstruction: 200,
 		M:              16,
 		Mmax:           32,
@@ -108,7 +109,7 @@ func main() {
 	saveJson := make([]ResultCompare, 0)
 	for _, data := range prepareQ {
 		start := time.Now()
-		topCandidates := &hnswpq.PriorityQueue{Order: false, Items: []*hnswpq.Item{}}
+		topCandidates := &queue.PriorityQueue{Order: false, Items: []*queue.Item{}}
 		heap.Init(topCandidates)
 		err := hnswPQ.Search(collection, data.Embedding, topCandidates, 5, 100)
 		if err != nil {
@@ -144,7 +145,7 @@ func main() {
 	saveJson = make([]ResultCompare, 0)
 	for _, data := range prepareQ {
 		start := time.Now()
-		topCandidates := &hnswpq.PriorityQueue{Order: false, Items: []*hnswpq.Item{}}
+		topCandidates := &queue.PriorityQueue{Order: false, Items: []*queue.Item{}}
 		heap.Init(topCandidates)
 		err := hnswPQ.Search(collection, data.Embedding, topCandidates, 5, 100)
 		if err != nil {
@@ -177,7 +178,7 @@ func main() {
 	saveJson = make([]ResultCompare, 0)
 	for _, data := range prepareQ {
 		start := time.Now()
-		topCandidates := &hnswpq.PriorityQueue{Order: false, Items: []*hnswpq.Item{}}
+		topCandidates := &queue.PriorityQueue{Order: false, Items: []*queue.Item{}}
 		heap.Init(topCandidates)
 		err := hnswPQ.Search(collection, data.Embedding, topCandidates, 5, 100)
 		if err != nil {

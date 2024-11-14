@@ -10,7 +10,6 @@ import (
 
 	"github.com/sjy-dv/nnv/pkg/distancepq"
 	"github.com/sjy-dv/nnv/pkg/gomath"
-	"github.com/sjy-dv/nnv/pkg/hnsw"
 	"github.com/sjy-dv/nnv/pkg/models"
 	"github.com/sjy-dv/nnv/pkg/queue"
 )
@@ -26,7 +25,7 @@ func NewProductQuantizationHnsw() *HnswPQs {
 	}
 }
 
-func (xx *HnswPQs) CreateCollection(collectionName string, config hnsw.HnswConfig, params models.ProductQuantizerParameters) error {
+func (xx *HnswPQs) CreateCollection(collectionName string, config models.HnswConfig, params models.ProductQuantizerParameters) error {
 	//[exists collection] already check in highmem <-
 
 	pq, err := newProductQuantizer(config.DistanceType, params, int(config.Dim))
@@ -57,7 +56,7 @@ func (xx *HnswPQs) CreateCollection(collectionName string, config hnsw.HnswConfi
 	return nil
 }
 
-func (xx *HnswPQs) Genesis(collectionName string, config hnsw.HnswConfig) {
+func (xx *HnswPQs) Genesis(collectionName string, config models.HnswConfig) {
 	dummyVector := make(gomath.Vector, config.Dim)
 	genesisNode := Node{
 		Id:        0,
