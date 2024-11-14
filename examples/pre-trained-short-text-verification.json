@@ -3,16 +3,20 @@
     "base_review": "Where is a place with a comfortable indoor environment?",
     "similar_review": [
       {
-        "review": "We ordered cafe de paris; it was delicious; and the price was 35tl."
-      },
-      { "review": "A delicious and clean place." },
-      {
-        "review": "A very well designed cafe; The library looks very stylish. The menu is as you can see in the photo."
+        "review": "The tastes; the approach of the stuff to you and the quality of service are very good; of course; especially if you can find a place on the weekend."
       },
       {
-        "review": "A very pleasant and quiet restaurant. Most importantly; the food is great. Everything I tasted was delicious."
+        "review": "The interior is very well designed. It has a historical texture. Employees were engaged. Frankly; the taste of iskender was not overly good; it was normal."
       },
-      { "review": "Delicious tastes; clean place." }
+      {
+        "review": "The trotter soup I drank here is among the top 3 soups I've had in my life. The food of the place is very delicious; the service is impeccable."
+      },
+      {
+        "review": "Nice intimate restaurant. Good service. Eye for detail. Clean. Really good food; well presented."
+      },
+      {
+        "review": "Iskender kebab is a nice; clean and well-served place in Bursa."
+      }
     ],
     "latency": "latency: 2 ms"
   },
@@ -20,40 +24,42 @@
     "base_review": "Where is a good restaurant to go to with family?",
     "similar_review": [
       {
-        "review": "Beautiful; cute; stylish and delicious food. It's a bit sad that it is used more like a restaurant than a book cafe; as it turns into a restaurant at a certain time of the evening; so they took us to a place in the back."
-      },
-      { "review": "The cafe was cheap enough; I ate with my family." },
-      {
-        "review": "It's a very small and elegant place; its decor attracted me as I passed by. This cafe specializes in souffles of various flavors and the service they have is excellent and the staff are welcoming and cheerful."
+        "review": "Too expensive; I can cook better. Also; ambiance of the restaurant is old."
       },
       {
-        "review": "The theme of the place is usually white. This can actually bother the human eye on sunny days; so I think the wrong color was chosen. Fish flavors were average."
+        "review": "The staff is extremely interested; the taste is already a very good place. It is recommended."
       },
       {
-        "review": "A very pleasant and quiet restaurant. Most importantly; the food is great. Everything I tasted was delicious."
+        "review": "It's a great place in terms of taste. The service is fast and the waiters are friendly. It's a bit expensive in terms of price; but you should definitely come and taste these flavors."
+      },
+      {
+        "review": "Great place.. Contrary to the comments; the employees were interested.. The hot dog was impressive.. The hamburger was not bad."
+      },
+      {
+        "review": "Wonderful place where you can go with your family and have fun; nice place with live music..."
       }
     ],
-    "latency": "latency: 0 ms"
+    "latency": "latency: 1 ms"
   },
   {
     "base_review": "A restaurant I strongly do not recommend.",
     "similar_review": [
       {
-        "review": "A very pleasant and quiet restaurant. Most importantly; the food is great. Everything I tasted was delicious."
+        "review": "Service was good; transportation was easy. Prices are above average. For those who don't like the taste of raw fish; I recommend roles instead of nigiri."
       },
       {
-        "review": "It is a business that has exactly price performance products. You are eating home-cooked meals in a quiet; spacious and decent place with the service of friendly ladies."
+        "review": "It's a great place in terms of taste. The service is fast and the waiters are friendly. It's a bit expensive in terms of price; but you should definitely come and taste these flavors."
       },
       {
-        "review": "Don't order anything at home; they're sending a stale dessert."
+        "review": "Treats are good; but I did not find the menu very extensive."
       },
       {
-        "review": "Without any taste how they are at the first rank!!!! We ate cafe Inn pizza. It was 70 tl."
+        "review": "It was one of the best burgers I've ever eaten. The only downside is that the portion is a little small. Apart from that; it is definitely a place to experience."
       },
       {
-        "review": "It is a business that has exactly price performance products. You are eating home-cooked meals in a quiet; spacious and decent place with the service of friendly ladies."
+        "review": "Burgers and fries were delicious. Burger meat came well cooked; I suggest you eat it medium cooked. The sauces are quite different and nice; you should definitely try it."
       }
     ],
-    "latency": "latency: 0 ms"
+    "latency": "latency: 1 ms"
   }
 ]

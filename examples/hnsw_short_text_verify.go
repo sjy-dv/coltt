@@ -141,13 +141,35 @@ func main() {
 	}
 	fmt.Println("clear fit pq")
 
+	fmt.Println("copy fit new migrate hnsw")
+	hnswpq.NewOffsetCounter(0)
+	fitPQ := hnswpq.NewProductQuantizationHnsw()
+	err = fitPQ.CreateCollection(collection, cfg, pqParams)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fitPQ.Collections[collection].PQ = hnswPQ.Collections[collection].PQ
+	fitPQ.Genesis(collection, cfg)
+
+	fmt.Println("new fit insert point")
+	for i, data := range jrs {
+		commitId := hnswpq.NextId()
+
+		err := fitPQ.Insert(collection, commitId, data.Embedding)
+		if err != nil {
+			log.Fatalf("insert error: %v", err)
+		}
+		if i%100 == 0 {
+			fmt.Printf("Inserted %d vectors...\n", i)
+		}
+	}
 	fmt.Println("after fit search")
 	saveJson = make([]ResultCompare, 0)
 	for _, data := range prepareQ {
 		start := time.Now()
 		topCandidates := &queue.PriorityQueue{Order: false, Items: []*queue.Item{}}
 		heap.Init(topCandidates)
-		err := hnswPQ.Search(collection, data.Embedding, topCandidates, 5, 100)
+		err := fitPQ.Search(collection, data.Embedding, topCandidates, 5, 100)
 		if err != nil {
 			log.Fatalf("pq search error: %v", err)
 		}
@@ -171,8 +193,8 @@ func main() {
 	w.Close()
 
 	fmt.Println("Just in case, initialize all normal vectors")
-	for i := range hnswPQ.Collections[collection].NodeList.Nodes {
-		hnswPQ.Collections[collection].NodeList.Nodes[i].Vectors = nil
+	for i := range fitPQ.Collections[collection].NodeList.Nodes {
+		fitPQ.Collections[collection].NodeList.Nodes[i].Vectors = nil
 	}
 	fmt.Println("We will conduct a final verification to see if it can be searched using pq.")
 	saveJson = make([]ResultCompare, 0)
@@ -180,7 +202,7 @@ func main() {
 		start := time.Now()
 		topCandidates := &queue.PriorityQueue{Order: false, Items: []*queue.Item{}}
 		heap.Init(topCandidates)
-		err := hnswPQ.Search(collection, data.Embedding, topCandidates, 5, 100)
+		err := fitPQ.Search(collection, data.Embedding, topCandidates, 5, 100)
 		if err != nil {
 			log.Fatalf("pq search error: %v", err)
 		}

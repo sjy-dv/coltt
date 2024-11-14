@@ -40,6 +40,7 @@ func (xx *Hnsw) searchLayer(vec gomath.Vector, ep *queue.Item, topCandidates *qu
 	topCandidates.Order = true
 	heap.Init(topCandidates)
 	heap.Push(topCandidates, ep)
+	visited.Set(uint(ep.NodeID))
 
 	for candidates.Len() > 0 {
 
@@ -49,6 +50,7 @@ func (xx *Hnsw) searchLayer(vec gomath.Vector, ep *queue.Item, topCandidates *qu
 		if candidate.Distance > lowerBound {
 			break
 		}
+
 		for _, nodeId := range xx.NodeList.Nodes[candidate.NodeID].LinkNodes[level] {
 			if !visited.Test(uint(nodeId)) {
 				visited.Set(uint(nodeId))
@@ -58,6 +60,7 @@ func (xx *Hnsw) searchLayer(vec gomath.Vector, ep *queue.Item, topCandidates *qu
 					Distance: nodeDist,
 					NodeID:   node.Id,
 				}
+
 				topDistance := topCandidates.Top().(*queue.Item).Distance
 
 				if topCandidates.Len() < ef {

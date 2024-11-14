@@ -7,3 +7,6 @@
 # *.h
 *.csv
 /examples/dataset.json
+
+#only use test-module
+main.go

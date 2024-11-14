@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"slices"
 	"sync"
 
 	"github.com/sjy-dv/nnv/pkg/distancepq"
@@ -92,11 +93,19 @@ func (xx *HnswPQs) Insert(collectionName string, commitID uint64, vec gomath.Vec
 	}
 
 	var nodeId uint64
-	nodeId = commitID
-	node.Id = nodeId
-	xx.Collections[collectionName].NodeList.Nodes = append(xx.Collections[collectionName].NodeList.Nodes, node)
-
+	xx.Collections[collectionName].NodeList.lock.Lock()
+	if commitID == 0 {
+		nodeId = xx.Collections[collectionName].EmptyNodes[len(xx.Collections)-1]
+		node.Id = nodeId
+		xx.Collections[collectionName].EmptyNodes = xx.Collections[collectionName].EmptyNodes[:len(xx.Collections[collectionName].EmptyNodes)-1]
+		xx.Collections[collectionName].NodeList.Nodes[nodeId] = node
+	} else {
+		nodeId = commitID
+		node.Id = nodeId
+		xx.Collections[collectionName].NodeList.Nodes = append(xx.Collections[collectionName].NodeList.Nodes, node)
+	}
 	xx.Collections[collectionName].NodeList.lock.Unlock()
+
 	_, err := xx.Collections[collectionName].PQ.Set(nodeId, vec)
 	if err != nil {
 		return fmt.Errorf(pointPQSetErr, err)
@@ -192,13 +201,26 @@ func (xx *HnswPQs) Search(collectionName string, vec []float32, topCandidates *q
 			xx.Collections[collectionName].SelectNeighboursHeuristic(heapCandidates, int(xx.Collections[collectionName].M), false)
 		}
 	}
-
-	for heapCandidates.Len() > K {
-		_ = heap.Pop(heapCandidates).(*queue.Item)
-	}
+	duplicator := make(map[uint64]bool)
 
 	for _, item := range heapCandidates.Items {
-		heap.Push(topCandidates, item)
+		if !duplicator[item.NodeID] {
+			heap.Push(topCandidates, item)
+			duplicator[item.NodeID] = true
+			continue
+		}
+
+	}
+	slices.SortFunc(heapCandidates.Items, func(i, j *queue.Item) int {
+		if i.Distance < j.Distance {
+			return -1
+		} else if i.Distance > j.Distance {
+			return 1
+		}
+		return 0
+	})
+	for topCandidates.Len() > K {
+		_ = heap.Pop(topCandidates).(*queue.Item)
 	}
 
 	return nil
