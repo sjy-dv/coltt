@@ -1,0 +1,44 @@
+[
+    {
+        "base_review": "Where is a place with a comfortable indoor environment?",
+        "similar_review": [
+            {
+                "review": "A large spacious place. If you want; you can relax inside and have something to drink."
+            },
+            {
+                "review": "The view is nice; the indoor seating area is quite large."
+            },
+            {
+                "review": "The indoor atmosphere was nice; but I can't say the same for the outdoor"
+            },
+            {
+                "review": "Stylish; decent and clean place. I advise."
+            },
+            {
+                "review": "Nice view, good staff, clean place and nice atmosphere."
+            }
+        ],
+        "latency": "1.00 ms"
+    },
+    {
+        "base_review": "Where is a good restaurant to go to with family?",
+        "similar_review": [
+            {
+                "review": "A decent place. You can eat as a family. You can eat many kinds of fish as grilled; fried or stewed."
+            },
+            {
+                "review": "Nice intimate restaurant. Good service. Eye for detail. Clean. Really good food; well presented."
+            },
+            {
+                "review": "Everyone is smilingİ the food is delicious. Great place; I recommend it."
+            },
+            {
+                "review": "The restaurant is well located and above all it is nicely decorated and clean."
+            },
+            {
+                "review": "Location is nice. We love it as a family. Pizza was delicious."
+            }
+        ],
+        "latency": "1.00 ms"
+    }
+]

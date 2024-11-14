@@ -1,3 +1,18 @@
+### Release Update (2024.11.14)
+
+#### NNV-Edge
+
+- Nothing
+
+#### NNV
+
+- The previously used HNSW has been restored.
+- HNSW Product Quantization has been added.
+- CGO dependencies have been removed, and it is now implemented purely in Go.
+- Some tests have been conducted.
+- Search speed for a dataset of 50,000 items: < 14ms
+- Search speed for datasets of 10,000 items or fewer: < 3ms
+
 ### Release Update (2024.11.11)
 
 #### NNV-Edge

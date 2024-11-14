@@ -3,96 +3,61 @@
     "base_review": "Where is a place with a comfortable indoor environment?",
     "similar_review": [
       {
-        "review": "A large spacious place. If you want; you can relax inside and have something to drink."
+        "review": "You get full like crazy in the range of 150-200 per person. It's beautiful inside. Easy to access."
       },
       {
-        "review": "You can find different tastes. It is open until late at night and serves with nice service."
+        "review": "Good place to eat. However; the staff work poorly: They can easily forget to bring some dishes or add seasonings; even though they previously admitted to the contrary."
       },
       {
-        "review": "Perfect location next to the sea. Music; light in the evening lounge atmosphere. In short; everything is beautiful."
+        "review": "A decent place. You can eat as a family. You can eat many kinds of fish as grilled; fried or stewed."
       },
       {
-        "review": "If you want to eat cake or dessert; the real taste is here. The place is very stylish in design. Each of the employees is very caring and helpful; but they have difficulty dealing with everyone because it is crowded."
-      },
-      { "review": "The view is nice; the indoor seating area is quite large." },
-      {
-        "review": "Covered doner kebab pita is also really delicious in lahmacun with cubed cheddar... The attention and care of the employees is extraordinary."
+        "review": "The place is not very big; but there are enough tables outside as well; but we sat inside. The souffles from the name of the place were very nice."
       },
       {
-        "review": "Very; very expensive extravagant prices. One lahmacun is 85 TL. They charge 25 TL for a glass of buttermilk. All the intertwined tables are almost adjacent."
-      },
-      { "review": "They even charge for treats!" },
-      {
-        "review": "If you want to eat delicious home-cooked meals at an affordable price; definitely stop by during your visit to Cappadocia. The employees are kind and concerned. The environment is nice."
-      },
-      {
-        "review": "It is a business that has exactly price performance products. You are eating home-cooked meals in a quiet; spacious and decent place with the service of friendly ladies."
-      },
-      {
-        "review": "It is a place that can be preferred for taste; but the appetizer variety is very weak. The toilets smelled."
-      },
-      {
-        "review": "Iskender kebab is a nice; clean and well-served place in Bursa."
-      },
-      {
-        "review": "The taste is unbelievably good and satisfying enough; it is also very affordable; but you have a hard time finding an incredibly crowded place."
-      },
-      {
-        "review": "Although it is not as much as an urfa; it is the only place that can eat liver under samsun conditions. Appetizers can be improved. There should definitely be green mint next to the liver; arugula does not suit the liver."
-      },
-      {
-        "review": "You can find different tastes. It is open until late at night and serves with nice service."
-      },
-      { "review": "Reasonable prices and amazing deserts." }
+        "review": "The interior design is simple and pleasant; with balconies and upper floors with sea views."
+      }
     ],
-    "latency": "latency: 2 ms"
+    "latency": "latency: 0 ms"
   },
   {
     "base_review": "Where is a good restaurant to go to with family?",
     "similar_review": [
       {
-        "review": "They have really saturated menus. The prices are very good; and as a place with a very nice interior and exterior decor with sea views; I would definitely recommend it at the same time."
+        "review": "Wonderful place where you can go with your family and have fun; nice place with live music..."
       },
       {
-        "review": "I wanted a four-cheese ravioli. It's just that the sauce is nice. Unfortunately; it failed. All of the portions have adapted to the economy; they have shrunk."
+        "review": "Wonderful place where you can go with your family and have fun; nice place with live music..."
       },
       {
-        "review": "Friendly waiters; nice service and delicious food. In addition; the price is also affordable."
+        "review": "Location is nice. We love it as a family. Pizza was delicious."
       },
       {
-        "review": "Burgers are super. I've eaten hamburgers in many places; but I've never come across anything like this. Fantastic meal with friendly service in a small but cozy place. I strongly recommend."
+        "review": "It's a very nice place; the hamburger is very nice. The staff is very good; there is a children's playground"
       },
       {
-        "review": "Not touristic, that's why super. The place is real; truly local; authentic. Atmosphere here is really special. Waiters are cool guys; not trying to be super polite. Love it!"
-      },
-      { "review": "I like thailand foods but not like here ones." },
+        "review": "I can't say anything negative about the place, the ambiance; the staff; the richness of the food; the appetizers; the taste and the presentation; it's just perfect.. But I'm giving 3 points because it's a very expensive place."
+      }
+    ],
+    "latency": "latency: 0 ms"
+  },
+  {
+    "base_review": "A restaurant I strongly do not recommend.",
+    "similar_review": [
       {
-        "review": "We really liked our orders. There were dishes on the menu that I have never tried in my life; nice variety."
-      },
-      {
-        "review": "It's delicious; fast and has friendly staff. Although the price seems a little expensive; it meets this with unlimited tea; dessert service and appetizers."
-      },
-      { "review": "The menu content is beautifully varied and satisfying." },
-      {
-        "review": "It gets very crowded because it's the weekend; we have to go a little early; you may not find a place to eat something"
+        "review": "The service is slow; I think there is a lack of staff and unhappiness; it has not to expensive and it was seedy experience."
       },
       {
-        "review": "We’ve had a great dinner at this restaurant. The food was delicious; well prepared and nicely seasoned. I did not know much about Thai cuisine; but I enjoyed the meal very much. Plus the atmosphere of the place is relaxing; staff nice and friendly and prices pretty moderate. Perfect spot to eat out with friends in the center of Istanbul. Would love to come back again!"
+        "review": "Flavor : It has nothing but dough taste. Labor : Not befitting a touristic place. Service : There was no wet wipes and napkins on the table, but there was no sympathetic family to say. This service and this taste were not available at this price."
       },
       {
-        "review": "Service is fast and friendly. Breakfast for 3 people is 140 TL; so prices are reasonable."
+        "review": "The fish served to me was almost raw; I couldn't eat it. A place that does not care about customer satisfaction."
       },
       {
-        "review": "I never thought that the best pizza I've ever eaten would be in Akyaka. Thin pizzas are very tasty and the options are very good. We recommend it to everyone who comes to Akyaka."
+        "review": "The fish served to me was almost raw; I couldn't eat it. A place that does not care about customer satisfaction."
       },
       {
-        "review": "Pastries varieties and pogaca are delicious. There are also breakfast options available. The staff is caring and helpful. Service is fast. I think the prices are reasonable."
-      },
-      {
-        "review": "The outside and inside of the restaurant is very well decorated. The ambiance is really nice. We ate sushi; chicken with mushrooms and steamed ravioli. I really liked the sushi and chicken; but I found the ravioli a bit bland."
-      },
-      {
-        "review": "If you want to eat cake or dessert; the real taste is here. The place is very stylish in design. Each of the employees is very caring and helpful; but they have difficulty dealing with everyone because it is crowded."
+        "review": "A nice cozy place. It is easily accessible from all parts of the city. It is very interesting that the restaurant does not have a menu."
       }
     ],
     "latency": "latency: 2 ms"

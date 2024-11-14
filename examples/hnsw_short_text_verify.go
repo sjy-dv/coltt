@@ -55,7 +55,7 @@ func main() {
 	pqParams := hnswpq.ProductQuantizerParameters{
 		NumSubVectors:    16,
 		NumCentroids:     256,
-		TriggerThreshold: 1000,
+		TriggerThreshold: 100,
 	}
 
 	cfg := hnsw.HnswConfig{
@@ -81,7 +81,7 @@ func main() {
 	fmt.Println("initial hnsw ok")
 	fmt.Println("start pretrained pq")
 	err = hnswPQ.Collections[collection].PQ.
-		PreTrainProductQuantizer(collection, vectorLen, 1_000)
+		PreTrainProductQuantizer(collection, vectorLen, 1000)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -110,7 +110,7 @@ func main() {
 		start := time.Now()
 		topCandidates := &hnswpq.PriorityQueue{Order: false, Items: []*hnswpq.Item{}}
 		heap.Init(topCandidates)
-		err := hnswPQ.Search(collection, data.Embedding, topCandidates, 5, 200)
+		err := hnswPQ.Search(collection, data.Embedding, topCandidates, 5, 100)
 		if err != nil {
 			log.Fatalf("pq search error: %v", err)
 		}
@@ -146,7 +146,7 @@ func main() {
 		start := time.Now()
 		topCandidates := &hnswpq.PriorityQueue{Order: false, Items: []*hnswpq.Item{}}
 		heap.Init(topCandidates)
-		err := hnswPQ.Search(collection, data.Embedding, topCandidates, 5, 200)
+		err := hnswPQ.Search(collection, data.Embedding, topCandidates, 5, 100)
 		if err != nil {
 			log.Fatalf("pq search error: %v", err)
 		}
@@ -179,7 +179,7 @@ func main() {
 		start := time.Now()
 		topCandidates := &hnswpq.PriorityQueue{Order: false, Items: []*hnswpq.Item{}}
 		heap.Init(topCandidates)
-		err := hnswPQ.Search(collection, data.Embedding, topCandidates, 5, 200)
+		err := hnswPQ.Search(collection, data.Embedding, topCandidates, 5, 100)
 		if err != nil {
 			log.Fatalf("pq search error: %v", err)
 		}

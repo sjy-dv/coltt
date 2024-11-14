@@ -1,0 +1,40 @@
+[
+  {
+    "base_review": "Where is a place with a comfortable indoor environment?",
+    "similar_review": [
+      { "review": "The view is nice; the indoor seating area is quite large." },
+      { "review": "Nice view, good staff, clean place and nice atmosphere." },
+      {
+        "review": "The parking area is large; valet service is offered. The welcome at the entrance is good. Attention should be paid to order and cleanliness."
+      },
+      {
+        "review": "Flat white is very tasty and affordable. The interior of the place is very nicely decorated; I was like amazed."
+      },
+      {
+        "review": "The indoor atmosphere was nice; but I can't say the same for the outdoor"
+      }
+    ],
+    "latency": "latency: 0 ms"
+  },
+  {
+    "base_review": "Where is a good restaurant to go to with family?",
+    "similar_review": [
+      {
+        "review": "Nice intimate restaurant. Good service. Eye for detail. Clean. Really good food; well presented."
+      },
+      {
+        "review": "Unique in Alsancak Kordon.. Good food; especially chicken wrap is awesome."
+      },
+      {
+        "review": "I go here for the lahmacun; I haven't tried their other dishes; but the lahmacun is very good."
+      },
+      {
+        "review": "A decent place. You can eat as a family. You can eat many kinds of fish as grilled; fried or stewed."
+      },
+      {
+        "review": "Love this restaurant; thai style and good taste. Clean and good service.. Recommended !"
+      }
+    ],
+    "latency": "latency: 0 ms"
+  }
+]

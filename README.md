@@ -4,23 +4,22 @@
 
 NNV (No-Named.V) is a database designed to be implemented from scratch to production. NNV can be deployed in edge environments and used in small-scale production settings. Through the innovative architectural approach described below, it is envisioned and developed to be used reliably in large-scale production environments as well.
 
-### Release Update (2024.11.11) [UPDATE HISTORY](./UPDATE-LOG.md)
+### Release Update (2024.11.14) [UPDATE HISTORY](./UPDATE-LOG.md)
 
 #### NNV-Edge
 
-[Please check the detailed results and changes.](./examples/release/2024_11_11_release.md)
-
-- The Edge version has been released first (currently still in the RC stage).
-- For detailed information on the Edge version, please refer to the **[Edge section]**.
-- The Edge version is written entirely in pure Go.
-- It includes F16 quantization.
-- Due to the nature of the Edge version, several conveniences have been removed, requiring more adjustments from the user.
+- Nothing
 
 #### NNV
 
-- With the removal of Usearch, the CGO dependency is also eliminated.
-- We are reviewing speed and accuracy while revising the existing HNSW.
-- Development may slow significantly until the project is transitioned to using Edge.
+[Please refer to the detailed comparison with ChromaDB for search results.](./examples/release/2024_11_14_release.md)
+
+- The previously used HNSW has been restored.
+- HNSW Product Quantization has been added.
+- CGO dependencies have been removed, and it is now implemented purely in Go.
+- Some tests have been conducted.
+- Search speed for a dataset of 50,000 items: < 14ms
+- Search speed for datasets of 10,000 items or fewer: < 3ms
 
 ### Update Preview
 
@@ -33,10 +32,8 @@ NNV (No-Named.V) is a database designed to be implemented from scratch to produc
 
 #### NNV
 
-- Quantization functionality will be added.
-- HNSW will be faster.
-- More vector distance algorithms will be added.
-- CGO dependency will be introduced. => The introduction of Usearch has failed, and as a result, the CGO dependency is planned to be removed.
+- PQ (Product Quantization) operates primarily with Euclidean distance. When using Cosine similarity, vector normalization logic is required. (Normalizing vectors for Euclidean distance results in performance similar to Cosine similarity.)
+- RPC for HNSW needs to be established.
 - Fast in-memory storage and reliable disk storage will be added.
 - A process to periodically save data must be added after checking the system's idle state.
 - An automatic recovery feature must be added.

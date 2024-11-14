@@ -199,8 +199,8 @@ func (xx *HnswPQs) Search(collectionName string, vec []float32, topCandidates *P
 		}
 	}
 
-	for topCandidates.Len() > K {
-		_ = heap.Pop(topCandidates).(*Item)
+	for heapCandidates.Len() > K {
+		_ = heap.Pop(heapCandidates).(*Item)
 	}
 
 	for _, item := range heapCandidates.Items {

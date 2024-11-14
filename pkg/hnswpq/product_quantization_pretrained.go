@@ -8,10 +8,10 @@ import (
 	"github.com/sjy-dv/nnv/pkg/gomath"
 )
 
-func (xx *productQuantizer) PreTrainProductQuantizer(collectionName string, dim, learning_spec int) error {
+func (xx *productQuantizer) PreTrainProductQuantizer(collectionName string, dim, learningSpec int) error {
 
-	dummyVals := generatePreTrainVectors(learning_spec, dim)
-	log.Debug().Msgf("Inserting %d dummy vectors for PQ training...", learning_spec)
+	dummyVals := generatePreTrainVectors(learningSpec, dim)
+	log.Debug().Msgf("Inserting %d dummy vectors for PQ training...", learningSpec)
 	for i, vec := range dummyVals {
 		nodeId := uint64(i + 1)
 		_, err := xx.Set(nodeId, vec)
