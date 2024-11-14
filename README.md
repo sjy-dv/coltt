@@ -4,46 +4,64 @@
 
 NNV (No-Named.V) is a database designed to be implemented from scratch to production. NNV can be deployed in edge environments and used in small-scale production settings. Through the innovative architectural approach described below, it is envisioned and developed to be used reliably in large-scale production environments as well.
 
-### Release Update (2024.11.14) [UPDATE HISTORY](./UPDATE-LOG.md)
+## 🎉 Release Update - 2024.11.14
+
+For the full update history, see [UPDATE HISTORY](./UPDATE-LOG.md).
+
+---
+
+### 🔹 NNV-Edge
+
+- No updates in this release.
+
+---
+
+### 🔹 NNV
+
+See the [detailed comparison with ChromaDB for search results](./examples/release/2024_11_14_release.md).
+
+#### Enhancements
+
+- **Restored HNSW**: The previously used HNSW algorithm has been reintroduced.
+- **New Product Quantization (PQ)**: HNSW Product Quantization has been added for improved efficiency.
+- **Pure Go Implementation**: All CGO dependencies have been removed, making the implementation entirely in Go.
+- **Optimized Search Speed**:
+  - 50,000-item dataset: **< 14ms**
+  - 10,000-item dataset or fewer: **< 3ms**
+
+---
+
+## 🚀 Update Preview
+
+⚠️ _Expected release date is TBD. Development is ongoing, and updates will be added as we progress._ 😭
+
+---
+
+### 🔸 Planned Features and Improvements
 
 #### NNV-Edge
 
-- Nothing
+- **Enhanced Logging**: Detailed logging will be added for better traceability and debugging.
+- **Edge-based Project Integration**: Ongoing work with Edge-based projects will continue, with improvements based on progress and feedback.
 
 #### NNV
 
-[Please refer to the detailed comparison with ChromaDB for search results.](./examples/release/2024_11_14_release.md)
+- **Cosine Similarity Compatibility**: PQ (Product Quantization) operates primarily with Euclidean distance. However, with Cosine similarity, vector normalization logic is required. (Normalized vectors for Euclidean distance yield performance similar to Cosine similarity.)
+- **RPC Setup for HNSW**: RPC functionality for HNSW is planned to facilitate remote usage.
+- **Storage Enhancements**: Fast in-memory storage and reliable disk-based storage will be introduced.
+- **System Idle-State Backup**: An automatic backup process will be added to periodically save data during idle states.
+- **Automatic Recovery**: A feature for automatic recovery will be implemented.
+- **Advanced Filtering**: Support for expressions and various range searches will be included in the filter functionality.
+- **Performance Benchmarking**: Comprehensive benchmarking will be conducted once the system stabilizes.
+- **Load Balancer**: A load balancer will be developed post-stabilization to manage system load effectively.
 
-- The previously used HNSW has been restored.
-- HNSW Product Quantization has been added.
-- CGO dependencies have been removed, and it is now implemented purely in Go.
-- Some tests have been conducted.
-- Search speed for a dataset of 50,000 items: < 14ms
-- Search speed for datasets of 10,000 items or fewer: < 3ms
+---
 
-### Update Preview
+### ⚠️ Important Notice
 
-**⚠️I don't know when it will be updated. (I just want to develop 😭)**
+> _Performance may be temporarily reduced due to ongoing development. Thank you for your patience!_
 
-#### NNV-Edge
-
-- I need to add detailed logging.
-- I’m planning to work on a project using Edge and will improve any areas that need adjustments based on progress and feedback.
-
-#### NNV
-
-- PQ (Product Quantization) operates primarily with Euclidean distance. When using Cosine similarity, vector normalization logic is required. (Normalizing vectors for Euclidean distance results in performance similar to Cosine similarity.)
-- RPC for HNSW needs to be established.
-- Fast in-memory storage and reliable disk storage will be added.
-- A process to periodically save data must be added after checking the system's idle state.
-- An automatic recovery feature must be added.
-- Expressions, such as various range searches, must be supported in filters.
-- Benchmarking must be conducted after the system stabilizes.
-- A load balancer must be developed after the system stabilizes.
-
-### ⚠️ Warning
-
-- It may be slow because you are not currently focused on this task.
+---
 
 ### Run from the source code.
 
