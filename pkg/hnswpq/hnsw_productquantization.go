@@ -2,6 +2,7 @@ package hnswpq
 
 import (
 	"container/heap"
+	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -10,6 +11,8 @@ import (
 	"github.com/sjy-dv/nnv/pkg/distancepq"
 	"github.com/sjy-dv/nnv/pkg/gomath"
 	"github.com/sjy-dv/nnv/pkg/hnsw"
+	"github.com/sjy-dv/nnv/pkg/models"
+	"github.com/sjy-dv/nnv/pkg/queue"
 )
 
 type HnswPQs struct {
@@ -23,7 +26,7 @@ func NewProductQuantizationHnsw() *HnswPQs {
 	}
 }
 
-func (xx *HnswPQs) CreateCollection(collectionName string, config hnsw.HnswConfig, params ProductQuantizerParameters) error {
+func (xx *HnswPQs) CreateCollection(collectionName string, config hnsw.HnswConfig, params models.ProductQuantizerParameters) error {
 	//[exists collection] already check in highmem <-
 
 	pq, err := newProductQuantizer(config.DistanceType, params, int(config.Dim))
@@ -45,8 +48,8 @@ func (xx *HnswPQs) CreateCollection(collectionName string, config hnsw.HnswConfi
 		DistFn:         distancepq.GetFloatDistanceFn(config.DistanceType),
 		DistFnName:     config.DistanceType,
 		NodeList:       NodeList{Nodes: make([]Node, 1)},
-		CollectionName: collectionName,
 		EmptyNodes:     make([]uint64, 0),
+		CollectionName: collectionName,
 		PQ:             pq,
 	}
 	xx.gLock.Unlock()
@@ -90,17 +93,9 @@ func (xx *HnswPQs) Insert(collectionName string, commitID uint64, vec gomath.Vec
 	}
 
 	var nodeId uint64
-	xx.Collections[collectionName].NodeList.lock.Lock()
-	if commitID == 0 {
-		nodeId = xx.Collections[collectionName].EmptyNodes[len(xx.Collections)-1]
-		node.Id = nodeId
-		xx.Collections[collectionName].EmptyNodes = xx.Collections[collectionName].EmptyNodes[:len(xx.Collections[collectionName].EmptyNodes)-1]
-		xx.Collections[collectionName].NodeList.Nodes[nodeId] = node
-	} else {
-		nodeId = commitID
-		node.Id = nodeId
-		xx.Collections[collectionName].NodeList.Nodes = append(xx.Collections[collectionName].NodeList.Nodes, node)
-	}
+	nodeId = commitID
+	node.Id = nodeId
+	xx.Collections[collectionName].NodeList.Nodes = append(xx.Collections[collectionName].NodeList.Nodes, node)
 
 	xx.Collections[collectionName].NodeList.lock.Unlock()
 	_, err := xx.Collections[collectionName].PQ.Set(nodeId, vec)
@@ -117,14 +112,14 @@ func (xx *HnswPQs) Insert(collectionName string, commitID uint64, vec gomath.Vec
 	curObj := &xx.Collections[collectionName].NodeList.Nodes[xx.Collections[collectionName].Ep]
 	curDist := xx.Collections[collectionName].PQ.DistanceFromCentroidIDs(vec, curObj.Centroids)
 
-	heapCandidates := &PriorityQueue{Order: false, Items: make([]*Item, 0)}
+	heapCandidates := &queue.PriorityQueue{Order: false, Items: make([]*queue.Item, 0)}
 	heap.Init(heapCandidates)
-	heap.Push(heapCandidates, &Item{Distance: curDist, NodeID: curObj.Id})
+	heap.Push(heapCandidates, &queue.Item{Distance: curDist, NodeID: curObj.Id})
 
 	for level := min(int(node.Layer), int(xx.Collections[collectionName].MaxLevel)); level >= 0; level-- {
 		err := xx.Collections[collectionName].searchLayer(
 			vec,
-			&Item{Distance: curDist, NodeID: curObj.Id},
+			&queue.Item{Distance: curDist, NodeID: curObj.Id},
 			heapCandidates,
 			int(xx.Collections[collectionName].Efconstruction),
 			uint(level),
@@ -141,7 +136,7 @@ func (xx *HnswPQs) Insert(collectionName string, commitID uint64, vec gomath.Vec
 		}
 		node.LinkNodes[level] = make([]uint64, heapCandidates.Len())
 		for i := heapCandidates.Len() - 1; i >= 0; i-- {
-			candidate := heap.Pop(heapCandidates).(*Item)
+			candidate := heap.Pop(heapCandidates).(*queue.Item)
 			node.LinkNodes[level][i] = candidate.NodeID
 		}
 		xx.Collections[collectionName].NodeList.lock.Lock()
@@ -164,7 +159,7 @@ func (xx *HnswPQs) Insert(collectionName string, commitID uint64, vec gomath.Vec
 	return nil
 }
 
-func (xx *HnswPQs) Search(collectionName string, vec []float32, topCandidates *PriorityQueue, K int, efSearch int) error {
+func (xx *HnswPQs) Search(collectionName string, vec []float32, topCandidates *queue.PriorityQueue, K int, efSearch int) error {
 
 	pq := xx.Collections[collectionName].PQ
 
@@ -175,14 +170,14 @@ func (xx *HnswPQs) Search(collectionName string, vec []float32, topCandidates *P
 	curObj := &xx.Collections[collectionName].NodeList.Nodes[xx.Collections[collectionName].Ep]
 	curDist := distFn(vec, curObj.Centroids)
 
-	heapCandidates := &PriorityQueue{Order: false, Items: []*Item{}}
+	heapCandidates := &queue.PriorityQueue{Order: false, Items: []*queue.Item{}}
 	heap.Init(heapCandidates)
-	heap.Push(heapCandidates, &Item{Distance: curDist, NodeID: curObj.Id})
+	heap.Push(heapCandidates, &queue.Item{Distance: curDist, NodeID: curObj.Id})
 
 	for level := int(xx.Collections[collectionName].MaxLevel); level >= 0; level-- {
 		err := xx.Collections[collectionName].searchLayer(
 			vec,
-			&Item{Distance: curDist, NodeID: curObj.Id},
+			&queue.Item{Distance: curDist, NodeID: curObj.Id},
 			heapCandidates,
 			efSearch,
 			uint(level),
@@ -200,12 +195,78 @@ func (xx *HnswPQs) Search(collectionName string, vec []float32, topCandidates *P
 	}
 
 	for heapCandidates.Len() > K {
-		_ = heap.Pop(heapCandidates).(*Item)
+		_ = heap.Pop(heapCandidates).(*queue.Item)
 	}
 
 	for _, item := range heapCandidates.Items {
 		heap.Push(topCandidates, item)
 	}
 
+	return nil
+}
+
+func (xx *HnswPQs) FailAppointNode(collectioName string, failID uint64) error {
+	xx.Collections[collectioName].hlock.Lock()
+	defer xx.Collections[collectioName].hlock.Unlock()
+	xx.Collections[collectioName].EmptyNodes = append(xx.Collections[collectioName].EmptyNodes, failID)
+	return nil
+}
+
+func (xx *HnswPQs) AppointNode(collectionName string) uint64 {
+	if xx.IsEmpty(collectionName) {
+		return 0
+	}
+	xx.Collections[collectionName].hlock.Lock()
+	defer xx.Collections[collectionName].hlock.Unlock()
+	lastIndex := len(xx.Collections[collectionName].EmptyNodes) - 1
+	last := xx.Collections[collectionName].EmptyNodes[lastIndex]
+	xx.Collections[collectionName].EmptyNodes = xx.Collections[collectionName].EmptyNodes[:lastIndex]
+	return last
+}
+
+func (xx *HnswPQs) IsEmpty(collectionName string) bool {
+	xx.Collections[collectionName].hlock.RLock()
+	defer xx.Collections[collectionName].hlock.RUnlock()
+	return len(xx.Collections[collectionName].EmptyNodes) == 0
+}
+
+func (xx *HnswPQs) Delete(collectioName string, nodeId uint64) error {
+	err := xx.Collections[collectioName].removeConnection(nodeId)
+	return err
+}
+
+// remove => empty ID
+// new Fit => ?.? not
+func (xx *Hnsw) removeConnection(nodeId uint64) error {
+	node := &xx.NodeList.Nodes[nodeId]
+	if node.Id == 0 && !node.IsEmpty {
+		return errors.New("node not found")
+	}
+
+	for level := 0; level <= xx.MaxLevel; level++ {
+		xx.NodeList.lock.Lock()
+		connections := node.LinkNodes[level]
+		for _, neighbourId := range connections {
+			neighbor := &xx.NodeList.Nodes[neighbourId]
+			newLinks := []uint64{}
+			for _, link := range neighbor.LinkNodes[level] {
+				if link != nodeId {
+					newLinks = append(newLinks, link)
+				}
+			}
+			neighbor.LinkNodes[level] = newLinks
+		}
+		xx.NodeList.lock.Unlock()
+	}
+
+	xx.NodeList.lock.Lock()
+	xx.NodeList.Nodes[nodeId] = Node{
+		Id:      nodeId,
+		IsEmpty: true,
+	}
+	xx.NodeList.lock.Unlock()
+	xx.hlock.Lock()
+	xx.EmptyNodes = append(xx.EmptyNodes, nodeId)
+	xx.hlock.Unlock()
 	return nil
 }

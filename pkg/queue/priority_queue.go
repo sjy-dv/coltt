@@ -1,4 +1,4 @@
-package hnswpq
+package queue
 
 import "container/heap"
 

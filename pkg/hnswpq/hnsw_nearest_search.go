@@ -2,10 +2,10 @@ package hnswpq
 
 import (
 	"container/heap"
-	"errors"
 
 	"github.com/sjy-dv/nnv/pkg/bitset"
 	"github.com/sjy-dv/nnv/pkg/gomath"
+	"github.com/sjy-dv/nnv/pkg/queue"
 )
 
 func (xx *Hnsw) findEp(vec gomath.Vector, curObj *Node, layer int16) (match Node, curDist float32, err error) {
@@ -30,10 +30,10 @@ func (xx *Hnsw) findEp(vec gomath.Vector, curObj *Node, layer int16) (match Node
 	return match, curDist, nil
 }
 
-func (xx *Hnsw) searchLayer(vec gomath.Vector, ep *Item, topCandidates *PriorityQueue, ef int, level uint) error {
+func (xx *Hnsw) searchLayer(vec gomath.Vector, ep *queue.Item, topCandidates *queue.PriorityQueue, ef int, level uint) error {
 	var visited bitset.BitSet
 
-	candidates := &PriorityQueue{Order: false, Items: []*Item{}}
+	candidates := &queue.PriorityQueue{Order: false, Items: []*queue.Item{}}
 	heap.Init(candidates)
 	heap.Push(candidates, ep)
 
@@ -43,8 +43,8 @@ func (xx *Hnsw) searchLayer(vec gomath.Vector, ep *Item, topCandidates *Priority
 
 	for candidates.Len() > 0 {
 
-		lowerBound := topCandidates.Top().(*Item).Distance
-		candidate := heap.Pop(candidates).(*Item)
+		lowerBound := topCandidates.Top().(*queue.Item).Distance
+		candidate := heap.Pop(candidates).(*queue.Item)
 
 		if candidate.Distance > lowerBound {
 			break
@@ -54,11 +54,11 @@ func (xx *Hnsw) searchLayer(vec gomath.Vector, ep *Item, topCandidates *Priority
 				visited.Set(uint(nodeId))
 				node := xx.NodeList.Nodes[nodeId]
 				nodeDist := xx.PQ.DistanceFromCentroidIDs(vec, node.Centroids)
-				item := &Item{
+				item := &queue.Item{
 					Distance: nodeDist,
 					NodeID:   node.Id,
 				}
-				topDistance := topCandidates.Top().(*Item).Distance
+				topDistance := topCandidates.Top().(*queue.Item).Distance
 
 				if topCandidates.Len() < ef {
 					if node.Id != ep.NodeID {
@@ -76,25 +76,25 @@ func (xx *Hnsw) searchLayer(vec gomath.Vector, ep *Item, topCandidates *Priority
 	return nil
 }
 
-func (xx *Hnsw) SelectNeighboursSimple(topCandidates *PriorityQueue, M int) {
+func (xx *Hnsw) SelectNeighboursSimple(topCandidates *queue.PriorityQueue, M int) {
 	for topCandidates.Len() > M {
-		_ = heap.Pop(topCandidates).(*Item)
+		_ = heap.Pop(topCandidates).(*queue.Item)
 	}
 }
 
-func (xx *Hnsw) SelectNeighboursHeuristic(topCandidates *PriorityQueue, M int, order bool) {
+func (xx *Hnsw) SelectNeighboursHeuristic(topCandidates *queue.PriorityQueue, M int, order bool) {
 	if topCandidates.Len() < M {
 		return
 	}
 
-	newCandidates := &PriorityQueue{Order: order, Items: []*Item{}}
+	newCandidates := &queue.PriorityQueue{Order: order, Items: []*queue.Item{}}
 	heap.Init(newCandidates)
 
-	items := make([]*Item, 0, M)
+	items := make([]*queue.Item, 0, M)
 
 	if !order {
 		for topCandidates.Len() > 0 {
-			item := heap.Pop(topCandidates).(*Item)
+			item := heap.Pop(topCandidates).(*queue.Item)
 			heap.Push(newCandidates, item)
 		}
 	} else {
@@ -105,7 +105,7 @@ func (xx *Hnsw) SelectNeighboursHeuristic(topCandidates *PriorityQueue, M int, o
 		if len(items) >= M {
 			break
 		}
-		item := heap.Pop(newCandidates).(*Item)
+		item := heap.Pop(newCandidates).(*queue.Item)
 
 		hit := true
 
@@ -129,7 +129,7 @@ func (xx *Hnsw) SelectNeighboursHeuristic(topCandidates *PriorityQueue, M int, o
 	}
 
 	for len(items) < M && newCandidates.Len() > 0 {
-		item := heap.Pop(newCandidates).(*Item)
+		item := heap.Pop(newCandidates).(*queue.Item)
 		items = append(items, item)
 	}
 
@@ -156,7 +156,7 @@ func (xx *Hnsw) addConnections(neighbourNode uint64, newNode uint64, level int) 
 	if curConnections > maxConnections {
 		switch xx.Heuristic {
 		case false:
-			topCandidates := &PriorityQueue{Order: true, Items: []*Item{}}
+			topCandidates := &queue.PriorityQueue{Order: true, Items: []*queue.Item{}}
 			heap.Init(topCandidates)
 
 			for i := 0; i < curConnections; i++ {
@@ -165,7 +165,7 @@ func (xx *Hnsw) addConnections(neighbourNode uint64, newNode uint64, level int) 
 					xx.NodeList.Nodes[neighbourNode].Vectors,
 					xx.NodeList.Nodes[connectedNode].Vectors,
 				)
-				heap.Push(topCandidates, &Item{
+				heap.Push(topCandidates, &queue.Item{
 					NodeID:   connectedNode,
 					Distance: distanceBetweenNodes,
 				})
@@ -176,11 +176,11 @@ func (xx *Hnsw) addConnections(neighbourNode uint64, newNode uint64, level int) 
 			xx.NodeList.Nodes[neighbourNode].LinkNodes[level] = make([]uint64, maxConnections)
 
 			for i := maxConnections - 1; i >= 0; i-- {
-				node := heap.Pop(topCandidates).(*Item)
+				node := heap.Pop(topCandidates).(*queue.Item)
 				xx.NodeList.Nodes[neighbourNode].LinkNodes[level][i] = node.NodeID
 			}
 		case true:
-			topCandidates := &PriorityQueue{Order: false, Items: []*Item{}}
+			topCandidates := &queue.PriorityQueue{Order: false, Items: []*queue.Item{}}
 			heap.Init(topCandidates)
 
 			for i := 0; i < curConnections; i++ {
@@ -189,7 +189,7 @@ func (xx *Hnsw) addConnections(neighbourNode uint64, newNode uint64, level int) 
 					xx.NodeList.Nodes[neighbourNode].Vectors,
 					xx.NodeList.Nodes[connectedNode].Vectors,
 				)
-				heap.Push(topCandidates, &Item{
+				heap.Push(topCandidates, &queue.Item{
 					NodeID:   connectedNode,
 					Distance: distanceBetweenNodes,
 				})
@@ -199,7 +199,7 @@ func (xx *Hnsw) addConnections(neighbourNode uint64, newNode uint64, level int) 
 			xx.NodeList.Nodes[neighbourNode].LinkNodes[level] = make([]uint64, maxConnections)
 
 			for i := 0; i < maxConnections; i++ {
-				node := heap.Pop(topCandidates).(*Item)
+				node := heap.Pop(topCandidates).(*queue.Item)
 				xx.NodeList.Nodes[neighbourNode].LinkNodes[level][i] = node.NodeID
 			}
 		}
@@ -210,36 +210,36 @@ func (xx *Hnsw) getConnection(ep *Node, level int) []uint64 {
 	return ep.LinkNodes[level]
 }
 
-func (xx *Hnsw) removeConnection(nodeId uint64) error {
-	node := &xx.NodeList.Nodes[nodeId]
-	if node.Id == 0 && !node.IsEmpty {
-		return errors.New("node not found")
-	}
+// func (xx *Hnsw) removeConnection(nodeId uint64) error {
+// 	node := &xx.NodeList.Nodes[nodeId]
+// 	if node.Id == 0 {
+// 		return errors.New("node not found")
+// 	}
 
-	for level := 0; level <= xx.MaxLevel; level++ {
-		xx.NodeList.lock.Lock()
-		connections := node.LinkNodes[level]
-		for _, neighbourId := range connections {
-			neighbor := &xx.NodeList.Nodes[neighbourId]
-			newLinks := []uint64{}
-			for _, link := range neighbor.LinkNodes[level] {
-				if link != nodeId {
-					newLinks = append(newLinks, link)
-				}
-			}
-			neighbor.LinkNodes[level] = newLinks
-		}
-		xx.NodeList.lock.Unlock()
-	}
+// 	for level := 0; level <= xx.MaxLevel; level++ {
+// 		xx.NodeList.lock.Lock()
+// 		connections := node.LinkNodes[level]
+// 		for _, neighbourId := range connections {
+// 			neighbor := &xx.NodeList.Nodes[neighbourId]
+// 			newLinks := []uint64{}
+// 			for _, link := range neighbor.LinkNodes[level] {
+// 				if link != nodeId {
+// 					newLinks = append(newLinks, link)
+// 				}
+// 			}
+// 			neighbor.LinkNodes[level] = newLinks
+// 		}
+// 		xx.NodeList.lock.Unlock()
+// 	}
 
-	xx.NodeList.lock.Lock()
-	xx.NodeList.Nodes[nodeId] = Node{
-		Id:      nodeId,
-		IsEmpty: true,
-	}
-	xx.NodeList.lock.Unlock()
-	xx.hlock.Lock()
-	xx.EmptyNodes = append(xx.EmptyNodes, nodeId)
-	xx.hlock.Unlock()
-	return nil
-}
+// 	xx.NodeList.lock.Lock()
+// 	xx.NodeList.Nodes[nodeId] = Node{
+// 		Id:      nodeId,
+// 		IsEmpty: true,
+// 	}
+// 	xx.NodeList.lock.Unlock()
+// 	xx.hlock.Lock()
+// 	xx.EmptyNodes = append(xx.EmptyNodes, nodeId)
+// 	xx.hlock.Unlock()
+// 	return nil
+// }

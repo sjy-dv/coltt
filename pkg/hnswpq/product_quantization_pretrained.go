@@ -19,12 +19,14 @@ func (xx *productQuantizer) PreTrainProductQuantizer(collectionName string, dim,
 			return fmt.Errorf("failed to set vector %d: %v", nodeId, err)
 		}
 	}
-	fmt.Println("Fitting Product Quantizer with dummy vectors...")
+	log.Debug().Msg("Fitting Product Quantizer with dummy vectors...")
 	err := xx.Fit()
 	if err != nil {
 		return fmt.Errorf("failed to fit Product Quantizer: %v", err)
 	}
-	fmt.Println("Product Quantizer fitted successfully.")
+	log.Debug().Msg("Product Quantizer fitted successfully.")
+	xx.isFit = true
+	xx.isPreTrain = true
 	return nil
 }
 

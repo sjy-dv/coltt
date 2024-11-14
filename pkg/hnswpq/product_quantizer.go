@@ -9,13 +9,11 @@ import (
 	"github.com/sjy-dv/nnv/edge"
 	"github.com/sjy-dv/nnv/pkg/distancepq"
 	"github.com/sjy-dv/nnv/pkg/gomath"
+	"github.com/sjy-dv/nnv/pkg/models"
 )
 
-const productQuantizerCentroidDistsKey = "_productQuantizerCentroidDists"
-const productQuantizerFlatCentroidsKey = "_productQuantizerFlatCentroids"
-
 type productQuantizer struct {
-	params            ProductQuantizerParameters
+	params            models.ProductQuantizerParameters
 	distFn            distancepq.FloatDistFunc
 	distFnName        string
 	originalVectorLen int
@@ -26,10 +24,11 @@ type productQuantizer struct {
 	flatCentroids []float32
 
 	//
-	isFit bool
+	isFit      bool
+	isPreTrain bool
 }
 
-func newProductQuantizer(distFnName string, params ProductQuantizerParameters, vectorLen int) (
+func newProductQuantizer(distFnName string, params models.ProductQuantizerParameters, vectorLen int) (
 	*productQuantizer, error) {
 
 	if vectorLen%params.NumSubVectors != 0 {
@@ -296,5 +295,6 @@ func (pq *productQuantizer) Fit() error {
 	}
 	wg.Wait()
 	pq.isFit = true
+	pq.isPreTrain = false
 	return nil
 }
