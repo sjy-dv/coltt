@@ -1,0 +1,74 @@
+[
+  {
+    "base_review": "Where is a place with a comfortable indoor environment?",
+    "similar_review": [
+      {
+        "review": "It is in the center; easy to reach; close to the parking lot; the prices are partially affordable; the products are delicious but not quite satisfying; the seating places are cramped; the place is a little flat.",
+        "distance": 38.48366
+      },
+      {
+        "review": "It's a women-only business. Staff and service are fine. Ambiance and design was good. Food options were few.",
+        "distance": 38.490356
+      },
+      {
+        "review": "I can say that cleanliness; taste; warm-blooded employees were absolutely perfect.",
+        "distance": 38.529087
+      },
+      {
+        "review": "It has a location by the sea; a layout that allows for indoor and outdoor seating. Their waiters are nervous and sometimes indifferent.",
+        "distance": 38.539135
+      },
+      {
+        "review": "You won't regret that the products taste very good; but I've never seen such a bad staff before; definitely don't sit down and drink tea and coffee; take the product and leave; that's the most logical thing.",
+        "distance": 38.513794
+      }
+    ],
+    "latency": "latency: 0 ms"
+  },
+  {
+    "base_review": "Where is a good restaurant to go to with family?",
+    "similar_review": [
+      {
+        "review": "Everything really appeals to both the eyes and the stomach. They have an incredibly beautiful and varied menu. Prices are reasonable according to the taste; quality and satiety of the menu.",
+        "distance": 38.523746
+      },
+      {
+        "review": "The most delicious and sincere place to eat in Fethiye. A small family restaurant. I especially liked the veggie pancakes. I strongly recommend.",
+        "distance": 38.525635
+      },
+      {
+        "review": "The view is beautiful; the food is good. It's about the waiters. If you are going alone in the evening; a reservation seems to be a must. Too crowded.",
+        "distance": 38.560078
+      },
+      { "review": "Excellent food and ambiance.", "distance": 38.56709 },
+      {
+        "review": "It's a place with very affordable and delicious pasta. Actually; there is not much variety of pasta. Classic pasta is served with cheddar cheese and sauce. I think the taste and price of the pasta is very good.",
+        "distance": 38.542034
+      }
+    ],
+    "latency": "latency: 0 ms"
+  },
+  {
+    "base_review": "A restaurant I strongly do not recommend.",
+    "similar_review": [
+      { "review": "Waiters were not very good.", "distance": 38.005627 },
+      {
+        "review": "In terms of taste; I can't say it's too good because we drink much better ones. As a business performance; even bread is sold for money alongside soup.",
+        "distance": 38.021824
+      },
+      {
+        "review": "Really delicious burgers. The ketchup sauce they make is excellent. The point I want to criticize is the low grammage of the hamburger.",
+        "distance": 38.01205
+      },
+      {
+        "review": "The popular boutique burger restaurant of the street. bread; sauce and meatballs are very nice. Thank you.",
+        "distance": 38.029564
+      },
+      {
+        "review": "A nice cozy place. It is easily accessible from all parts of the city. It is very interesting that the restaurant does not have a menu.",
+        "distance": 38.045315
+      }
+    ],
+    "latency": "latency: 0 ms"
+  }
+]

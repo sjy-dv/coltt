@@ -1,0 +1,59 @@
+[
+  {
+    "base_review": "Where is a place with a comfortable indoor environment?",
+    "similar_review": [
+      {
+        "review": "It does not bad. The best part was if the price wasn't affordable."
+      },
+      {
+        "review": "There are many options on the menu and the average portion price is 50 TL. One portion is very satisfying; but if you don't like dough; you've come to the wrong address. They put the ingredients of your choice between a soft steamed bread."
+      },
+      {
+        "review": "Seriously cheap and affordable price for those who want to eat delicious meat doner kebab."
+      },
+      {
+        "review": "Flat white is very tasty and affordable. The interior of the place is very nicely decorated; I was like amazed."
+      },
+      { "review": "Stylish; decent and clean place. I advise." }
+    ],
+    "latency": "latency: 1 ms"
+  },
+  {
+    "base_review": "Where is a good restaurant to go to with family?",
+    "similar_review": [
+      {
+        "review": "It does not bad. The best part was if the price wasn't affordable."
+      },
+      {
+        "review": "There are many options on the menu and the average portion price is 50 TL. One portion is very satisfying; but if you don't like dough; you've come to the wrong address. They put the ingredients of your choice between a soft steamed bread."
+      },
+      {
+        "review": "Seriously cheap and affordable price for those who want to eat delicious meat doner kebab."
+      },
+      {
+        "review": "Flat white is very tasty and affordable. The interior of the place is very nicely decorated; I was like amazed."
+      },
+      { "review": "Stylish; decent and clean place. I advise." }
+    ],
+    "latency": "latency: 1 ms"
+  },
+  {
+    "base_review": "A restaurant I strongly do not recommend.",
+    "similar_review": [
+      {
+        "review": "It does not bad. The best part was if the price wasn't affordable."
+      },
+      {
+        "review": "There are many options on the menu and the average portion price is 50 TL. One portion is very satisfying; but if you don't like dough; you've come to the wrong address. They put the ingredients of your choice between a soft steamed bread."
+      },
+      {
+        "review": "Seriously cheap and affordable price for those who want to eat delicious meat doner kebab."
+      },
+      {
+        "review": "Flat white is very tasty and affordable. The interior of the place is very nicely decorated; I was like amazed."
+      },
+      { "review": "Stylish; decent and clean place. I advise." }
+    ],
+    "latency": "latency: 1 ms"
+  }
+]

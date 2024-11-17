@@ -50,9 +50,9 @@ func main() {
 
 	vectorLen := 384
 	pqParams := models.ProductQuantizerParameters{
-		NumSubVectors:    16,
+		NumSubVectors:    32,
 		NumCentroids:     256,
-		TriggerThreshold: 1000,
+		TriggerThreshold: 100,
 	}
 
 	cfg := models.HnswConfig{

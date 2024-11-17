@@ -5,6 +5,7 @@ import (
 	"math/bits"
 
 	"github.com/sjy-dv/nnv/edge"
+	"github.com/sjy-dv/nnv/pkg/distance"
 )
 
 type FloatDistFunc func(x, y []float32) float32
@@ -69,11 +70,11 @@ func jaccardDistance(x, y []uint64) float32 {
 func GetFloatDistanceFn(name string) FloatDistFunc {
 	switch name {
 	case edge.EUCLIDEAN:
-		return euclideanDistance
+		return distance.NewEuclidean().Distance
 	case edge.COSINE:
-		return cosineDistance
+		return distance.NewCosine().Distance
 	default:
-		return euclideanDistance
+		return distance.NewEuclidean().Distance
 	}
 }
 

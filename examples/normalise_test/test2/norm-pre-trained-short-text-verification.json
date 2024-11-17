@@ -1,0 +1,77 @@
+[
+  {
+    "base_review": "Where is a place with a comfortable indoor environment?",
+    "similar_review": [
+      {
+        "review": "There is no need to tell Mado at length; it is a clean and beautiful place.  But there is no standard; kadayif burma with pistachios used to be so unique that I would like to eat it everyday. But now sometimes it was burnt; sometimes dry; sometimes uncooked.",
+        "distance": 70.8452
+      },
+      {
+        "review": "It is one of the rare places where I can taste the Etli Ekmek I ate in my childhood.",
+        "distance": 70.8452
+      },
+      {
+        "review": "The pizzeria in the heart of Testaccio is open from 19:00 without reservation... fills up immediately. Excellent typical Roman pizza.",
+        "distance": 70.8452
+      },
+      {
+        "review": "First of all; the service is slow and very late; and there are no crowds. I ordered a bulk profiterole. The portion also had 4 balls the size of nuts; and the chocolate was also tasteless.",
+        "distance": 70.857086
+      },
+      { "review": "Amazing foods but expensive.", "distance": 70.857086 }
+    ],
+    "latency": "latency: 0 ms"
+  },
+  {
+    "base_review": "Where is a good restaurant to go to with family?",
+    "similar_review": [
+      {
+        "review": "Lemonade and desserts were terrific.",
+        "distance": 71.23857
+      },
+      {
+        "review": "The treats and the food were really delicious; each of them was not one of those places that would cause you to come to the place and leave unhappy.",
+        "distance": 71.23857
+      },
+      {
+        "review": "Although it was crowded; the ambiance and food of the place was nice. Thank you.",
+        "distance": 71.23857
+      },
+      {
+        "review": "Our back hurt while eating; the place was clean.",
+        "distance": 71.23857
+      },
+      {
+        "review": "Location view is great. We ate meatballs and kuymak; it was nice. We thought that the dessert and samovar that followed was a treat; but I guess it wasn't.",
+        "distance": 71.23857
+      }
+    ],
+    "latency": "latency: 2 ms"
+  },
+  {
+    "base_review": "A restaurant I strongly do not recommend.",
+    "similar_review": [
+      {
+        "review": "Awesome locals spot for pizza and typical Roman fare.",
+        "distance": 71.207985
+      },
+      {
+        "review": "Magnificent view and legendary taste; and kokorec is also very good; I recommend it to everyone.",
+        "distance": 71.207985
+      },
+      {
+        "review": "Bread; cheese; sausage all left incredible flavors on our palate. We recommend it to everyone who will go to Ayvalık.",
+        "distance": 71.207985
+      },
+      {
+        "review": "Stylish; decent and clean place. I advise.",
+        "distance": 71.207985
+      },
+      {
+        "review": "As someone who tasted Gaziantep cuisine for the first time; I can say that I was amazed. We ordered 2 different trays in order to taste all their local dishes. One had soups and the other had appetizers. The flavors are delicious. It is definitely my recommendation.",
+        "distance": 71.207985
+      }
+    ],
+    "latency": "latency: 0 ms"
+  }
+]

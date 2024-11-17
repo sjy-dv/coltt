@@ -27,19 +27,32 @@ type ResultCompare struct {
 }
 
 type Review struct {
-	Review string `json:"review"`
+	Review   string  `json:"review"`
+	Distance float32 `json:"distance"`
+}
+
+func normalise(vec []float32) []float32 {
+	// var magnitude float32 = 0.0
+	// for _, v := range vec {
+	// 	magnitude += v * v
+	// }
+	// magnitude = float32(math.Sqrt(float64(magnitude)))
+	// for i, v := range vec {
+	// 	vec[i] = v / magnitude
+	// }
+	return vec
 }
 
 func main() {
 
 	jsonf, err := os.ReadFile("short_text.json")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(1, err)
 	}
 	jrs := make([]JsonReview, 0, 1_100)
 	err = json.Unmarshal(jsonf, &jrs)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(2, err)
 	}
 	fmt.Println("dataset is ready >> data length : ", len(jrs))
 
@@ -47,7 +60,7 @@ func main() {
 	prepareQ := make([]JsonReview, 0, 2)
 	err = json.Unmarshal(qf, &prepareQ)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(3, err)
 	}
 
 	collection := "review_collection"
@@ -96,7 +109,7 @@ func main() {
 	for i, data := range jrs {
 		commitId := hnswpq.NextId()
 
-		err := hnswPQ.Insert(collection, commitId, data.Embedding)
+		err := hnswPQ.Insert(collection, commitId, normalise(data.Embedding))
 		if err != nil {
 			log.Fatalf("insert error: %v", err)
 		}
@@ -111,7 +124,7 @@ func main() {
 		start := time.Now()
 		topCandidates := &queue.PriorityQueue{Order: false, Items: []*queue.Item{}}
 		heap.Init(topCandidates)
-		err := hnswPQ.Search(collection, data.Embedding, topCandidates, 5, 100)
+		err := hnswPQ.Search(collection, normalise(data.Embedding), topCandidates, 5, 100)
 		if err != nil {
 			log.Fatalf("pq search error: %v", err)
 		}
@@ -121,12 +134,13 @@ func main() {
 		resultset.Latency = fmt.Sprintf("latency: %d ms", elapsed.Milliseconds())
 		for _, out := range topCandidates.Items {
 			resultset.SimilarReview = append(resultset.SimilarReview, Review{
-				Review: jrs[out.NodeID-1].Review,
+				Review:   jrs[out.NodeID-1].Review,
+				Distance: out.Distance,
 			})
 		}
 		saveJson = append(saveJson, resultset)
 	}
-	w, err := os.Create("pre-trained-short-text-verification.json")
+	w, err := os.Create("norm-pre-trained-short-text-verification.json")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -155,7 +169,7 @@ func main() {
 	for i, data := range jrs {
 		commitId := hnswpq.NextId()
 
-		err := fitPQ.Insert(collection, commitId, data.Embedding)
+		err := fitPQ.Insert(collection, commitId, normalise(data.Embedding))
 		if err != nil {
 			log.Fatalf("insert error: %v", err)
 		}
@@ -169,7 +183,7 @@ func main() {
 		start := time.Now()
 		topCandidates := &queue.PriorityQueue{Order: false, Items: []*queue.Item{}}
 		heap.Init(topCandidates)
-		err := fitPQ.Search(collection, data.Embedding, topCandidates, 5, 100)
+		err := fitPQ.Search(collection, normalise(data.Embedding), topCandidates, 5, 100)
 		if err != nil {
 			log.Fatalf("pq search error: %v", err)
 		}
@@ -179,12 +193,13 @@ func main() {
 		resultset.Latency = fmt.Sprintf("latency: %d ms", elapsed.Milliseconds())
 		for _, out := range topCandidates.Items {
 			resultset.SimilarReview = append(resultset.SimilarReview, Review{
-				Review: jrs[out.NodeID-1].Review,
+				Review:   jrs[out.NodeID-1].Review,
+				Distance: out.Distance,
 			})
 		}
 		saveJson = append(saveJson, resultset)
 	}
-	w, err = os.Create("all-vector-fit-short-text-verification.json")
+	w, err = os.Create("norm-all-vector-fit-short-text-verification.json")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -202,7 +217,7 @@ func main() {
 		start := time.Now()
 		topCandidates := &queue.PriorityQueue{Order: false, Items: []*queue.Item{}}
 		heap.Init(topCandidates)
-		err := fitPQ.Search(collection, data.Embedding, topCandidates, 5, 100)
+		err := fitPQ.Search(collection, normalise(data.Embedding), topCandidates, 5, 16)
 		if err != nil {
 			log.Fatalf("pq search error: %v", err)
 		}
@@ -212,12 +227,13 @@ func main() {
 		resultset.Latency = fmt.Sprintf("latency: %d ms", elapsed.Milliseconds())
 		for _, out := range topCandidates.Items {
 			resultset.SimilarReview = append(resultset.SimilarReview, Review{
-				Review: jrs[out.NodeID-1].Review,
+				Review:   jrs[out.NodeID-1].Review,
+				Distance: out.Distance,
 			})
 		}
 		saveJson = append(saveJson, resultset)
 	}
-	w, err = os.Create("vector-nil-clear-fit-short-text-verification.json")
+	w, err = os.Create("norm-vector-nil-clear-fit-short-text-verification.json")
 	if err != nil {
 		log.Fatal(err)
 	}

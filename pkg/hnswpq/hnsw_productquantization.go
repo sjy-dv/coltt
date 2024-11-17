@@ -167,14 +167,12 @@ func (xx *HnswPQs) Insert(collectionName string, commitID uint64, vec gomath.Vec
 	return nil
 }
 
-func (xx *HnswPQs) Search(collectionName string, vec []float32, topCandidates *queue.PriorityQueue, K int, efSearch int) error {
-
+func (xx *HnswPQs) Search(collectionName string, vec gomath.Vector, topCandidates *queue.PriorityQueue, K int, efSearch int) error {
 	pq := xx.Collections[collectionName].PQ
 
 	distFn := func(q []float32, centroids []uint8) float32 {
 		return pq.DistanceFromCentroidIDs(q, centroids)
 	}
-
 	curObj := &xx.Collections[collectionName].NodeList.Nodes[xx.Collections[collectionName].Ep]
 	curDist := distFn(vec, curObj.Centroids)
 

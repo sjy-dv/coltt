@@ -1,0 +1,77 @@
+[
+  {
+    "base_review": "Where is a place with a comfortable indoor environment?",
+    "similar_review": [
+      {
+        "review": "There is no need to tell Mado at length; it is a clean and beautiful place.  But there is no standard; kadayif burma with pistachios used to be so unique that I would like to eat it everyday. But now sometimes it was burnt; sometimes dry; sometimes uncooked.",
+        "distance": 70.8452
+      },
+      {
+        "review": "It is one of the rare places where I can taste the Etli Ekmek I ate in my childhood.",
+        "distance": 70.8452
+      },
+      {
+        "review": "The pizzeria in the heart of Testaccio is open from 19:00 without reservation... fills up immediately. Excellent typical Roman pizza.",
+        "distance": 70.8452
+      },
+      { "review": "Amazing foods but expensive.", "distance": 70.857086 },
+      {
+        "review": "We told the staff a very modest breakfast plate; there is unlimited tea; and the breakfast was really good. There was everything up to 4 kinds of cheese and it only cost 54 liras.",
+        "distance": 70.857086
+      }
+    ],
+    "latency": "latency: 1 ms"
+  },
+  {
+    "base_review": "Where is a good restaurant to go to with family?",
+    "similar_review": [
+      {
+        "review": "The place is nice; the waiters work sulkily. The location; service and presentation are beautiful. And his hamburger might be the most mediocre hamburger I've ever had. There is no meat taste in the meatball.",
+        "distance": 71.23628
+      },
+      {
+        "review": "Burgers are super. I've eaten hamburgers in many places; but I've never come across anything like this. Fantastic meal with friendly service in a small but cozy place. I strongly recommend.",
+        "distance": 71.23628
+      },
+      {
+        "review": "The menu I ordered was served hot; I ate it with my mouth and it was really perfect. But the place is very small and full to the brim. There is no place to sit.",
+        "distance": 71.23628
+      },
+      {
+        "review": "Our back hurt while eating; the place was clean.",
+        "distance": 71.23857
+      },
+      {
+        "review": "A very small hamburger. I can say that there are places where you can eat bigger and delicious hamburger menus for cheaper. The place is very busy and small. Finding a place to sit is a miracle.",
+        "distance": 71.23628
+      }
+    ],
+    "latency": "latency: 0 ms"
+  },
+  {
+    "base_review": "A restaurant I strongly do not recommend.",
+    "similar_review": [
+      {
+        "review": "Bread; cheese; sausage all left incredible flavors on our palate. We recommend it to everyone who will go to Ayvalık.",
+        "distance": 71.207985
+      },
+      {
+        "review": "We came here with my family. Staff was very friendly; responsive and professional. Our order was delivered very quickly. The restaurant serve Turkish cuisine. One of the best in Alanya. Recommended.",
+        "distance": 71.207985
+      },
+      {
+        "review": "Covered doner kebab pita is also really delicious in lahmacun with cubed cheddar... The attention and care of the employees is extraordinary.",
+        "distance": 71.207985
+      },
+      {
+        "review": "Iskender kebab is a nice; clean and well-served place in Bursa.",
+        "distance": 71.207985
+      },
+      {
+        "review": "We ordered Etli Ali Nazik Kebab. They said he was the most famous. We ate meat with yogurt. The food was cold.",
+        "distance": 71.207985
+      }
+    ],
+    "latency": "latency: 0 ms"
+  }
+]

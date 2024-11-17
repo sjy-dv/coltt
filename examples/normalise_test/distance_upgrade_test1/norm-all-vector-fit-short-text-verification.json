@@ -1,0 +1,77 @@
+[
+  {
+    "base_review": "Where is a place with a comfortable indoor environment?",
+    "similar_review": [
+      {
+        "review": "There is no problem of waiting queue; the ambiance of the place is nice; well done.",
+        "distance": 38.37697
+      },
+      {
+        "review": "When there are so many employees; orders are forgotten; tables are not looked at. The food is really delicious.",
+        "distance": 38.390976
+      },
+      {
+        "review": "Nice intimate restaurant. Good service. Eye for detail. Clean. Really good food; well presented.",
+        "distance": 38.39426
+      },
+      {
+        "review": "The theme of the place is usually white. This can actually bother the human eye on sunny days; so I think the wrong color was chosen. Fish flavors were average.",
+        "distance": 38.40899
+      },
+      {
+        "review": "We went to Marmaris with my wife for a holiday. We chose this restaurant as a place for dinner based on the reviews and because we wanted juicy food. When we first went there was a serious queue. You proceed by taking the food you want in the form of an open buffet. Both vegetable dishes and meat dishes were plentiful. There was also dessert for those who wanted it. After you get what you want you pay at the cashier. They don't go through cards they work in cash. There was a lot of food variety. And the food prices were unbelievably cheap. We paid only 84 TL for all the meals here. It included buttermilk and bread. But unfortunately I can't say it's too clean as a place..",
+        "distance": 38.41012
+      }
+    ],
+    "latency": "latency: 0 ms"
+  },
+  {
+    "base_review": "Where is a good restaurant to go to with family?",
+    "similar_review": [
+      {
+        "review": "Location view is great. We ate meatballs and kuymak; it was nice. We thought that the dessert and samovar that followed was a treat; but I guess it wasn't.",
+        "distance": 37.9599
+      },
+      {
+        "review": "Whatever we ate was good. The Italian Restaurant is the first thing that comes to mind; apart from pizza and pasta; ciger yahni was successful; purslane salad; presentations are successful. Taste point in Datca.",
+        "distance": 37.97131
+      },
+      {
+        "review": "Beautiful; cute; stylish and delicious food. It's a bit sad that it is used more like a restaurant than a book cafe; as it turns into a restaurant at a certain time of the evening; so they took us to a place in the back.",
+        "distance": 37.98938
+      },
+      {
+        "review": "It's a very enjoyable place. The croissants are amazing! The butter feels very good in mouth; it is crunchy. Salty and sweet; they're all great.",
+        "distance": 37.990597
+      },
+      {
+        "review": "I tried it today. It was a place that I really liked. The appetizers were very good; I got the minced meat kebab; it was very successful. Staff was very attentive and service was fast.",
+        "distance": 37.98382
+      }
+    ],
+    "latency": "latency: 0 ms"
+  },
+  {
+    "base_review": "A restaurant I strongly do not recommend.",
+    "similar_review": [
+      {
+        "review": "I like thailand foods but not like here ones.",
+        "distance": 37.260815
+      },
+      {
+        "review": "Don't be fooled by the menus seen in the pictures. It seems less and smaller. I did not like the business; I do not recommend.",
+        "distance": 37.264572
+      },
+      {
+        "review": "Very very bad food and very bad service 0/10.",
+        "distance": 37.26437
+      },
+      {
+        "review": "I'm a regular at currants and pastries with minced meat. It is both delicious and definitely does not disturb the stomach after eating.",
+        "distance": 37.28425
+      },
+      { "review": "Menu was like that; Recommend.", "distance": 37.28521 }
+    ],
+    "latency": "latency: 0 ms"
+  }
+]

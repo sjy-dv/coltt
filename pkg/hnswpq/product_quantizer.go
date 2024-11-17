@@ -244,7 +244,8 @@ func (pq *productQuantizer) Fit() error {
 	if itemCount < pq.params.TriggerThreshold {
 		return nil
 	}
-
+	// //avoid overfitting
+	// limter := int(float32(itemCount) * 0.2)
 	allVectors := make([][]float32, 0, itemCount)
 	allPoints := make([]*productQuantizedPoint, 0, itemCount)
 	err := pq.caches.ForEach(func(id uint64, point *productQuantizedPoint) error {
@@ -254,11 +255,12 @@ func (pq *productQuantizer) Fit() error {
 		point.isDirty = true
 		return nil
 	})
-
 	if err != nil {
 		return fmt.Errorf("collect vectors in cache memory fails : %v", err)
 	}
-
+	//avoid overfitting
+	// allVectors = allVectors[:int(float32(itemCount)*0.2)]
+	// allPoints = allPoints[:int(float32(itemCount)*0.2)]
 	pq.flatCentroids = make([]float32, pq.params.NumCentroids*pq.params.NumSubVectors*pq.subVectorLen)
 	pq.centroidDists = make([]float32, pq.params.NumCentroids*pq.params.NumCentroids*pq.params.NumSubVectors)
 

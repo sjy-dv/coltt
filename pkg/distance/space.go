@@ -23,13 +23,13 @@ import (
 )
 
 type SpaceImpl interface {
-	EuclideanDistance(gomath.Vector, gomath.Vector) float32
-	ManhattanDistance(gomath.Vector, gomath.Vector) float32
-	CosineDistance(gomath.Vector, gomath.Vector) float32
+	EuclideanDistance([]float32, []float32) float32
+	ManhattanDistance([]float32, []float32) float32
+	CosineDistance([]float32, []float32) float32
 }
 
 type Space interface {
-	Distance(gomath.Vector, gomath.Vector) float32
+	Distance([]float32, []float32) float32
 }
 
 type space struct {
@@ -57,7 +57,7 @@ func NewEuclidean() Space {
 	return &Euclidean{newSpace()}
 }
 
-func (this *Euclidean) Distance(a, b gomath.Vector) float32 {
+func (this *Euclidean) Distance(a, b []float32) float32 {
 	return this.impl.EuclideanDistance(a, b)
 }
 
@@ -69,7 +69,7 @@ func NewManhattan() Space {
 	return &Manhattan{newSpace()}
 }
 
-func (this *Manhattan) Distance(a, b gomath.Vector) float32 {
+func (this *Manhattan) Distance(a, b []float32) float32 {
 	return this.impl.ManhattanDistance(a, b)
 }
 
@@ -81,7 +81,7 @@ func NewCosine() Space {
 	return &Cosine{newSpace()}
 }
 
-func (this *Cosine) Distance(a, b gomath.Vector) float32 {
+func (this *Cosine) Distance(a, b []float32) float32 {
 	return gomath.Abs(this.impl.CosineDistance(a, b))
 }
 

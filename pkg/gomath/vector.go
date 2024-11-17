@@ -22,6 +22,8 @@ import (
 	"encoding/binary"
 	"io"
 	"sort"
+
+	"github.com/viterin/vek/vek32"
 )
 
 const VECTOR_COMPONENT_BYTES_SIZE = 4
@@ -55,6 +57,11 @@ func (v Vector) Load(r io.Reader) error {
 		}
 	}
 	return nil
+}
+
+func (v Vector) Normalize() {
+	factor := vek32.Norm(v)
+	vek32.DivNumber_Inplace(v, factor)
 }
 
 func assertSameDim(i, j *Vector) {

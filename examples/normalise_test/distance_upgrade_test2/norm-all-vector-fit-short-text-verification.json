@@ -1,0 +1,80 @@
+[
+  {
+    "base_review": "Where is a place with a comfortable indoor environment?",
+    "similar_review": [
+      {
+        "review": "Slagethi all nero was excellent. Beef ribs were always tender enough. Cheek, on the other hand; has preserved its taste even though its collection is a little small. If deterioration was to come; the services were passed and the environment was much expected.",
+        "distance": 38.482647
+      },
+      {
+        "review": "it is a very nice place for high quality and special tastes; the employees and the owner are very interested and polite; we are going with love.",
+        "distance": 38.48353
+      },
+      {
+        "review": "A successful business. It's pretty good in food. Prices could be a little more reasonable.",
+        "distance": 38.49702
+      },
+      {
+        "review": "This place is beautifully decorated; has excellent staff; successful flavors; plenty of variety.",
+        "distance": 38.50042
+      },
+      {
+        "review": "If you come to Kaş and do not eat bunbun here; you are not considered to have come to Kaş. I would definitely recommend you to try it. Especially the ayran is wonderful.",
+        "distance": 38.490852
+      }
+    ],
+    "latency": "latency: 1 ms"
+  },
+  {
+    "base_review": "Where is a good restaurant to go to with family?",
+    "similar_review": [
+      {
+        "review": "Meals were prepared neatly and cleanly. It was a pleasant dining experience in a decent place. Thank you very much.",
+        "distance": 37.988132
+      },
+      {
+        "review": "We came because the comments were good; we did not regret it. I recommend the beef tenderloin. Home baklava is also very tasty; prices are reasonable.",
+        "distance": 38.01785
+      },
+      {
+        "review": "All meals were successful; I recommend.",
+        "distance": 38.027885
+      },
+      {
+        "review": "Nice and beautiful place. The breakfast spread was hearty and good. Prices are normal.",
+        "distance": 38.0278
+      },
+      {
+        "review": "We went on a Friday and all the tables were full at first. Service; waiters; the ambiance is very nice. The menu was a little expensive.",
+        "distance": 38.031693
+      }
+    ],
+    "latency": "latency: 0 ms"
+  },
+  {
+    "base_review": "A restaurant I strongly do not recommend.",
+    "similar_review": [
+      {
+        "review": "I think the place is overrated. We said mixed in the middle; it was a disgusting image. Simit kebab was good. But the prices were too high.",
+        "distance": 37.473797
+      },
+      {
+        "review": "In terms of taste; I can't say it's too good because we drink much better ones. As a business performance; even bread is sold for money alongside soup.",
+        "distance": 37.475243
+      },
+      {
+        "review": "Very very bad food and very bad service 0/10.",
+        "distance": 37.480453
+      },
+      {
+        "review": "Their prices are very reasonable and their ice creams are delicious. There is not only ice cream but also dessert sales inside. There are many options for ice cream; which is a very nice detail.",
+        "distance": 37.483353
+      },
+      {
+        "review": "I tried it after the positive reviews. Its rice and compote are nice. However; there are places in the Black Sea where I ate better roast beef. It's not a place I can say you should try. Prices are reasonable. The place is nice; the service was good.",
+        "distance": 37.485764
+      }
+    ],
+    "latency": "latency: 0 ms"
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "base_review": "Where is a place with a comfortable indoor environment?",
+    "similar_review": [
+      {
+        "review": "It was very oily; but good in taste. Prices are a little higher than usual."
+      },
+      {
+        "review": "Their prices are very reasonable and their ice creams are delicious. There is not only ice cream but also dessert sales inside. There are many options for ice cream; which is a very nice detail."
+      },
+      { "review": "Stylish; decent and clean place. I advise." },
+      { "review": "Prices were slightly higher than peers." },
+      { "review": "Very cheap and delicious!" }
+    ],
+    "latency": "latency: 0 ms"
+  },
+  {
+    "base_review": "Where is a good restaurant to go to with family?",
+    "similar_review": [
+      {
+        "review": "It was very oily; but good in taste. Prices are a little higher than usual."
+      },
+      {
+        "review": "Their prices are very reasonable and their ice creams are delicious. There is not only ice cream but also dessert sales inside. There are many options for ice cream; which is a very nice detail."
+      },
+      { "review": "Stylish; decent and clean place. I advise." },
+      { "review": "Prices were slightly higher than peers." },
+      { "review": "Very cheap and delicious!" }
+    ],
+    "latency": "latency: 0 ms"
+  },
+  {
+    "base_review": "A restaurant I strongly do not recommend.",
+    "similar_review": [
+      {
+        "review": "It was very oily; but good in taste. Prices are a little higher than usual."
+      },
+      {
+        "review": "Their prices are very reasonable and their ice creams are delicious. There is not only ice cream but also dessert sales inside. There are many options for ice cream; which is a very nice detail."
+      },
+      { "review": "Stylish; decent and clean place. I advise." },
+      { "review": "Prices were slightly higher than peers." },
+      { "review": "Very cheap and delicious!" }
+    ],
+    "latency": "latency: 0 ms"
+  }
+]
