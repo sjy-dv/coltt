@@ -20,7 +20,9 @@ compile-proto-py:
 	mkdir -p $(PROTO_OUT_DIR)
 	python -m grpc_tools.protoc -I./idl/proto/v2 --proto_path=./ --python_out=./gen/protoc/v2 --pyi_out=./gen/protoc/v2 --grpc_python_out=./gen/protoc/v2 ./idl/proto/v2/*.proto
 
-
+compile-proto:
+	- protoc --go-grpc_opt=require_unimplemented_servers=false --go-grpc_out=$(PROTO_OUT_DIR) \
+	--proto_path=./ $(PROTO_SRC_DIR)/*.proto && protoc --go_out=$(PROTO_OUT_DIR) --proto_path=./ $(PROTO_SRC_DIR)/*.proto
 
 clean:
 	@echo "Cleaning up generated files..."
