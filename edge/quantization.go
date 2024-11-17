@@ -25,13 +25,16 @@ import (
 	"github.com/sjy-dv/nnv/pkg/gomath"
 )
 
-type Quantization[L any] interface {
-	Similarity(x, y L, dist distance.Space) float32
-	Lower(v gomath.Vector) (L, error)
-	Marshal(to []byte, lower L) error
-	Unmarshal(data []byte) (L, error)
+type Quantization[T any] interface {
+	Similarity(x, y T, dist distance.Space) float32
+	Lower(v gomath.Vector) (T, error)
 	Name() string
 	LowerSize(dim int) int
+}
+
+type QuantizationType interface {
+	gomath.Vector | float16Vec |
+		bfloat16Vec | float8Vec
 }
 
 var _ Quantization[gomath.Vector] = NoQuantization{}
