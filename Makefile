@@ -42,3 +42,6 @@ test:
 # - go test -v --count=1 ./storage
 	- go test -v --count=1 ./pkg/flat
 # - go test -v --count=1 ./pkg/hnsw
+
+compress-float:
+	- go test -v --count=1 ./pkg/compresshelper

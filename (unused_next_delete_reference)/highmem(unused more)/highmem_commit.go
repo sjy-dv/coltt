@@ -27,7 +27,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
-	"github.com/sjy-dv/nnv/pkg/fasthnsw"
+
+	// "github.com/sjy-dv/nnv/pkg/fasthnsw"
 	"github.com/sjy-dv/nnv/pkg/index"
 )
 

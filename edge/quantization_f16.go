@@ -20,12 +20,12 @@ package edge
 import (
 	"encoding/binary"
 
+	"github.com/sjy-dv/nnv/pkg/compresshelper"
 	"github.com/sjy-dv/nnv/pkg/distance"
-	"github.com/sjy-dv/nnv/pkg/float16"
 	"github.com/sjy-dv/nnv/pkg/gomath"
 )
 
-type float16Vec []float16.Float16
+type float16Vec []compresshelper.Float16
 
 var _ Quantization[float16Vec] = Float16Quantization{}
 
@@ -48,7 +48,7 @@ func (q Float16Quantization) Similarity(x, y float16Vec, dist distance.Space) fl
 func (q Float16Quantization) Lower(v gomath.Vector) (float16Vec, error) {
 	out := make(float16Vec, len(v))
 	for i, x := range v {
-		out[i] = float16.Fromfloat32(x)
+		out[i] = compresshelper.Fromfloat32(x)
 	}
 	return out, nil
 }
@@ -65,7 +65,7 @@ func (q Float16Quantization) Unmarshal(data []byte) (float16Vec, error) {
 	out := make(float16Vec, len(data)>>1)
 	for i := 0; i < len(data); i += 2 {
 		bits := binary.LittleEndian.Uint16(data[i:])
-		out[i>>1] = float16.Frombits(bits)
+		out[i>>1] = compresshelper.Frombits(bits)
 	}
 	return out, nil
 }

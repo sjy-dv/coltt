@@ -1,0 +1,47 @@
+=== RUN   TestF16Losses128dim
+    compresshelper_test.go:44: F16 128 dim compress is passed
+--- PASS: TestF16Losses128dim (3.73s)
+=== RUN   TestF8Losses128dim
+    compresshelper_test.go:69: F8 128 dim compress is passed
+--- PASS: TestF8Losses128dim (5.87s)
+=== RUN   TestBF16Losses128dim
+    compresshelper_test.go:94: BF16 128 dim compress is passed
+--- PASS: TestBF16Losses128dim (3.71s)
+=== RUN   TestF16Losses384dim
+    compresshelper_test.go:119: F16 384 dim compress is passed
+--- PASS: TestF16Losses384dim (11.13s)
+=== RUN   TestF8Losses384dim
+    compresshelper_test.go:144: F8 384 dim compress is passed
+--- PASS: TestF8Losses384dim (14.92s)
+=== RUN   TestBF16Losses384dim
+    compresshelper_test.go:169: BF16 384 dim compress is passed
+--- PASS: TestBF16Losses384dim (11.16s)
+=== RUN   TestF16Losses768dim
+    compresshelper_test.go:194: F16 768 dim compress is passed
+--- PASS: TestF16Losses768dim (21.99s)
+=== RUN   TestF8Losses768dim
+    compresshelper_test.go:219: F8 768 dim compress is passed
+--- PASS: TestF8Losses768dim (34.45s)
+=== RUN   TestBF16Losses768dim
+    compresshelper_test.go:244: BF16 768 dim compress is passed
+--- PASS: TestBF16Losses768dim (21.70s)
+=== RUN   TestF16Losses1536dim
+    compresshelper_test.go:269: F16 1536 dim compress is passed
+--- PASS: TestF16Losses1536dim (43.46s)
+=== RUN   TestF8Losses1536dim
+    compresshelper_test.go:294: F8 1536 dim compress is passed
+--- PASS: TestF8Losses1536dim (68.21s)
+=== RUN   TestBF16Losses1536dim
+    compresshelper_test.go:319: BF16 1536 dim compress is passed
+--- PASS: TestBF16Losses1536dim (43.48s)
+=== RUN   TestF16Losses3072dim
+    compresshelper_test.go:344: F16 3072 dim compress is passed
+--- PASS: TestF16Losses3072dim (86.74s)
+=== RUN   TestF8Losses3072dim
+    compresshelper_test.go:369: F8 3072 dim compress is passed
+--- PASS: TestF8Losses3072dim (137.05s)
+=== RUN   TestBF16Losses3072dim
+    compresshelper_test.go:394: BF16 3072 dim compress is passed
+--- PASS: TestBF16Losses3072dim (87.65s)
+PASS
+ok      github.com/sjy-dv/nnv/pkg/compresshelper        595.555s

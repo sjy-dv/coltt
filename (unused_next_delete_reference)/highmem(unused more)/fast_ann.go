@@ -21,8 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-
-	"github.com/sjy-dv/nnv/pkg/fasthnsw"
+	// "github.com/sjy-dv/nnv/pkg/fasthnsw"
 )
 
 type Tensor struct {
