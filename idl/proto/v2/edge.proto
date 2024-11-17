@@ -42,6 +42,8 @@ enum Distance {
 enum Quantization {
     None=0;
     F16=1;
+    F8=2;
+    BF16=3;
 }
 
 message CollectionResponse {

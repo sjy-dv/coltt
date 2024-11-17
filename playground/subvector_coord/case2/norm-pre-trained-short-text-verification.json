@@ -1,0 +1,77 @@
+[
+  {
+    "base_review": "Where is a place with a comfortable indoor environment?",
+    "similar_review": [
+      {
+        "review": "The interior design is simple and pleasant; with balconies and upper floors with sea views.",
+        "distance": 63.928288
+      },
+      {
+        "review": "Everything you eat is very fresh and delicious. The back of the place is in the concept of a restaurant and the 2nd floor is in the concept of a cafe. We liked it very much.",
+        "distance": 64.163666
+      },
+      {
+        "review": "There were few tables and chairs inside.",
+        "distance": 64.24711
+      },
+      {
+        "review": "Despite the current times; it was a very pleasant visit. They currently don’t take booking; they have a walk-in system where you put your name down and after a short wait they seat you inside. Once inside you can opt to be put on a waitlist to sit outside. The setting is really nice and rustic and the tables are well distanced. There was a nice evening crowd and a good energy in the ambience.",
+        "distance": 64.324104
+      },
+      {
+        "review": "Not very special Gaziantep dishes; but you can find a comfortable and serene atmosphere in Antep. One of the places that can be stylish for the evening.",
+        "distance": 64.22041
+      }
+    ],
+    "latency": "latency: 0 ms"
+  },
+  {
+    "base_review": "Where is a good restaurant to go to with family?",
+    "similar_review": [
+      {
+        "review": "I am a regular at this place; and I love it as a family The food is fantastic; the fish are great!",
+        "distance": 62.34003
+      },
+      {
+        "review": "Beautiful; cute; stylish and delicious food. It's a bit sad that it is used more like a restaurant than a book cafe; as it turns into a restaurant at a certain time of the evening; so they took us to a place in the back.",
+        "distance": 62.408165
+      },
+      {
+        "review": "What you see is 125 TL in total. It's a pretty convenient place. We can say that it is an artisan restaurant; you should not expect a restaurant; but they are still quite good in terms of price and performance. As of July 1; prices will increase",
+        "distance": 62.38495
+      },
+      {
+        "review": "A very pleasant and quiet restaurant. Most importantly; the food is great. Everything I tasted was delicious.",
+        "distance": 62.4607
+      },
+      {
+        "review": "There is a place to eat fish and bread across the beautiful place. If the weather is nice; we go to this doner shop; if not there. You can try.",
+        "distance": 62.43215
+      }
+    ],
+    "latency": "latency: 0 ms"
+  },
+  {
+    "base_review": "A restaurant I strongly do not recommend.",
+    "similar_review": [
+      {
+        "review": "The atmosphere of the place and the interest of the waiters were good. Food came fast and hot. We ordered spicy tabokki; it wasn't bitter; it tasted very good. We ordered cheese kimbab and it had cheddar in it. I don't recommend it to those who don't like seaweed.",
+        "distance": 58.536415
+      },
+      {
+        "review": "I don't know what you will look for in terms of price performance point; taste; but yigit restaurant writes a big plus for those who come to work in this region.",
+        "distance": 58.571472
+      },
+      {
+        "review": "It's cold and extremely bad; the price of the food is way above its quality; 46 liras for 6 meatballs; 30 minutes or more waiting time. I definitely don't recommend it.",
+        "distance": 58.563347
+      },
+      {
+        "review": "Don't be fooled by the menus seen in the pictures. It seems less and smaller. I did not like the business; I do not recommend.",
+        "distance": 58.618702
+      },
+      { "review": "I did not recommend. Bad service.", "distance": 58.755974 }
+    ],
+    "latency": "latency: 0 ms"
+  }
+]

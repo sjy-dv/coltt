@@ -67,7 +67,7 @@ func main() {
 
 	vectorLen := 384
 	pqParams := models.ProductQuantizerParameters{
-		NumSubVectors:    16,
+		NumSubVectors:    192,
 		NumCentroids:     256,
 		TriggerThreshold: 100,
 	}
@@ -124,7 +124,7 @@ func main() {
 		start := time.Now()
 		topCandidates := &queue.PriorityQueue{Order: false, Items: []*queue.Item{}}
 		heap.Init(topCandidates)
-		err := hnswPQ.Search(collection, normalise(data.Embedding), topCandidates, 5, 255)
+		err := hnswPQ.Search(collection, normalise(data.Embedding), topCandidates, 5, 16)
 		if err != nil {
 			log.Fatalf("pq search error: %v", err)
 		}
@@ -183,7 +183,7 @@ func main() {
 		start := time.Now()
 		topCandidates := &queue.PriorityQueue{Order: false, Items: []*queue.Item{}}
 		heap.Init(topCandidates)
-		err := fitPQ.Search(collection, normalise(data.Embedding), topCandidates, 5, 255)
+		err := fitPQ.Search(collection, normalise(data.Embedding), topCandidates, 5, 16)
 		if err != nil {
 			log.Fatalf("pq search error: %v", err)
 		}
@@ -217,7 +217,7 @@ func main() {
 		start := time.Now()
 		topCandidates := &queue.PriorityQueue{Order: false, Items: []*queue.Item{}}
 		heap.Init(topCandidates)
-		err := fitPQ.Search(collection, normalise(data.Embedding), topCandidates, 5, 255)
+		err := fitPQ.Search(collection, normalise(data.Embedding), topCandidates, 5, 16)
 		if err != nil {
 			log.Fatalf("pq search error: %v", err)
 		}
