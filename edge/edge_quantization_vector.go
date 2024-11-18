@@ -34,15 +34,6 @@ type EdgeVectorQ struct {
 	lock           sync.RWMutex
 }
 
-type edgeInternalFunc interface {
-	CreateCollection(config CollectionConfig) error
-	DropCollection(collectionName string) error
-	InsertVector(collectionName string, commitId uint64, vector gomath.Vector) error
-	UpdateVector(collectionName string, id uint64, vector gomath.Vector) error
-	RemoveVector(collectionName string, id uint64) error
-	FullScan(collectionName string, target gomath.Vector, topK int) (*ResultSet, error)
-}
-
 type QuantizedEdgeVectors struct {
 	Edges map[string]*EdgeVectorQ
 	lock  sync.RWMutex

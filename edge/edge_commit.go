@@ -122,7 +122,7 @@ func (xx *Edge) CommitIndex(collectionName string) error {
 	return indexdb.indexes[collectionName].SerializeBinary(fmt.Sprintf(edgeIndex, collectionName))
 }
 
-func (xx *Edge) CommitNormalVector(collectionName string) error {
+func (xx *Edge) CommitVector(collectionName string) error {
 	_, err := os.Stat(fmt.Sprintf(edgeVector, collectionName))
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -133,11 +133,11 @@ func (xx *Edge) CommitNormalVector(collectionName string) error {
 
 	}
 	var iow io.Writer
-	normalEdgeV.lock.RLock()
-	normalEdgeV.Edges[collectionName].lock.RLock()
-	flushData := normalEdgeV.Edges[collectionName].vectors
-	normalEdgeV.lock.RUnlock()
-	normalEdgeV.Edges[collectionName].lock.RUnlock()
+	xx.lock.RLock()
+	xx.VectorStore.slock.RLock()
+	flushData := xx.VectorStore.Space[collectionName]
+	xx.lock.RUnlock()
+	xx.VectorStore.slock.RUnlock()
 
 	f, err := os.OpenFile(fmt.Sprintf(edgeVector, collectionName), os.O_TRUNC|
 		os.O_CREATE|os.O_WRONLY, 0644)
@@ -160,43 +160,81 @@ func (xx *Edge) CommitNormalVector(collectionName string) error {
 	return nil
 }
 
-func (xx *Edge) CommitQuantizedVector(collectionName string) error {
-	_, err := os.Stat(fmt.Sprintf(edgeVector, collectionName))
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return err
-		}
-	} else {
-		os.Remove(fmt.Sprintf(edgeVector, collectionName))
+// func (xx *Edge) CommitNormalVector(collectionName string) error {
+// 	_, err := os.Stat(fmt.Sprintf(edgeVector, collectionName))
+// 	if err != nil {
+// 		if !os.IsNotExist(err) {
+// 			return err
+// 		}
+// 	} else {
+// 		os.Remove(fmt.Sprintf(edgeVector, collectionName))
 
-	}
-	var iow io.Writer
-	quantizedEdgeV.lock.RLock()
-	quantizedEdgeV.Edges[collectionName].lock.RLock()
-	flushData := quantizedEdgeV.Edges[collectionName].vectors
-	quantizedEdgeV.lock.RUnlock()
-	quantizedEdgeV.Edges[collectionName].lock.RUnlock()
+// 	}
+// 	var iow io.Writer
+// 	normalEdgeV.lock.RLock()
+// 	normalEdgeV.Edges[collectionName].lock.RLock()
+// 	flushData := normalEdgeV.Edges[collectionName].vectors
+// 	normalEdgeV.lock.RUnlock()
+// 	normalEdgeV.Edges[collectionName].lock.RUnlock()
 
-	f, err := os.OpenFile(fmt.Sprintf(edgeVector, collectionName), os.O_TRUNC|
-		os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	iow, _ = flate.NewWriter(f, flate.BestCompression)
-	enc := gob.NewEncoder(iow)
-	if err := enc.Encode(flushData); err != nil {
-		return err
-	}
-	if flusher, ok := iow.(interface{ Flush() error }); ok {
-		if err := flusher.Flush(); err != nil {
-			return err
-		}
-	}
-	if err := iow.(io.Closer).Close(); err != nil {
-		return err
-	}
-	return nil
-}
+// 	f, err := os.OpenFile(fmt.Sprintf(edgeVector, collectionName), os.O_TRUNC|
+// 		os.O_CREATE|os.O_WRONLY, 0644)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	iow, _ = flate.NewWriter(f, flate.BestCompression)
+// 	enc := gob.NewEncoder(iow)
+// 	if err := enc.Encode(flushData); err != nil {
+// 		return err
+// 	}
+// 	if flusher, ok := iow.(interface{ Flush() error }); ok {
+// 		if err := flusher.Flush(); err != nil {
+// 			return err
+// 		}
+// 	}
+// 	if err := iow.(io.Closer).Close(); err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
+
+// func (xx *Edge) CommitQuantizedVector(collectionName string) error {
+// 	_, err := os.Stat(fmt.Sprintf(edgeVector, collectionName))
+// 	if err != nil {
+// 		if !os.IsNotExist(err) {
+// 			return err
+// 		}
+// 	} else {
+// 		os.Remove(fmt.Sprintf(edgeVector, collectionName))
+
+// 	}
+// 	var iow io.Writer
+// 	quantizedEdgeV.lock.RLock()
+// 	quantizedEdgeV.Edges[collectionName].lock.RLock()
+// 	flushData := quantizedEdgeV.Edges[collectionName].vectors
+// 	quantizedEdgeV.lock.RUnlock()
+// 	quantizedEdgeV.Edges[collectionName].lock.RUnlock()
+
+// 	f, err := os.OpenFile(fmt.Sprintf(edgeVector, collectionName), os.O_TRUNC|
+// 		os.O_CREATE|os.O_WRONLY, 0644)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	iow, _ = flate.NewWriter(f, flate.BestCompression)
+// 	enc := gob.NewEncoder(iow)
+// 	if err := enc.Encode(flushData); err != nil {
+// 		return err
+// 	}
+// 	if flusher, ok := iow.(interface{ Flush() error }); ok {
+// 		if err := flusher.Flush(); err != nil {
+// 			return err
+// 		}
+// 	}
+// 	if err := iow.(io.Closer).Close(); err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
 
 func (xx *Edge) CommitCollection() error {
 	_, err := os.Stat(collectionEdgeJson)

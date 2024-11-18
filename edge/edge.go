@@ -29,8 +29,9 @@ import (
 )
 
 type Edge struct {
-	Datas map[string]*EdgeData
-	lock  sync.RWMutex
+	Datas       map[string]*EdgeData
+	VectorStore *Vectorstore
+	lock        sync.RWMutex
 }
 
 type EdgeData struct {
@@ -43,7 +44,8 @@ type EdgeData struct {
 
 func NewEdge() *Edge {
 	return &Edge{
-		Datas: make(map[string]*EdgeData),
+		Datas:       make(map[string]*EdgeData),
+		VectorStore: NewVectorstore(),
 	}
 }
 
@@ -114,6 +116,12 @@ func (xx *Edge) CreateCollection(ctx context.Context, req *edgeproto.Collection)
 			if req.GetQuantization() == edgeproto.Quantization_F16 {
 				return F16_QUANTIZATION
 			}
+			if req.GetQuantization() == edgeproto.Quantization_F8 {
+				return F8_QUANTIZATION
+			}
+			if req.GetQuantization() == edgeproto.Quantization_BF16 {
+				return BF16_QUANTIZATION
+			}
 			return NONE_QAUNTIZATION
 		}()
 		xx.lock.Lock()
@@ -131,46 +139,55 @@ func (xx *Edge) CreateCollection(ctx context.Context, req *edgeproto.Collection)
 			Distance:       dist,
 			Quantization:   q,
 		}
-		if q == NONE_QAUNTIZATION {
-			err := normalEdgeV.CreateCollection(cfg)
-			if err != nil {
-				xx.lock.Lock()
-				delete(xx.Datas, req.GetCollectionName())
-				xx.lock.Unlock()
-				c <- reply{
-					Result: &edgeproto.CollectionResponse{
-						Status: false,
-						Error:  &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR},
-					},
-				}
-				return
-			}
-		} else {
-			err := quantizedEdgeV.CreateCollection(cfg)
-			if err != nil {
-				xx.lock.Lock()
-				delete(xx.Datas, req.GetCollectionName())
-				xx.lock.Unlock()
-				c <- reply{
-					Result: &edgeproto.CollectionResponse{
-						Status: false,
-						Error:  &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR},
-					},
-				}
-				return
-			}
-		}
-		//bitmap
-		err := indexdb.CreateIndex(req.GetCollectionName())
+		err := xx.VectorStore.CreateCollection(cfg)
 		if err != nil {
 			xx.lock.Lock()
 			delete(xx.Datas, req.GetCollectionName())
 			xx.lock.Unlock()
-			if q == NONE_QAUNTIZATION {
-				normalEdgeV.DropCollection(req.GetCollectionName())
-			} else {
-				quantizedEdgeV.DropCollection(req.GetCollectionName())
+			c <- reply{
+				Result: &edgeproto.CollectionResponse{
+					Status: false,
+					Error:  &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR},
+				},
 			}
+			return
+		}
+		// if q == NONE_QAUNTIZATION {
+		// 	err := normalEdgeV.CreateCollection(cfg)
+		// 	if err != nil {
+		// 		xx.lock.Lock()
+		// 		delete(xx.Datas, req.GetCollectionName())
+		// 		xx.lock.Unlock()
+		// 		c <- reply{
+		// 			Result: &edgeproto.CollectionResponse{
+		// 				Status: false,
+		// 				Error:  &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR},
+		// 			},
+		// 		}
+		// 		return
+		// 	}
+		// } else {
+		// 	err := quantizedEdgeV.CreateCollection(cfg)
+		// 	if err != nil {
+		// 		xx.lock.Lock()
+		// 		delete(xx.Datas, req.GetCollectionName())
+		// 		xx.lock.Unlock()
+		// 		c <- reply{
+		// 			Result: &edgeproto.CollectionResponse{
+		// 				Status: false,
+		// 				Error:  &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR},
+		// 			},
+		// 		}
+		// 		return
+		// 	}
+		// }
+		//bitmap
+		err = indexdb.CreateIndex(req.GetCollectionName())
+		if err != nil {
+			xx.lock.Lock()
+			delete(xx.Datas, req.GetCollectionName())
+			xx.lock.Unlock()
+			xx.VectorStore.DropCollection(req.GetCollectionName())
 			c <- reply{
 				Result: &edgeproto.CollectionResponse{
 					Status: false,
@@ -193,11 +210,7 @@ func (xx *Edge) CreateCollection(ctx context.Context, req *edgeproto.Collection)
 			xx.lock.Lock()
 			delete(xx.Datas, req.GetCollectionName())
 			xx.lock.Unlock()
-			if q == NONE_QAUNTIZATION {
-				normalEdgeV.DropCollection(req.GetCollectionName())
-			} else {
-				quantizedEdgeV.DropCollection(req.GetCollectionName())
-			}
+			xx.VectorStore.DropCollection(req.GetCollectionName())
 			c <- reply{
 				Result: &edgeproto.CollectionResponse{
 					Status: false,
@@ -248,7 +261,6 @@ func (xx *Edge) DeleteCollection(ctx context.Context, req *edgeproto.CollectionN
 			return
 		}
 		xx.lock.Lock()
-		q := xx.Datas[req.CollectionName].quantization
 		delete(xx.Datas, req.GetCollectionName())
 		xx.lock.Unlock()
 
@@ -265,11 +277,7 @@ func (xx *Edge) DeleteCollection(ctx context.Context, req *edgeproto.CollectionN
 		stateManager.loadchecker.clcLock.Unlock()
 
 		var err error
-		if q == NONE_QAUNTIZATION {
-			err = normalEdgeV.DropCollection(req.GetCollectionName())
-		} else {
-			err = quantizedEdgeV.DropCollection(req.GetCollectionName())
-		}
+		err = xx.VectorStore.DropCollection(req.GetCollectionName())
 		if err != nil {
 			c <- reply{
 				Result: &edgeproto.DeleteCollectionResponse{
@@ -402,11 +410,12 @@ func (xx *Edge) LoadCollection(ctx context.Context, req *edgeproto.CollectionNam
 			c <- reply{Result: &edgeproto.CollectionDetail{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
 			return
 		}
-		if loadConfig.Quantization == NONE_QAUNTIZATION {
-			err = xx.LoadCommitNormalVector(req.GetCollectionName(), loadConfig)
-		} else {
-			err = xx.LoadCommitQuantizedVector(req.GetCollectionName(), loadConfig)
-		}
+		// if loadConfig.Quantization == NONE_QAUNTIZATION {
+		// 	err = xx.LoadCommitNormalVector(req.GetCollectionName(), loadConfig)
+		// } else {
+		// 	err = xx.LoadCommitQuantizedVector(req.GetCollectionName(), loadConfig)
+		// }
+		err = xx.VectorStore.Load(req.GetCollectionName(), loadConfig)
 		if err != nil {
 			c <- reply{Result: &edgeproto.CollectionDetail{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
 			return
@@ -490,12 +499,13 @@ func (xx *Edge) ReleaseCollection(ctx context.Context, req *edgeproto.Collection
 			c <- reply{Result: &edgeproto.Response{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
 			return
 		}
-		q := xx.getQuantization(req.GetCollectionName())
-		if q == NONE_QAUNTIZATION {
-			err = xx.CommitNormalVector(req.GetCollectionName())
-		} else {
-			err = xx.CommitQuantizedVector(req.GetCollectionName())
-		}
+		// q := xx.getQuantization(req.GetCollectionName())
+		// if q == NONE_QAUNTIZATION {
+		// 	err = xx.CommitNormalVector(req.GetCollectionName())
+		// } else {
+		// 	err = xx.CommitQuantizedVector(req.GetCollectionName())
+		// }
+		err = xx.VectorStore.Commit(req.GetCollectionName())
 		if err != nil {
 			c <- reply{Result: &edgeproto.Response{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
 			return
@@ -508,15 +518,18 @@ func (xx *Edge) ReleaseCollection(ctx context.Context, req *edgeproto.Collection
 		delete(indexdb.indexes, req.GetCollectionName())
 		indexdb.indexLock.Unlock()
 
-		if q == NONE_QAUNTIZATION {
-			normalEdgeV.lock.Lock()
-			delete(normalEdgeV.Edges, req.GetCollectionName())
-			normalEdgeV.lock.Unlock()
-		} else {
-			quantizedEdgeV.lock.Lock()
-			delete(quantizedEdgeV.Edges, req.GetCollectionName())
-			quantizedEdgeV.lock.Unlock()
-		}
+		xx.VectorStore.slock.Lock()
+		delete(xx.VectorStore.Space, req.GetCollectionName())
+		xx.VectorStore.slock.Unlock()
+		// if q == NONE_QAUNTIZATION {
+		// 	normalEdgeV.lock.Lock()
+		// 	delete(normalEdgeV.Edges, req.GetCollectionName())
+		// 	normalEdgeV.lock.Unlock()
+		// } else {
+		// 	quantizedEdgeV.lock.Lock()
+		// 	delete(quantizedEdgeV.Edges, req.GetCollectionName())
+		// 	quantizedEdgeV.lock.Unlock()
+		// }
 		stateManager.loadchecker.clcLock.Lock()
 		stateManager.loadchecker.collections[req.GetCollectionName()] = false
 		stateManager.loadchecker.clcLock.Unlock()
@@ -589,13 +602,15 @@ func (xx *Edge) Flush(ctx context.Context, req *edgeproto.CollectionName) (
 			c <- reply{Result: &edgeproto.Response{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
 			return
 		}
-		q := xx.getQuantization(req.GetCollectionName())
-		fmt.Println(q)
-		if q == NONE_QAUNTIZATION {
-			err = xx.CommitNormalVector(req.GetCollectionName())
-		} else {
-			err = xx.CommitQuantizedVector(req.GetCollectionName())
-		}
+		// q := xx.getQuantization(req.GetCollectionName())
+		// fmt.Println(q)
+		// if q == NONE_QAUNTIZATION {
+		// 	err = xx.CommitNormalVector(req.GetCollectionName())
+		// } else {
+		// 	err = xx.CommitQuantizedVector(req.GetCollectionName())
+		// }
+
+		err = xx.VectorStore.Commit(req.GetCollectionName())
 		if err != nil {
 			c <- reply{Result: &edgeproto.Response{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
 			return
@@ -660,12 +675,13 @@ func (xx *Edge) Insert(ctx context.Context, req *edgeproto.ModifyDataset) (
 			c <- reply{Result: &edgeproto.Response{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
 			return
 		}
-		q := xx.getQuantization(req.GetCollectionName())
-		if q == NONE_QAUNTIZATION {
-			err = normalEdgeV.InsertVector(req.GetCollectionName(), autoID, req.GetVector())
-		} else {
-			err = quantizedEdgeV.InsertVector(req.GetCollectionName(), autoID, req.GetVector())
-		}
+		// q := xx.getQuantization(req.GetCollectionName())
+		// if q == NONE_QAUNTIZATION {
+		// 	err = normalEdgeV.InsertVector(req.GetCollectionName(), autoID, req.GetVector())
+		// } else {
+		// 	err = quantizedEdgeV.InsertVector(req.GetCollectionName(), autoID, req.GetVector())
+		// }
+		err = xx.VectorStore.InsertVector(req.GetCollectionName(), autoID, req.GetVector())
 		if err != nil {
 			c <- reply{Result: &edgeproto.Response{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
 			return
@@ -761,12 +777,13 @@ func (xx *Edge) Update(ctx context.Context, req *edgeproto.ModifyDataset) (
 			}
 			return
 		}
-		q := xx.getQuantization(req.GetCollectionName())
-		if q == NONE_QAUNTIZATION {
-			err = normalEdgeV.UpdateVector(req.GetCollectionName(), getId[0], req.GetVector())
-		} else {
-			err = quantizedEdgeV.UpdateVector(req.GetCollectionName(), getId[0], req.GetVector())
-		}
+		// q := xx.getQuantization(req.GetCollectionName())
+		// if q == NONE_QAUNTIZATION {
+		// 	err = normalEdgeV.UpdateVector(req.GetCollectionName(), getId[0], req.GetVector())
+		// } else {
+		// 	err = quantizedEdgeV.UpdateVector(req.GetCollectionName(), getId[0], req.GetVector())
+		// }
+		err = xx.VectorStore.UpdateVector(req.GetCollectionName(), getId[0], req.GetVector())
 		if err != nil {
 			c <- reply{
 				Result: &edgeproto.Response{
@@ -862,12 +879,13 @@ func (xx *Edge) Delete(ctx context.Context, req *edgeproto.DeleteDataset) (
 			}
 			return
 		}
-		q := xx.getQuantization(req.GetCollectionName())
-		if q == NONE_QAUNTIZATION {
-			err = normalEdgeV.RemoveVector(req.GetCollectionName(), getId[0])
-		} else {
-			err = quantizedEdgeV.RemoveVector(req.GetCollectionName(), getId[0])
-		}
+		// q := xx.getQuantization(req.GetCollectionName())
+		// if q == NONE_QAUNTIZATION {
+		// 	err = normalEdgeV.RemoveVector(req.GetCollectionName(), getId[0])
+		// } else {
+		// 	err = quantizedEdgeV.RemoveVector(req.GetCollectionName(), getId[0])
+		// }
+		err = xx.VectorStore.RemoveVector(req.GetCollectionName(), getId[0])
 		if err != nil {
 			c <- reply{
 				Result: &edgeproto.Response{
@@ -934,11 +952,12 @@ func (xx *Edge) VectorSearch(ctx context.Context, req *edgeproto.SearchReq) (
 			rs  *ResultSet
 			err error
 		)
-		if xx.getQuantization(req.GetCollectionName()) == NONE_QAUNTIZATION {
-			rs, err = normalEdgeV.FullScan(req.GetCollectionName(), req.GetVector(), int(req.GetTopK()))
-		} else {
-			rs, err = quantizedEdgeV.FullScan(req.GetCollectionName(), req.GetVector(), int(req.GetTopK()))
-		}
+		// if xx.getQuantization(req.GetCollectionName()) == NONE_QAUNTIZATION {
+		// 	rs, err = normalEdgeV.FullScan(req.GetCollectionName(), req.GetVector(), int(req.GetTopK()))
+		// } else {
+		// 	rs, err = quantizedEdgeV.FullScan(req.GetCollectionName(), req.GetVector(), int(req.GetTopK()))
+		// }
+		rs, err = xx.VectorStore.FullScan(req.GetCollectionName(), req.GetVector(), int(req.GetTopK()))
 		if err != nil {
 			c <- reply{
 				Result: &edgeproto.SearchResponse{
@@ -1126,11 +1145,12 @@ func (xx *Edge) HybridSearch(ctx context.Context, req *edgeproto.SearchReq) (
 			rs  *ResultSet
 			err error
 		)
-		if xx.getQuantization(req.GetCollectionName()) == NONE_QAUNTIZATION {
-			rs, err = normalEdgeV.FullScan(req.GetCollectionName(), req.GetVector(), int(req.GetTopK())*3)
-		} else {
-			rs, err = quantizedEdgeV.FullScan(req.GetCollectionName(), req.GetVector(), int(req.GetTopK())*3)
-		}
+		// if xx.getQuantization(req.GetCollectionName()) == NONE_QAUNTIZATION {
+		// 	rs, err = normalEdgeV.FullScan(req.GetCollectionName(), req.GetVector(), int(req.GetTopK())*3)
+		// } else {
+		// 	rs, err = quantizedEdgeV.FullScan(req.GetCollectionName(), req.GetVector(), int(req.GetTopK())*3)
+		// }
+		rs, err = xx.VectorStore.FullScan(req.GetCollectionName(), req.GetVector(), int(req.GetTopK()))
 		if err != nil {
 			c <- reply{
 				Result: &edgeproto.SearchResponse{

@@ -44,6 +44,8 @@ const (
 	EUCLIDEAN         = "euclidean"
 	NONE_QAUNTIZATION = "none"
 	F16_QUANTIZATION  = "f16"
+	F8_QUANTIZATION   = "f8"
+	BF16_QUANTIZATION = "bf16"
 )
 
 type ID uint64
