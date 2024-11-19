@@ -70,3 +70,6 @@ func generateRandomVector(dim int) []float32 {
 	}
 	return vec
 }
+
+// release time :  0.004064
+// search average time : 0.34

@@ -31,6 +31,24 @@ type Review struct {
 	Distance float32 `json:"distance"`
 }
 
+func Normalize(v []float32) []float32 {
+	var norm float32
+	out := make([]float32, len(v))
+	for i := range v {
+		norm += v[i] * v[i]
+	}
+	if norm == 0 {
+		return out
+	}
+
+	norm = float32(math.Sqrt(float64(norm)))
+	for i := range v {
+		out[i] = v[i] / norm
+	}
+
+	return out
+}
+
 func normalise(vec []float32) []float32 {
 	// var magnitude float32 = 0.0
 	// for _, v := range vec {
@@ -109,7 +127,7 @@ func main() {
 	for i, data := range jrs {
 		commitId := hnswpq.NextId()
 
-		err := hnswPQ.Insert(collection, commitId, normalise(data.Embedding))
+		err := hnswPQ.Insert(collection, commitId, Normalize(data.Embedding))
 		if err != nil {
 			log.Fatalf("insert error: %v", err)
 		}
@@ -124,7 +142,7 @@ func main() {
 		start := time.Now()
 		topCandidates := &queue.PriorityQueue{Order: false, Items: []*queue.Item{}}
 		heap.Init(topCandidates)
-		err := hnswPQ.Search(collection, normalise(data.Embedding), topCandidates, 5, 16)
+		err := hnswPQ.Search(collection, Normalize(data.Embedding), topCandidates, 5, 16)
 		if err != nil {
 			log.Fatalf("pq search error: %v", err)
 		}
@@ -169,7 +187,7 @@ func main() {
 	for i, data := range jrs {
 		commitId := hnswpq.NextId()
 
-		err := fitPQ.Insert(collection, commitId, normalise(data.Embedding))
+		err := fitPQ.Insert(collection, commitId, Normalize(data.Embedding))
 		if err != nil {
 			log.Fatalf("insert error: %v", err)
 		}
@@ -183,7 +201,7 @@ func main() {
 		start := time.Now()
 		topCandidates := &queue.PriorityQueue{Order: false, Items: []*queue.Item{}}
 		heap.Init(topCandidates)
-		err := fitPQ.Search(collection, normalise(data.Embedding), topCandidates, 5, 16)
+		err := fitPQ.Search(collection, Normalize(data.Embedding), topCandidates, 5, 16)
 		if err != nil {
 			log.Fatalf("pq search error: %v", err)
 		}
@@ -217,7 +235,7 @@ func main() {
 		start := time.Now()
 		topCandidates := &queue.PriorityQueue{Order: false, Items: []*queue.Item{}}
 		heap.Init(topCandidates)
-		err := fitPQ.Search(collection, normalise(data.Embedding), topCandidates, 5, 16)
+		err := fitPQ.Search(collection, Normalize(data.Embedding), topCandidates, 5, 16)
 		if err != nil {
 			log.Fatalf("pq search error: %v", err)
 		}
