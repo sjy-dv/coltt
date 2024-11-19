@@ -4,19 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-
-	"github.com/sjy-dv/nnv/pkg/gomath"
 )
 
 type vectorspace interface {
 	// CreateCollection(config CollectionConfig) error
 	// DropCollection(collectionName string) error
-	InsertVector(collectionName string, commitId uint64, vector gomath.Vector) error
-	UpdateVector(collectionName string, id uint64, vector gomath.Vector) error
+	InsertVector(collectionName string, commitId uint64, vector Vector) error
+	UpdateVector(collectionName string, id uint64, vector Vector) error
 	RemoveVector(collectionName string, id uint64) error
-	FullScan(collectionName string, target gomath.Vector, topK int) (*ResultSet, error)
-	Commit() error
-	Load() error
+	FullScan(collectionName string, target Vector, topK int) (*ResultSet, error)
 }
 
 type Vectorstore struct {
@@ -69,7 +65,7 @@ func (xx *Vectorstore) DropCollection(collectionName string) error {
 	return nil
 }
 
-func (xx *Vectorstore) InsertVector(collectionName string, commitId uint64, vector gomath.Vector) error {
+func (xx *Vectorstore) InsertVector(collectionName string, commitId uint64, vector Vector) error {
 	xx.slock.RLock()
 	basis, ok := xx.Space[collectionName]
 	xx.slock.RUnlock()
@@ -79,7 +75,7 @@ func (xx *Vectorstore) InsertVector(collectionName string, commitId uint64, vect
 	return basis.InsertVector(collectionName, commitId, vector)
 }
 
-func (xx *Vectorstore) UpdateVector(collectionName string, id uint64, vector gomath.Vector) error {
+func (xx *Vectorstore) UpdateVector(collectionName string, id uint64, vector Vector) error {
 	xx.slock.RLock()
 	basis, ok := xx.Space[collectionName]
 	xx.slock.RUnlock()
@@ -99,7 +95,7 @@ func (xx *Vectorstore) RemoveVector(collectionName string, id uint64) error {
 	return basis.RemoveVector(collectionName, id)
 }
 
-func (xx *Vectorstore) FullScan(collectionName string, target gomath.Vector, topK int,
+func (xx *Vectorstore) FullScan(collectionName string, target Vector, topK int,
 ) (*ResultSet, error) {
 	xx.slock.RLock()
 	basis, ok := xx.Space[collectionName]
@@ -111,13 +107,8 @@ func (xx *Vectorstore) FullScan(collectionName string, target gomath.Vector, top
 }
 
 func (xx *Vectorstore) Commit(collectionName string) error {
-	xx.slock.RLock()
-	basis, ok := xx.Space[collectionName]
-	xx.slock.RUnlock()
-	if !ok {
-		return fmt.Errorf(ErrCollectionNotFound, collectionName)
-	}
-	return basis.Commit()
+
+	return nil
 }
 
 func (xx *Vectorstore) Load(collectionName string, config CollectionConfig) error {
@@ -134,5 +125,5 @@ func (xx *Vectorstore) Load(collectionName string, config CollectionConfig) erro
 	} else {
 		return errors.New("not support quantization type")
 	}
-	return xx.Space[collectionName].Load()
+	return nil
 }

@@ -44,11 +44,11 @@ func NewEdgeLite() error {
 	edge.NewIndexDB()
 	log.Info().Msg("edge-lite.indexdb init")
 	//-----------------------------------------------//
-	edge.NewEdgeVectorCollection()
-	log.Info().Msg("edge-lite.normalize-vector-store init")
+	// edge.NewEdgeVectorCollection()
+	// log.Info().Msg("edge-lite.normalize-vector-store init")
 	//-----------------------------------------------//
-	edge.NewQuantizedEdgeVectorCollection()
-	log.Info().Msg("edge-lite.quantized-vector-store init")
+	// edge.NewQuantizedEdgeVectorCollection()
+	// log.Info().Msg("edge-lite.quantized-vector-store init")
 	//-----------------------------------------------//
 	if err := gRpcStart(); err != nil {
 		log.Warn().Err(err).Msg("edge-lite.root.go(50) grpc start failed")

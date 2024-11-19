@@ -20,7 +20,6 @@ package edge
 import (
 	"github.com/sjy-dv/nnv/pkg/compresshelper"
 	"github.com/sjy-dv/nnv/pkg/distance"
-	"github.com/sjy-dv/nnv/pkg/gomath"
 )
 
 type bfloat16Vec []compresshelper.BFloat16
@@ -28,13 +27,13 @@ type bfloat16Vec []compresshelper.BFloat16
 var _ Quantization[bfloat16Vec] = BFloat16Quantization{}
 
 type BFloat16Quantization struct {
-	bufx, bufy gomath.Vector
+	bufx, bufy Vector
 }
 
 func (q BFloat16Quantization) Similarity(x, y bfloat16Vec, dist distance.Space) float32 {
 	if q.bufx == nil {
-		q.bufx = make(gomath.Vector, len(x))
-		q.bufy = make(gomath.Vector, len(x))
+		q.bufx = make(Vector, len(x))
+		q.bufy = make(Vector, len(x))
 	}
 	for i := range x {
 		q.bufx[i] = x[i].Float32()
@@ -43,7 +42,7 @@ func (q BFloat16Quantization) Similarity(x, y bfloat16Vec, dist distance.Space) 
 	return dist.Distance(q.bufx, q.bufy)
 }
 
-func (q BFloat16Quantization) Lower(v gomath.Vector) (bfloat16Vec, error) {
+func (q BFloat16Quantization) Lower(v Vector) (bfloat16Vec, error) {
 	out := make(bfloat16Vec, len(v))
 	for i, x := range v {
 		out[i] = compresshelper.BF16Fromfloat32(x)

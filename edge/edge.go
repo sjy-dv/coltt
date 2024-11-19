@@ -28,11 +28,13 @@ import (
 	"github.com/sjy-dv/nnv/diskv"
 	"github.com/sjy-dv/nnv/gen/protoc/v2/edgeproto"
 	"github.com/sjy-dv/nnv/gen/protoc/v2/phonyproto"
+	"github.com/sjy-dv/nnv/pkg/concurrentmap"
 	"google.golang.org/protobuf/proto"
 )
 
 type Edge struct {
-	Datas       map[string]*EdgeData
+	// Datas       map[string]*EdgeData
+	Datas       *concurrentmap.Map[string, *EdgeData]
 	VectorStore *Vectorstore
 	lock        sync.RWMutex
 	Disk        *diskv.DB
@@ -60,7 +62,7 @@ func NewEdge() (*Edge, error) {
 		return nil, err
 	}
 	return &Edge{
-		Datas:       make(map[string]*EdgeData),
+		Datas:       concurrentmap.New[string, *EdgeData](),
 		VectorStore: NewVectorstore(),
 		Disk:        diskdb,
 	}, nil
@@ -89,10 +91,11 @@ func alreadyLoadCollection(collectionName string) bool {
 }
 
 func (xx *Edge) getDist(collectionName string) string {
-	xx.lock.RLock()
-	dist := xx.Datas[collectionName].distance
-	defer xx.lock.RUnlock()
-	return dist
+	val, ok := xx.Datas.Get(collectionName)
+	if ok {
+		return val.distance
+	}
+	return val.distance
 }
 
 func (xx *Edge) CreateCollection(ctx context.Context, req *edgeproto.Collection) (
@@ -142,13 +145,18 @@ func (xx *Edge) CreateCollection(ctx context.Context, req *edgeproto.Collection)
 			}
 			return NONE_QAUNTIZATION
 		}()
-		xx.lock.Lock()
-		xx.Datas[req.GetCollectionName()] = &EdgeData{
+		// xx.lock.Lock()
+		// xx.Datas[req.GetCollectionName()] = &EdgeData{
+		// 	dim:          int32(req.GetDim()),
+		// 	distance:     dist,
+		// 	quantization: q,
+		// }
+		// xx.lock.Unlock()
+		xx.Datas.Set(req.GetCollectionName(), &EdgeData{
 			dim:          int32(req.GetDim()),
 			distance:     dist,
 			quantization: q,
-		}
-		xx.lock.Unlock()
+		})
 		//=========vector============
 		cfg := CollectionConfig{
 			Dimension:      int(req.GetDim()),
@@ -158,9 +166,10 @@ func (xx *Edge) CreateCollection(ctx context.Context, req *edgeproto.Collection)
 		}
 		err := xx.VectorStore.CreateCollection(cfg)
 		if err != nil {
-			xx.lock.Lock()
-			delete(xx.Datas, req.GetCollectionName())
-			xx.lock.Unlock()
+			// xx.lock.Lock()
+			// delete(xx.Datas, req.GetCollectionName())
+			xx.Datas.Del(req.GetCollectionName())
+			// xx.lock.Unlock()
 			c <- reply{
 				Result: &edgeproto.CollectionResponse{
 					Status: false,
@@ -173,9 +182,10 @@ func (xx *Edge) CreateCollection(ctx context.Context, req *edgeproto.Collection)
 		//bitmap
 		err = indexdb.CreateIndex(req.GetCollectionName())
 		if err != nil {
-			xx.lock.Lock()
-			delete(xx.Datas, req.GetCollectionName())
-			xx.lock.Unlock()
+			// xx.lock.Lock()
+			// delete(xx.Datas, req.GetCollectionName())
+			// xx.lock.Unlock()
+			xx.Datas.Del(req.GetCollectionName())
 			xx.VectorStore.DropCollection(req.GetCollectionName())
 			c <- reply{
 				Result: &edgeproto.CollectionResponse{
@@ -196,9 +206,10 @@ func (xx *Edge) CreateCollection(ctx context.Context, req *edgeproto.Collection)
 		stateManager.auth.authLock.Unlock()
 		err = xx.CommitCollection()
 		if err != nil {
-			xx.lock.Lock()
-			delete(xx.Datas, req.GetCollectionName())
-			xx.lock.Unlock()
+			// xx.lock.Lock()
+			// delete(xx.Datas, req.GetCollectionName())
+			// xx.lock.Unlock()
+			xx.Datas.Del(req.GetCollectionName())
 			xx.VectorStore.DropCollection(req.GetCollectionName())
 			c <- reply{
 				Result: &edgeproto.CollectionResponse{
@@ -211,9 +222,10 @@ func (xx *Edge) CreateCollection(ctx context.Context, req *edgeproto.Collection)
 		fmt.Println(11)
 		err = xx.CommitConfig(req.GetCollectionName())
 		if err != nil {
-			xx.lock.Lock()
-			delete(xx.Datas, req.GetCollectionName())
-			xx.lock.Unlock()
+			// xx.lock.Lock()
+			// delete(xx.Datas, req.GetCollectionName())
+			// xx.lock.Unlock()
+			xx.Datas.Del(req.GetCollectionName())
 			xx.VectorStore.DropCollection(req.GetCollectionName())
 			c <- reply{
 				Result: &edgeproto.CollectionResponse{
@@ -265,9 +277,10 @@ func (xx *Edge) DeleteCollection(ctx context.Context, req *edgeproto.CollectionN
 			}
 			return
 		}
-		xx.lock.Lock()
-		delete(xx.Datas, req.GetCollectionName())
-		xx.lock.Unlock()
+		// xx.lock.Lock()
+		// delete(xx.Datas, req.GetCollectionName())
+		// xx.lock.Unlock()
+		xx.Datas.Del(req.GetCollectionName())
 
 		stateManager.auth.authLock.Lock()
 		delete(stateManager.auth.collections, req.GetCollectionName())
@@ -436,10 +449,11 @@ func (xx *Edge) LoadCollection(ctx context.Context, req *edgeproto.CollectionNam
 			distance:     loadConfig.Distance,
 			quantization: loadConfig.Quantization,
 		}
-		xx.lock.Lock()
-		xx.Datas[req.GetCollectionName()] = &EdgeData{}
-		xx.Datas[req.GetCollectionName()] = merge
-		xx.lock.Unlock()
+		// xx.lock.Lock()
+		// xx.Datas[req.GetCollectionName()] = &EdgeData{}
+		// xx.Datas[req.GetCollectionName()] = merge
+		// xx.lock.Unlock()
+		xx.Datas.Set(req.GetCollectionName(), merge)
 		err = xx.LoadData(req.GetCollectionName(), loadConfig)
 		if err != nil {
 			c <- reply{Result: &edgeproto.CollectionDetail{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
@@ -515,9 +529,10 @@ func (xx *Edge) ReleaseCollection(ctx context.Context, req *edgeproto.Collection
 			return
 		}
 
-		xx.lock.Lock()
-		delete(xx.Datas, req.GetCollectionName())
-		xx.lock.Unlock()
+		// xx.lock.Lock()
+		// delete(xx.Datas, req.GetCollectionName())
+		// xx.lock.Unlock()
+		xx.Datas.Del(req.GetCollectionName())
 
 		indexdb.indexLock.Lock()
 		delete(indexdb.indexes, req.GetCollectionName())

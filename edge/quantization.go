@@ -22,34 +22,33 @@ import (
 	"math"
 
 	"github.com/sjy-dv/nnv/pkg/distance"
-	"github.com/sjy-dv/nnv/pkg/gomath"
 )
 
 type Quantization[T any] interface {
 	Similarity(x, y T, dist distance.Space) float32
-	Lower(v gomath.Vector) (T, error)
+	Lower(v Vector) (T, error)
 	Name() string
 	LowerSize(dim int) int
 }
 
 type QuantizationType interface {
-	gomath.Vector | float16Vec |
+	Vector | float16Vec |
 		bfloat16Vec | float8Vec
 }
 
-var _ Quantization[gomath.Vector] = NoQuantization{}
+var _ Quantization[Vector] = NoQuantization{}
 
 type NoQuantization struct{}
 
-func (q NoQuantization) Similarity(x, y gomath.Vector, dist distance.Space) float32 {
+func (q NoQuantization) Similarity(x, y Vector, dist distance.Space) float32 {
 	return dist.Distance(x, y)
 }
 
-func (q NoQuantization) Lower(v gomath.Vector) (gomath.Vector, error) {
+func (q NoQuantization) Lower(v Vector) (Vector, error) {
 	return v, nil
 }
 
-func (q NoQuantization) Marshal(to []byte, lower gomath.Vector) error {
+func (q NoQuantization) Marshal(to []byte, lower Vector) error {
 	for i, n := range lower {
 		u := math.Float32bits(n)
 		binary.LittleEndian.PutUint32(to[i*4:], u)
@@ -57,7 +56,7 @@ func (q NoQuantization) Marshal(to []byte, lower gomath.Vector) error {
 	return nil
 }
 
-func (q NoQuantization) Unmarshal(data []byte) (gomath.Vector, error) {
+func (q NoQuantization) Unmarshal(data []byte) (Vector, error) {
 	out := make([]float32, len(data)>>2)
 	for i := 0; i < len(data); i += 4 {
 		bits := binary.LittleEndian.Uint32(data[i:])
