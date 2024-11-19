@@ -4,6 +4,9 @@ PROTO_SRC_DIR=./idl/proto/v2
 PROTO_OUT_DIR=./gen/protoc/v2
 COMPILE_VERSION=V2
 
+start:
+	- go run cmd/root/main.go
+
 docker-build-bin:
 	- env GOOS=linux go build -o ./bin/ cmd/root/main.go
 

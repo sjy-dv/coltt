@@ -73,5 +73,6 @@ func StableRelease(ctx context.Context) error {
 			log.Debug().Msg("gRPC server forced shutdown due to timeout")
 		}
 	}
+	edgelites.Edge.Close()
 	return nil
 }

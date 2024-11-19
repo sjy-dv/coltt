@@ -24,9 +24,11 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/rs/zerolog/log"
 	"github.com/sjy-dv/nnv/diskv"
 	"github.com/sjy-dv/nnv/gen/protoc/v2/edgeproto"
-	"google.golang.org/protobuf/types/known/structpb"
+	"github.com/sjy-dv/nnv/gen/protoc/v2/phonyproto"
+	"google.golang.org/protobuf/proto"
 )
 
 type Edge struct {
@@ -37,7 +39,7 @@ type Edge struct {
 }
 
 type EdgeData struct {
-	Data         map[uint64]interface{}
+	// Data         map[uint64]interface{}
 	dim          int32
 	distance     string
 	quantization string
@@ -64,6 +66,14 @@ func NewEdge() (*Edge, error) {
 	}, nil
 }
 
+func (xx *Edge) Close() {
+	if err := xx.Disk.Close(); err != nil {
+		log.Error().Err(err).Msg("diskv :> It did not shut down properly ")
+		return
+	}
+	log.Info().Msg("database shut down successfully")
+}
+
 func existsCollection(collectionName string) bool {
 	stateManager.checker.cecLock.RLock()
 	exists := stateManager.checker.collections[collectionName]
@@ -76,13 +86,6 @@ func alreadyLoadCollection(collectionName string) bool {
 	exists := stateManager.auth.collections[collectionName]
 	stateManager.auth.authLock.RUnlock()
 	return exists
-}
-
-func (xx *Edge) getQuantization(collectionName string) string {
-	xx.lock.RLock()
-	q := xx.Datas[collectionName].quantization
-	defer xx.lock.RUnlock()
-	return q
 }
 
 func (xx *Edge) getDist(collectionName string) string {
@@ -144,7 +147,6 @@ func (xx *Edge) CreateCollection(ctx context.Context, req *edgeproto.Collection)
 			dim:          int32(req.GetDim()),
 			distance:     dist,
 			quantization: q,
-			Data:         make(map[uint64]interface{}),
 		}
 		xx.lock.Unlock()
 		//=========vector============
@@ -167,35 +169,7 @@ func (xx *Edge) CreateCollection(ctx context.Context, req *edgeproto.Collection)
 			}
 			return
 		}
-		// if q == NONE_QAUNTIZATION {
-		// 	err := normalEdgeV.CreateCollection(cfg)
-		// 	if err != nil {
-		// 		xx.lock.Lock()
-		// 		delete(xx.Datas, req.GetCollectionName())
-		// 		xx.lock.Unlock()
-		// 		c <- reply{
-		// 			Result: &edgeproto.CollectionResponse{
-		// 				Status: false,
-		// 				Error:  &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR},
-		// 			},
-		// 		}
-		// 		return
-		// 	}
-		// } else {
-		// 	err := quantizedEdgeV.CreateCollection(cfg)
-		// 	if err != nil {
-		// 		xx.lock.Lock()
-		// 		delete(xx.Datas, req.GetCollectionName())
-		// 		xx.lock.Unlock()
-		// 		c <- reply{
-		// 			Result: &edgeproto.CollectionResponse{
-		// 				Status: false,
-		// 				Error:  &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR},
-		// 			},
-		// 		}
-		// 		return
-		// 	}
-		// }
+
 		//bitmap
 		err = indexdb.CreateIndex(req.GetCollectionName())
 		if err != nil {
@@ -234,6 +208,22 @@ func (xx *Edge) CreateCollection(ctx context.Context, req *edgeproto.Collection)
 			}
 			return
 		}
+		fmt.Println(11)
+		err = xx.CommitConfig(req.GetCollectionName())
+		if err != nil {
+			xx.lock.Lock()
+			delete(xx.Datas, req.GetCollectionName())
+			xx.lock.Unlock()
+			xx.VectorStore.DropCollection(req.GetCollectionName())
+			c <- reply{
+				Result: &edgeproto.CollectionResponse{
+					Status: false,
+					Error:  &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR},
+				},
+			}
+			return
+		}
+		fmt.Println(22)
 		c <- reply{
 			Result: &edgeproto.CollectionResponse{
 				Status: true,
@@ -318,6 +308,15 @@ func (xx *Edge) DeleteCollection(ctx context.Context, req *edgeproto.CollectionN
 			}
 			return
 		}
+		sep := fmt.Sprintf("%s_", req.GetCollectionName())
+		// add commit -trace log
+		xx.Disk.AscendKeys([]byte(sep), true, func(k []byte) (bool, error) {
+			err := xx.Disk.Delete(k)
+			if err != nil {
+				return false, err
+			}
+			return true, nil
+		})
 		allremover(req.GetCollectionName())
 		c <- reply{
 			Result: &edgeproto.DeleteCollectionResponse{
@@ -410,11 +409,11 @@ func (xx *Edge) LoadCollection(ctx context.Context, req *edgeproto.CollectionNam
 			}
 			return
 		}
-		loadData, err := xx.LoadCommitData(req.GetCollectionName())
-		if err != nil {
-			c <- reply{Result: &edgeproto.CollectionDetail{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
-			return
-		}
+		// loadData, err := xx.LoadCommitData(req.GetCollectionName())
+		// if err != nil {
+		// 	c <- reply{Result: &edgeproto.CollectionDetail{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
+		// 	return
+		// }
 		loadConfig, err := xx.LoadCommitCollectionConifg(req.GetCollectionName())
 		if err != nil {
 			c <- reply{Result: &edgeproto.CollectionDetail{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
@@ -425,18 +424,14 @@ func (xx *Edge) LoadCollection(ctx context.Context, req *edgeproto.CollectionNam
 			c <- reply{Result: &edgeproto.CollectionDetail{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
 			return
 		}
-		// if loadConfig.Quantization == NONE_QAUNTIZATION {
-		// 	err = xx.LoadCommitNormalVector(req.GetCollectionName(), loadConfig)
-		// } else {
-		// 	err = xx.LoadCommitQuantizedVector(req.GetCollectionName(), loadConfig)
+
+		// err = xx.VectorStore.Load(req.GetCollectionName(), loadConfig)
+		// if err != nil {
+		// 	c <- reply{Result: &edgeproto.CollectionDetail{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
+		// 	return
 		// }
-		err = xx.VectorStore.Load(req.GetCollectionName(), loadConfig)
-		if err != nil {
-			c <- reply{Result: &edgeproto.CollectionDetail{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
-			return
-		}
 		merge := &EdgeData{
-			Data:         loadData,
+			// Data:         make(map[uint64]interface{}),
 			dim:          int32(loadConfig.Dimension),
 			distance:     loadConfig.Distance,
 			quantization: loadConfig.Quantization,
@@ -445,6 +440,11 @@ func (xx *Edge) LoadCollection(ctx context.Context, req *edgeproto.CollectionNam
 		xx.Datas[req.GetCollectionName()] = &EdgeData{}
 		xx.Datas[req.GetCollectionName()] = merge
 		xx.lock.Unlock()
+		err = xx.LoadData(req.GetCollectionName(), loadConfig)
+		if err != nil {
+			c <- reply{Result: &edgeproto.CollectionDetail{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
+			return
+		}
 		stateManager.loadchecker.clcLock.Lock()
 		stateManager.loadchecker.collections[req.GetCollectionName()] = true
 		stateManager.loadchecker.clcLock.Unlock()
@@ -499,12 +499,12 @@ func (xx *Edge) ReleaseCollection(ctx context.Context, req *edgeproto.Collection
 			}
 			return
 		}
-		err := xx.CommitData(req.GetCollectionName())
-		if err != nil {
-			c <- reply{Result: &edgeproto.Response{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
-			return
-		}
-		err = xx.CommitConfig(req.GetCollectionName())
+		// err := xx.CommitData(req.GetCollectionName())
+		// if err != nil {
+		// 	c <- reply{Result: &edgeproto.Response{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
+		// 	return
+		// }
+		err := xx.CommitConfig(req.GetCollectionName())
 		if err != nil {
 			c <- reply{Result: &edgeproto.Response{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
 			return
@@ -514,17 +514,7 @@ func (xx *Edge) ReleaseCollection(ctx context.Context, req *edgeproto.Collection
 			c <- reply{Result: &edgeproto.Response{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
 			return
 		}
-		// q := xx.getQuantization(req.GetCollectionName())
-		// if q == NONE_QAUNTIZATION {
-		// 	err = xx.CommitNormalVector(req.GetCollectionName())
-		// } else {
-		// 	err = xx.CommitQuantizedVector(req.GetCollectionName())
-		// }
-		err = xx.VectorStore.Commit(req.GetCollectionName())
-		if err != nil {
-			c <- reply{Result: &edgeproto.Response{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
-			return
-		}
+
 		xx.lock.Lock()
 		delete(xx.Datas, req.GetCollectionName())
 		xx.lock.Unlock()
@@ -536,15 +526,7 @@ func (xx *Edge) ReleaseCollection(ctx context.Context, req *edgeproto.Collection
 		xx.VectorStore.slock.Lock()
 		delete(xx.VectorStore.Space, req.GetCollectionName())
 		xx.VectorStore.slock.Unlock()
-		// if q == NONE_QAUNTIZATION {
-		// 	normalEdgeV.lock.Lock()
-		// 	delete(normalEdgeV.Edges, req.GetCollectionName())
-		// 	normalEdgeV.lock.Unlock()
-		// } else {
-		// 	quantizedEdgeV.lock.Lock()
-		// 	delete(quantizedEdgeV.Edges, req.GetCollectionName())
-		// 	quantizedEdgeV.lock.Unlock()
-		// }
+
 		stateManager.loadchecker.clcLock.Lock()
 		stateManager.loadchecker.collections[req.GetCollectionName()] = false
 		stateManager.loadchecker.clcLock.Unlock()
@@ -602,12 +584,7 @@ func (xx *Edge) Flush(ctx context.Context, req *edgeproto.CollectionName) (
 			return
 		}
 
-		err := xx.CommitData(req.GetCollectionName())
-		if err != nil {
-			c <- reply{Result: &edgeproto.Response{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
-			return
-		}
-		err = xx.CommitConfig(req.GetCollectionName())
+		err := xx.CommitConfig(req.GetCollectionName())
 		if err != nil {
 			c <- reply{Result: &edgeproto.Response{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
 			return
@@ -617,13 +594,6 @@ func (xx *Edge) Flush(ctx context.Context, req *edgeproto.CollectionName) (
 			c <- reply{Result: &edgeproto.Response{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
 			return
 		}
-		// q := xx.getQuantization(req.GetCollectionName())
-		// fmt.Println(q)
-		// if q == NONE_QAUNTIZATION {
-		// 	err = xx.CommitNormalVector(req.GetCollectionName())
-		// } else {
-		// 	err = xx.CommitQuantizedVector(req.GetCollectionName())
-		// }
 
 		err = xx.VectorStore.Commit(req.GetCollectionName())
 		if err != nil {
@@ -681,23 +651,37 @@ func (xx *Edge) Insert(ctx context.Context, req *edgeproto.ModifyDataset) (
 		}
 		autoID := autoCommitID()
 		cloneMap := req.GetMetadata().AsMap()
-		xx.Datas[req.GetCollectionName()].lock.Lock()
-		xx.Datas[req.GetCollectionName()].Data[autoID] = cloneMap
-		xx.Datas[req.GetCollectionName()].lock.Unlock()
+		// xx.Datas[req.GetCollectionName()].lock.Lock()
+		// xx.Datas[req.GetCollectionName()].Data[autoID] = cloneMap
+		// xx.Datas[req.GetCollectionName()].lock.Unlock()
 
 		err := indexdb.indexes[req.GetCollectionName()].Add(autoID, cloneMap)
 		if err != nil {
 			c <- reply{Result: &edgeproto.Response{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
 			return
 		}
-		// q := xx.getQuantization(req.GetCollectionName())
-		// if q == NONE_QAUNTIZATION {
-		// 	err = normalEdgeV.InsertVector(req.GetCollectionName(), autoID, req.GetVector())
-		// } else {
-		// 	err = quantizedEdgeV.InsertVector(req.GetCollectionName(), autoID, req.GetVector())
-		// }
+
 		err = xx.VectorStore.InsertVector(req.GetCollectionName(), autoID, req.GetVector())
 		if err != nil {
+			c <- reply{Result: &edgeproto.Response{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
+			return
+		}
+		phonywrap := phonyproto.PhonyWrapper{
+			Id:       req.GetId(),
+			Vector:   req.GetVector(),
+			Metadata: req.GetMetadata(),
+		}
+		mapping, err := proto.Marshal(&phonywrap)
+		if err != nil {
+			indexdb.indexes[req.GetCollectionName()].Remove(autoID, cloneMap)
+			xx.VectorStore.RemoveVector(req.GetCollectionName(), autoID)
+			c <- reply{Result: &edgeproto.Response{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
+			return
+		}
+		err = xx.Disk.Put([]byte(fmt.Sprintf("%s_%d", req.GetCollectionName(), autoID)), mapping)
+		if err != nil {
+			indexdb.indexes[req.GetCollectionName()].Remove(autoID, cloneMap)
+			xx.VectorStore.RemoveVector(req.GetCollectionName(), autoID)
 			c <- reply{Result: &edgeproto.Response{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
 			return
 		}
@@ -758,15 +742,42 @@ func (xx *Edge) Update(ctx context.Context, req *edgeproto.ModifyDataset) (
 			}
 			return
 		}
-		xx.Datas[req.GetCollectionName()].lock.RLock()
-		cloneMeta := xx.Datas[req.GetCollectionName()].Data[getId[0]]
-		xx.Datas[req.GetCollectionName()].lock.RUnlock()
+		// xx.Datas[req.GetCollectionName()].lock.RLock()
+		// cloneMeta := xx.Datas[req.GetCollectionName()].Data[getId[0]]
+		// xx.Datas[req.GetCollectionName()].lock.RUnlock()
 
-		xx.Datas[req.GetCollectionName()].lock.Lock()
-		xx.Datas[req.GetCollectionName()].Data[getId[0]] = req.GetMetadata().AsMap()
-		xx.Datas[req.GetCollectionName()].lock.Unlock()
+		// xx.Datas[req.GetCollectionName()].lock.Lock()
+		// xx.Datas[req.GetCollectionName()].Data[getId[0]] = req.GetMetadata().AsMap()
+		// xx.Datas[req.GetCollectionName()].lock.Unlock()
 
-		err := indexdb.indexes[req.GetCollectionName()].Remove(getId[0], cloneMeta.(map[string]interface{}))
+		phonyD, err := xx.Disk.Get([]byte(fmt.Sprintf("%s_%d", req.GetCollectionName(), getId[0])))
+		if err != nil {
+			c <- reply{
+				Result: &edgeproto.Response{
+					Status: false,
+					Error: &edgeproto.Error{
+						ErrorMessage: err.Error(),
+						ErrorCode:    edgeproto.ErrorCode_INTERNAL_FUNC_ERROR,
+					},
+				},
+			}
+			return
+		}
+		phonydec := phonyproto.PhonyWrapper{}
+		err = proto.Unmarshal(phonyD, &phonydec)
+		if err != nil {
+			c <- reply{
+				Result: &edgeproto.Response{
+					Status: false,
+					Error: &edgeproto.Error{
+						ErrorMessage: err.Error(),
+						ErrorCode:    edgeproto.ErrorCode_INTERNAL_FUNC_ERROR,
+					},
+				},
+			}
+			return
+		}
+		err = indexdb.indexes[req.GetCollectionName()].Remove(getId[0], phonydec.GetMetadata().AsMap())
 		if err != nil {
 			c <- reply{
 				Result: &edgeproto.Response{
@@ -792,12 +803,6 @@ func (xx *Edge) Update(ctx context.Context, req *edgeproto.ModifyDataset) (
 			}
 			return
 		}
-		// q := xx.getQuantization(req.GetCollectionName())
-		// if q == NONE_QAUNTIZATION {
-		// 	err = normalEdgeV.UpdateVector(req.GetCollectionName(), getId[0], req.GetVector())
-		// } else {
-		// 	err = quantizedEdgeV.UpdateVector(req.GetCollectionName(), getId[0], req.GetVector())
-		// }
 		err = xx.VectorStore.UpdateVector(req.GetCollectionName(), getId[0], req.GetVector())
 		if err != nil {
 			c <- reply{
@@ -809,6 +814,25 @@ func (xx *Edge) Update(ctx context.Context, req *edgeproto.ModifyDataset) (
 					},
 				},
 			}
+			return
+		}
+		phonywrap := phonyproto.PhonyWrapper{
+			Id:       req.GetId(),
+			Vector:   req.GetVector(),
+			Metadata: req.GetMetadata(),
+		}
+		mapping, err := proto.Marshal(&phonywrap)
+		if err != nil {
+			indexdb.indexes[req.GetCollectionName()].Remove(getId[0], req.GetMetadata().AsMap())
+			xx.VectorStore.RemoveVector(req.GetCollectionName(), getId[0])
+			c <- reply{Result: &edgeproto.Response{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
+			return
+		}
+		err = xx.Disk.Put([]byte(fmt.Sprintf("%s_%d", req.GetCollectionName(), getId[0])), mapping)
+		if err != nil {
+			indexdb.indexes[req.GetCollectionName()].Remove(getId[0], req.GetMetadata().AsMap())
+			xx.VectorStore.RemoveVector(req.GetCollectionName(), getId[0])
+			c <- reply{Result: &edgeproto.Response{Status: false, Error: &edgeproto.Error{ErrorMessage: err.Error(), ErrorCode: edgeproto.ErrorCode_INTERNAL_FUNC_ERROR}}}
 			return
 		}
 		c <- reply{
@@ -873,15 +897,16 @@ func (xx *Edge) Delete(ctx context.Context, req *edgeproto.DeleteDataset) (
 			}
 			return
 		}
-		xx.Datas[req.GetCollectionName()].lock.RLock()
-		cloneMeta := xx.Datas[req.GetCollectionName()].Data[getId[0]]
-		xx.Datas[req.GetCollectionName()].lock.RUnlock()
 
-		xx.Datas[req.GetCollectionName()].lock.Lock()
-		delete(xx.Datas[req.GetCollectionName()].Data, getId[0])
-		xx.Datas[req.GetCollectionName()].lock.Unlock()
+		// xx.Datas[req.GetCollectionName()].lock.RLock()
+		// cloneMeta := xx.Datas[req.GetCollectionName()].Data[getId[0]]
+		// xx.Datas[req.GetCollectionName()].lock.RUnlock()
 
-		err := indexdb.indexes[req.GetCollectionName()].Remove(getId[0], cloneMeta.(map[string]interface{}))
+		// xx.Datas[req.GetCollectionName()].lock.Lock()
+		// delete(xx.Datas[req.GetCollectionName()].Data, getId[0])
+		// xx.Datas[req.GetCollectionName()].lock.Unlock()
+		chunkKey := []byte(fmt.Sprintf("%s_%d", req.GetCollectionName(), getId[0]))
+		phonyD, err := xx.Disk.Get(chunkKey)
 		if err != nil {
 			c <- reply{
 				Result: &edgeproto.Response{
@@ -894,13 +919,62 @@ func (xx *Edge) Delete(ctx context.Context, req *edgeproto.DeleteDataset) (
 			}
 			return
 		}
-		// q := xx.getQuantization(req.GetCollectionName())
-		// if q == NONE_QAUNTIZATION {
-		// 	err = normalEdgeV.RemoveVector(req.GetCollectionName(), getId[0])
-		// } else {
-		// 	err = quantizedEdgeV.RemoveVector(req.GetCollectionName(), getId[0])
-		// }
+		err = xx.Disk.Delete(chunkKey)
+		if err != nil {
+			c <- reply{
+				Result: &edgeproto.Response{
+					Status: false,
+					Error: &edgeproto.Error{
+						ErrorMessage: err.Error(),
+						ErrorCode:    edgeproto.ErrorCode_INTERNAL_FUNC_ERROR,
+					},
+				},
+			}
+			return
+		}
+		phonydec := phonyproto.PhonyWrapper{}
+		err = proto.Unmarshal(phonyD, &phonydec)
+		if err != nil {
+			c <- reply{
+				Result: &edgeproto.Response{
+					Status: false,
+					Error: &edgeproto.Error{
+						ErrorMessage: err.Error(),
+						ErrorCode:    edgeproto.ErrorCode_INTERNAL_FUNC_ERROR,
+					},
+				},
+			}
+			return
+		}
+
+		err = indexdb.indexes[req.GetCollectionName()].Remove(getId[0], phonydec.GetMetadata().AsMap())
+		if err != nil {
+			c <- reply{
+				Result: &edgeproto.Response{
+					Status: false,
+					Error: &edgeproto.Error{
+						ErrorMessage: err.Error(),
+						ErrorCode:    edgeproto.ErrorCode_INTERNAL_FUNC_ERROR,
+					},
+				},
+			}
+			return
+		}
+
 		err = xx.VectorStore.RemoveVector(req.GetCollectionName(), getId[0])
+		if err != nil {
+			c <- reply{
+				Result: &edgeproto.Response{
+					Status: false,
+					Error: &edgeproto.Error{
+						ErrorMessage: err.Error(),
+						ErrorCode:    edgeproto.ErrorCode_INTERNAL_FUNC_ERROR,
+					},
+				},
+			}
+			return
+		}
+		err = xx.Disk.Delete([]byte(fmt.Sprintf("%s_%d", req.GetCollectionName(), getId[0])))
 		if err != nil {
 			c <- reply{
 				Result: &edgeproto.Response{
@@ -992,13 +1066,10 @@ func (xx *Edge) VectorSearch(ctx context.Context, req *edgeproto.SearchReq) (
 					continue
 				}
 			}
-			xx.Datas[req.GetCollectionName()].lock.RLock()
-			clone := xx.Datas[req.GetCollectionName()].Data[uint64(nodeId)]
-			xx.Datas[req.GetCollectionName()].lock.RUnlock()
-
-			candidate := new(edgeproto.Candidates)
-			candidate.Id = clone.(map[string]interface{})["_id"].(string)
-			candidate.Metadata, err = structpb.NewStruct(clone.(map[string]interface{}))
+			// xx.Datas[req.GetCollectionName()].lock.RLock()
+			// clone := xx.Datas[req.GetCollectionName()].Data[uint64(nodeId)]
+			// xx.Datas[req.GetCollectionName()].lock.RUnlock()
+			phonyD, err := xx.Disk.Get([]byte(fmt.Sprintf("%s_%d", req.GetCollectionName(), nodeId)))
 			if err != nil {
 				c <- reply{
 					Result: &edgeproto.SearchResponse{
@@ -1010,6 +1081,22 @@ func (xx *Edge) VectorSearch(ctx context.Context, req *edgeproto.SearchReq) (
 					},
 				}
 			}
+			phonydec := phonyproto.PhonyWrapper{}
+			err = proto.Unmarshal(phonyD, &phonydec)
+			if err != nil {
+				c <- reply{
+					Result: &edgeproto.SearchResponse{
+						Status: false,
+						Error: &edgeproto.Error{
+							ErrorMessage: err.Error(),
+							ErrorCode:    edgeproto.ErrorCode_INTERNAL_FUNC_ERROR,
+						},
+					},
+				}
+			}
+			candidate := new(edgeproto.Candidates)
+			candidate.Id = phonydec.GetId()
+			candidate.Metadata = phonydec.GetMetadata()
 			candidate.Score = func() float32 {
 				if dist == COSINE {
 					return ((rs.sims[rank] + 1) / 2) * 100
@@ -1070,19 +1157,15 @@ func (xx *Edge) FilterSearch(ctx context.Context, req *edgeproto.SearchReq) (
 			}
 			return
 		}
-		var err error
 		indexdb.indexLock.RLock()
 		candidates := indexdb.indexes[req.GetCollectionName()].PureSearch(req.GetFilter())
 		indexdb.indexLock.RUnlock()
 		retval := make([]*edgeproto.Candidates, 0, req.GetTopK())
 		for _, nodeId := range candidates {
-			xx.Datas[req.GetCollectionName()].lock.RLock()
-			clone := xx.Datas[req.GetCollectionName()].Data[nodeId]
-			xx.Datas[req.GetCollectionName()].lock.RUnlock()
-
-			candidate := new(edgeproto.Candidates)
-			candidate.Id = clone.(map[string]interface{})["_id"].(string)
-			candidate.Metadata, err = structpb.NewStruct(clone.(map[string]interface{}))
+			// xx.Datas[req.GetCollectionName()].lock.RLock()
+			// clone := xx.Datas[req.GetCollectionName()].Data[nodeId]
+			// xx.Datas[req.GetCollectionName()].lock.RUnlock()
+			phonyD, err := xx.Disk.Get([]byte(fmt.Sprintf("%s_%d", req.GetCollectionName(), nodeId)))
 			if err != nil {
 				c <- reply{
 					Result: &edgeproto.SearchResponse{
@@ -1094,6 +1177,22 @@ func (xx *Edge) FilterSearch(ctx context.Context, req *edgeproto.SearchReq) (
 					},
 				}
 			}
+			phonydec := phonyproto.PhonyWrapper{}
+			err = proto.Unmarshal(phonyD, &phonydec)
+			if err != nil {
+				c <- reply{
+					Result: &edgeproto.SearchResponse{
+						Status: false,
+						Error: &edgeproto.Error{
+							ErrorMessage: err.Error(),
+							ErrorCode:    edgeproto.ErrorCode_INTERNAL_FUNC_ERROR,
+						},
+					},
+				}
+			}
+			candidate := new(edgeproto.Candidates)
+			candidate.Id = phonydec.GetId()
+			candidate.Metadata = phonydec.GetMetadata()
 			candidate.Score = 100
 			retval = append(retval, candidate)
 		}
@@ -1194,12 +1293,7 @@ func (xx *Edge) HybridSearch(ctx context.Context, req *edgeproto.SearchReq) (
 					continue
 				}
 			}
-			xx.Datas[req.GetCollectionName()].lock.RLock()
-			clone := xx.Datas[req.GetCollectionName()].Data[nodeId]
-			xx.Datas[req.GetCollectionName()].lock.RUnlock()
-			candidate := new(edgeproto.Candidates)
-			candidate.Id = clone.(map[string]interface{})["_id"].(string)
-			candidate.Metadata, err = structpb.NewStruct(clone.(map[string]interface{}))
+			phonyD, err := xx.Disk.Get([]byte(fmt.Sprintf("%s_%d", req.GetCollectionName(), nodeId)))
 			if err != nil {
 				c <- reply{
 					Result: &edgeproto.SearchResponse{
@@ -1211,6 +1305,22 @@ func (xx *Edge) HybridSearch(ctx context.Context, req *edgeproto.SearchReq) (
 					},
 				}
 			}
+			phonydec := phonyproto.PhonyWrapper{}
+			err = proto.Unmarshal(phonyD, &phonydec)
+			if err != nil {
+				c <- reply{
+					Result: &edgeproto.SearchResponse{
+						Status: false,
+						Error: &edgeproto.Error{
+							ErrorMessage: err.Error(),
+							ErrorCode:    edgeproto.ErrorCode_INTERNAL_FUNC_ERROR,
+						},
+					},
+				}
+			}
+			candidate := new(edgeproto.Candidates)
+			candidate.Id = phonydec.GetId()
+			candidate.Metadata = phonydec.GetMetadata()
 			candidate.Score = func() float32 {
 				if dist == COSINE {
 					return ((scores[nodeId] + 1) / 2) * 100

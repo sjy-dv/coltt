@@ -21,13 +21,18 @@ import (
 	"compress/flate"
 	"encoding/gob"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"strconv"
+	"strings"
 
+	"github.com/sjy-dv/nnv/gen/protoc/v2/phonyproto"
 	"github.com/sjy-dv/nnv/pkg/distance"
 	"github.com/sjy-dv/nnv/pkg/gomath"
 	"github.com/sjy-dv/nnv/pkg/index"
+	"google.golang.org/protobuf/proto"
 )
 
 func init() {
@@ -45,41 +50,216 @@ func init() {
 
 }
 
-func (xx *Edge) CommitData(collectionName string) error {
-
-	_, err := os.Stat(fmt.Sprintf(edgeData, collectionName))
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return err
+func (xx *Edge) LoadData(collectionName string, config CollectionConfig) error {
+	if config.Quantization == F8_QUANTIZATION {
+		vecspace := newF8Vectorstore(config)
+		iserror := false
+		sep := fmt.Sprintf("%s_", collectionName)
+		var werr error
+		xx.Disk.AscendKeys([]byte(sep), true, func(k []byte) (bool, error) {
+			key, err := strconv.Atoi(strings.Split(string(k), sep)[1])
+			if err != nil {
+				iserror = true
+				werr = err
+				return false, err
+			}
+			val, err := xx.Disk.Get(k)
+			if err != nil {
+				iserror = true
+				werr = err
+				return false, err
+			}
+			phony := phonyproto.PhonyWrapper{}
+			err = proto.Unmarshal(val, &phony)
+			if err != nil {
+				iserror = true
+				werr = err
+				return false, err
+			}
+			err = vecspace.InsertVector(collectionName, uint64(key), phony.GetVector())
+			if err != nil {
+				iserror = true
+				werr = err
+				return false, err
+			}
+			// xx.Datas[collectionName].lock.Lock()
+			// xx.Datas[collectionName].Data[uint64(key)] = phony.GetMetadata().AsMap()
+			// xx.Datas[collectionName].lock.Unlock()
+			return true, nil
+		})
+		if iserror {
+			return werr
 		}
+		xx.VectorStore.slock.Lock()
+		defer xx.VectorStore.slock.Unlock()
+		xx.VectorStore.Space[collectionName] = vecspace
+	} else if config.Quantization == F16_QUANTIZATION {
+		vecspace := newF16Vectorstore(config)
+		iserror := false
+		sep := fmt.Sprintf("%s_", collectionName)
+		var werr error
+		xx.Disk.AscendKeys([]byte(sep), true, func(k []byte) (bool, error) {
+			key, err := strconv.Atoi(strings.Split(string(k), sep)[1])
+			if err != nil {
+				iserror = true
+				werr = err
+				return false, err
+			}
+			val, err := xx.Disk.Get(k)
+			if err != nil {
+				iserror = true
+				werr = err
+				return false, err
+			}
+			phony := phonyproto.PhonyWrapper{}
+			err = proto.Unmarshal(val, &phony)
+			if err != nil {
+				iserror = true
+				werr = err
+				return false, err
+			}
+			err = vecspace.InsertVector(collectionName, uint64(key), phony.GetVector())
+			if err != nil {
+				iserror = true
+				werr = err
+				return false, err
+			}
+			// xx.Datas[collectionName].lock.Lock()
+			// xx.Datas[collectionName].Data[uint64(key)] = phony.GetMetadata().AsMap()
+			// xx.Datas[collectionName].lock.Unlock()
+			return true, nil
+		})
+		if iserror {
+			return werr
+		}
+		xx.VectorStore.slock.Lock()
+		defer xx.VectorStore.slock.Unlock()
+		xx.VectorStore.Space[collectionName] = vecspace
+	} else if config.Quantization == BF16_QUANTIZATION {
+		vecspace := newBF16Vectorstore(config)
+		iserror := false
+		sep := fmt.Sprintf("%s_", collectionName)
+		var werr error
+		xx.Disk.AscendKeys([]byte(sep), true, func(k []byte) (bool, error) {
+			key, err := strconv.Atoi(strings.Split(string(k), sep)[1])
+			if err != nil {
+				iserror = true
+				werr = err
+				return false, err
+			}
+			val, err := xx.Disk.Get(k)
+			if err != nil {
+				iserror = true
+				werr = err
+				return false, err
+			}
+			phony := phonyproto.PhonyWrapper{}
+			err = proto.Unmarshal(val, &phony)
+			if err != nil {
+				iserror = true
+				werr = err
+				return false, err
+			}
+			err = vecspace.InsertVector(collectionName, uint64(key), phony.GetVector())
+			if err != nil {
+				iserror = true
+				werr = err
+				return false, err
+			}
+			// xx.Datas[collectionName].lock.Lock()
+			// xx.Datas[collectionName].Data[uint64(key)] = phony.GetMetadata().AsMap()
+			// xx.Datas[collectionName].lock.Unlock()
+			return true, nil
+		})
+		if iserror {
+			return werr
+		}
+		xx.VectorStore.slock.Lock()
+		defer xx.VectorStore.slock.Unlock()
+		xx.VectorStore.Space[collectionName] = vecspace
+	} else if config.Quantization == NONE_QAUNTIZATION {
+		vecspace := newSimpleVectorstore(config)
+		iserror := false
+		sep := fmt.Sprintf("%s_", collectionName)
+		var werr error
+		xx.Disk.AscendKeys([]byte(sep), true, func(k []byte) (bool, error) {
+			key, err := strconv.Atoi(strings.Split(string(k), sep)[1])
+			if err != nil {
+				iserror = true
+				werr = err
+				return false, err
+			}
+			val, err := xx.Disk.Get(k)
+			if err != nil {
+				iserror = true
+				werr = err
+				return false, err
+			}
+			phony := phonyproto.PhonyWrapper{}
+			err = proto.Unmarshal(val, &phony)
+			if err != nil {
+				iserror = true
+				werr = err
+				return false, err
+			}
+			err = vecspace.InsertVector(collectionName, uint64(key), phony.GetVector())
+			if err != nil {
+				iserror = true
+				werr = err
+				return false, err
+			}
+			// xx.Datas[collectionName].lock.Lock()
+			// xx.Datas[collectionName].Data[uint64(key)] = phony.GetMetadata().AsMap()
+			// xx.Datas[collectionName].lock.Unlock()
+			return true, nil
+		})
+		if iserror {
+			return werr
+		}
+		xx.VectorStore.slock.Lock()
+		defer xx.VectorStore.slock.Unlock()
+		xx.VectorStore.Space[collectionName] = vecspace
 	} else {
-		os.Remove(fmt.Sprintf(edgeData, collectionName))
-	}
-	var iow io.Writer
-	xx.Datas[collectionName].lock.RLock()
-	flushData := xx.Datas[collectionName].Data
-	xx.Datas[collectionName].lock.RUnlock()
-
-	f, err := os.OpenFile(fmt.Sprintf(edgeData, collectionName), os.O_TRUNC|
-		os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	iow, _ = flate.NewWriter(f, flate.BestCompression)
-	enc := gob.NewEncoder(iow)
-	if err := enc.Encode(flushData); err != nil {
-		return err
-	}
-	if flusher, ok := iow.(interface{ Flush() error }); ok {
-		if err := flusher.Flush(); err != nil {
-			return err
-		}
-	}
-	if err := iow.(io.Closer).Close(); err != nil {
-		return err
+		return errors.New("not support quantization type")
 	}
 	return nil
 }
+
+// func (xx *Edge) CommitData(collectionName string) error {
+
+// 	_, err := os.Stat(fmt.Sprintf(edgeData, collectionName))
+// 	if err != nil {
+// 		if !os.IsNotExist(err) {
+// 			return err
+// 		}
+// 	} else {
+// 		os.Remove(fmt.Sprintf(edgeData, collectionName))
+// 	}
+// 	var iow io.Writer
+// 	xx.Datas[collectionName].lock.RLock()
+// 	flushData := xx.Datas[collectionName].Data
+// 	xx.Datas[collectionName].lock.RUnlock()
+
+// 	f, err := os.OpenFile(fmt.Sprintf(edgeData, collectionName), os.O_TRUNC|
+// 		os.O_CREATE|os.O_WRONLY, 0644)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	iow, _ = flate.NewWriter(f, flate.BestCompression)
+// 	enc := gob.NewEncoder(iow)
+// 	if err := enc.Encode(flushData); err != nil {
+// 		return err
+// 	}
+// 	if flusher, ok := iow.(interface{ Flush() error }); ok {
+// 		if err := flusher.Flush(); err != nil {
+// 			return err
+// 		}
+// 	}
+// 	if err := iow.(io.Closer).Close(); err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
 
 func (xx *Edge) CommitConfig(collectionName string) error {
 	_, err := os.Stat(fmt.Sprintf(edgeConfig, collectionName))
