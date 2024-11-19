@@ -32,6 +32,9 @@ clean:
 add-license:
 	- go-licenser -license ASL2 -licensor sjy-dv
 
+edge-docker:
+	- docker build --file edge.dockerfile -t nnv:edge .
+	
 simple-docker:
 	- docker build --file simple.dockerfile -t nnv:simple .
 	- docker run nnv:simple -p 50051:50051 -d
@@ -47,3 +50,7 @@ test:
 
 compress-float:
 	- go test -v --count=1 ./pkg/compresshelper
+
+
+bench-milvus-boot:
+	- docker-compose -f ./benchmark/milvus.docker.compose.yaml -p benchmark-milvus up

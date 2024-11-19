@@ -10,3 +10,4 @@
 
 #only use test-module
 main.go
+/benchmark/volumes

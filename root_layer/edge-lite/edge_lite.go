@@ -33,7 +33,11 @@ func NewEdgeLite() error {
 	}
 	log.Info().Msg("edge-lite.loadcommitcollection init")
 	//-----------------------------------------------//
-	e := edge.NewEdge()
+	e, err := edge.NewEdge()
+	if err != nil {
+		log.Error().Err(err).Msg("edge-lite.disk open failed")
+		return err
+	}
 	edgelites.Edge = e
 	log.Info().Msg("edge-lite.edge-space init")
 	//-----------------------------------------------//

@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/sjy-dv/nnv/pkg/gomath"
-	matchdbgo "github.com/sjy-dv/nnv/pkg/match_db.go"
 	"github.com/sjy-dv/nnv/pkg/nnlogdb"
 )
 
@@ -162,16 +161,16 @@ func (xx *HnswBucket) Insert(bucketName string, userNodeId string, vec gomath.Ve
 		xx.Buckets[bucketName].MaxLevel = node.Layer
 		xx.Buckets[bucketName].rmu.Unlock()
 	}
-	err := matchdbgo.Set(userNodeId, node.Id)
-	if err != nil {
-		rerr := xx.Buckets[bucketName].removeConnection(node.Id)
-		if rerr != nil {
-			return 0, fmt.Errorf("matchedDB.Set.Error: %v\nremovedError: %v", err, rerr)
-		}
-		return 0, err
-	}
+	// err := matchdbgo.Set(userNodeId, node.Id)
+	// if err != nil {
+	// 	rerr := xx.Buckets[bucketName].removeConnection(node.Id)
+	// 	if rerr != nil {
+	// 		return 0, fmt.Errorf("matchedDB.Set.Error: %v\nremovedError: %v", err, rerr)
+	// 	}
+	// 	return 0, err
+	// }
 	// save-log
-	err = nnlogdb.AddLogf(
+	err := nnlogdb.AddLogf(
 		nnlogdb.PrintlF(
 			userNodeId, "insert", bucketName, node.Id, node.Timestamp, node.Metadata, node.Vectors,
 		),
@@ -224,48 +223,49 @@ func (xx *HnswBucket) Update(bucketName string, nodeId string,
 	// 	return err
 	// }
 
-	val, err := matchdbgo.Get(nodeId)
-	if err != nil {
-		return 0, 0, nil, err
-	}
-	err = matchdbgo.Delete(nodeId)
-	if err != nil {
-		return 0, 0, nil, err
-	}
-	copyMeta := xx.Buckets[bucketName].NodeList.Nodes[val].Metadata
-	err = xx.Buckets[bucketName].removeConnection(val)
-	if err != nil {
-		return 0, 0, nil, err
-	}
-	// insert record to nnlog
-	newId, err := xx.Insert(bucketName, nodeId, vec, metadata)
-	return val, newId, copyMeta, err
+	// val, err := matchdbgo.Get(nodeId)
+	// if err != nil {
+	// 	return 0, 0, nil, err
+	// }
+	// err = matchdbgo.Delete(nodeId)
+	// if err != nil {
+	// 	return 0, 0, nil, err
+	// }
+	// copyMeta := xx.Buckets[bucketName].NodeList.Nodes[val].Metadata
+	// err := xx.Buckets[bucketName].removeConnection(val)
+	// if err != nil {
+	// 	return 0, 0, nil, err
+	// }
+	// // insert record to nnlog
+	// newId, err := xx.Insert(bucketName, nodeId, vec, metadata)
+	// return val, newId, copyMeta, er
+	return 0, 0, nil, nil
 }
 
 func (xx *HnswBucket) Delete(bucketName string, nodeId string) (
 	uint32, map[string]interface{}, error) {
-	val, err := matchdbgo.Get(nodeId)
-	if err != nil {
-		return 0, nil, err
-	}
-	err = matchdbgo.Delete(nodeId)
-	if err != nil {
-		return 0, nil, err
-	}
-	copyMeta := xx.Buckets[bucketName].NodeList.Nodes[val].Metadata
-	err = xx.Buckets[bucketName].removeConnection(val)
-	if err != nil {
-		return 0, nil, err
-	}
-	err = nnlogdb.AddLogf(
-		nnlogdb.PrintlF(
-			nodeId, "delete", bucketName, val, 0, map[string]interface{}{"_id": nodeId}, []float32{0.0},
-		),
-	)
-	if err != nil {
-		return 0, nil, err
-	}
-	return val, copyMeta, err
+	// val, err := matchdbgo.Get(nodeId)
+	// if err != nil {
+	// 	return 0, nil, err
+	// }
+	// err = matchdbgo.Delete(nodeId)
+	// if err != nil {
+	// 	return 0, nil, err
+	// }
+	// copyMeta := xx.Buckets[bucketName].NodeList.Nodes[val].Metadata
+	// err = xx.Buckets[bucketName].removeConnection(val)
+	// if err != nil {
+	// 	return 0, nil, err
+	// }
+	// err = nnlogdb.AddLogf(
+	// 	nnlogdb.PrintlF(
+	// 		nodeId, "delete", bucketName, val, 0, map[string]interface{}{"_id": nodeId}, []float32{0.0},
+	// 	),
+	// )
+	// if err != nil {
+	return 0, nil, nil
+	// }
+	// return val, copyMeta, err
 }
 
 func (xx *HnswBucket) Search(bucketName string, vec gomath.Vector, topCandidates *PriorityQueue, K int, efSearch int) (err error) {

@@ -24,6 +24,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/sjy-dv/nnv/diskv"
 	"github.com/sjy-dv/nnv/gen/protoc/v2/edgeproto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -32,6 +33,7 @@ type Edge struct {
 	Datas       map[string]*EdgeData
 	VectorStore *Vectorstore
 	lock        sync.RWMutex
+	Disk        *diskv.DB
 }
 
 type EdgeData struct {
@@ -42,11 +44,24 @@ type EdgeData struct {
 	lock         sync.RWMutex
 }
 
-func NewEdge() *Edge {
+func NewEdge() (*Edge, error) {
+
+	diskdb, err := diskv.Open(diskv.Options{
+		DirPath:           "./data_dir/",
+		SegmentSize:       1 * diskv.GB,
+		Sync:              false,
+		BytesPerSync:      0,
+		WatchQueueSize:    0,
+		AutoMergeCronExpr: "",
+	})
+	if err != nil {
+		return nil, err
+	}
 	return &Edge{
 		Datas:       make(map[string]*EdgeData),
 		VectorStore: NewVectorstore(),
-	}
+		Disk:        diskdb,
+	}, nil
 }
 
 func existsCollection(collectionName string) bool {

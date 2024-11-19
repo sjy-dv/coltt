@@ -44,9 +44,11 @@ require (
 	github.com/go-kit/log v0.2.1
 	github.com/gofrs/flock v0.8.1
 	github.com/gofrs/uuid/v5 v5.3.0
+	github.com/google/btree v1.1.3
 	github.com/google/orderedcode v0.0.1
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/klauspost/cpuid v1.3.1
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/rs/zerolog v1.33.0
 	github.com/viterin/vek v0.4.2
 	go.etcd.io/bbolt v1.3.8
