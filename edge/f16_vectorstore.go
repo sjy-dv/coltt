@@ -77,8 +77,8 @@ func (qx *f16vecSpace) FullScan(collectionName string, target Vector, topK int,
 	if err != nil {
 		return nil, fmt.Errorf(ErrQuantizedFailed, err)
 	}
-	qx.lock.RLock()
-	defer qx.lock.RUnlock()
+	// qx.lock.RLock()
+	// defer qx.lock.RUnlock()
 	// for index, qvec := range qx.vectors {
 	// 	sim := qx.quantization.Similarity(lower, qvec, qx.distance)
 	// 	rs.AddResult(ID(index), sim)

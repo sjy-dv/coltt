@@ -40,7 +40,7 @@
 // 		log.Fatal(err)
 // 	}
 
-// 	client.CreateIndex(context.Background(), collectionName, "embeddings", idx, false)
+// client.CreateIndex(context.Background(), collectionName, "embeddings", idx, false)
 // 	client.LoadCollection(context.Background(), collectionName, false)
 
 // 	test_vecs := generateTestVectors(1_000_000, 128)
