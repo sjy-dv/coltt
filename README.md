@@ -4,7 +4,7 @@
 
 NNV (No-Named.V) is a database designed to be implemented from scratch to production. NNV can be deployed in edge environments and used in small-scale production settings. Through the innovative architectural approach described below, it is envisioned and developed to be used reliably in large-scale production environments as well.
 
-## 🎉 Release Update - 2024.11.14
+## 🎉 Release Update - 2024.11.20
 
 For the full update history, see [UPDATE HISTORY](./UPDATE-LOG.md).
 
@@ -12,22 +12,30 @@ For the full update history, see [UPDATE HISTORY](./UPDATE-LOG.md).
 
 ### 🔹 NNV-Edge
 
-- No updates in this release.
+Please [note](./examples/release/2024_11_20_release.md) that the performance comparison is not intended to evaluate the superiority of the software. There are still many shortcomings, and although the repository's history is short, I just want to show indicators of steady progress.
+
+#### Enhancements
+
+- **Edge Performance Improvement**: Enhanced the performance of Edge.
+- **Decreased Storage Requirement**: Reduced the storage needed for 1,000,000 128-dimensional vectors from **2.5GB** to **1.35GB** (Milvus: **1.46GB**).
+- **Average Search Time** for 1,000,000 128-dimensional vectors: **0.22 sec** (Milvus: **0.04 sec**).
+- **Continuous Performance Enhancement**:
+  - Clearly identified points for ongoing performance improvements.
+  - Discovered that efficient parallel search using a worker pool and iterating over the vector space as an array significantly boosts performance.
+  - These enhancements require rewriting specific code sections and are planned for long-term development.
+  - Retrieving all data from disk introduces overhead; therefore, combining disk access with memory usage is necessary.
+- **Data Storage**: Data is stored on disk with only the flush operation for indexing remaining.
+- **Safe Recovery**: Even if the server crashes, indexes and all data can be safely recovered.
 
 ---
 
 ### 🔹 NNV
 
-See the [detailed comparison with ChromaDB for search results](./examples/release/2024_11_14_release.md).
-
-#### Enhancements
-
-- **Restored HNSW**: The previously used HNSW algorithm has been reintroduced.
-- **New Product Quantization (PQ)**: HNSW Product Quantization has been added for improved efficiency.
-- **Pure Go Implementation**: All CGO dependencies have been removed, making the implementation entirely in Go.
-- **Optimized Search Speed**:
-  - 50,000-item dataset: **< 14ms**
-  - 10,000-item dataset or fewer: **< 3ms**
+- **README Revamp**: The README will be updated soon.
+- **Improved HNSW Development**: A more advanced HNSW algorithm is planned for development.
+- **Continued Testing of PQ**: PQ (Product Quantization) is continuously being tested. According to Weaviate's documentation, PQ performs very poorly on datasets with tens of thousands of data points. I am experiencing this myself. (https://weaviate.io/blog/pq-rescoring)
+- **Development of BQ (Binary Quantizer)**: Development of BQ is scheduled.
+- **Quantization of HNSW with F8, F16, BF16**: In this development phase, we are also considering quantizing HNSW with F8, F16, and BF16. (Applying this is not difficult; the challenge is figuring out how BQ and PQ will compete.)
 
 ---
 
