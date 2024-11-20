@@ -21,7 +21,7 @@ import (
 	"encoding/binary"
 
 	"github.com/sjy-dv/nnv/pkg/compresshelper"
-	"github.com/sjy-dv/nnv/pkg/distance"
+	"github.com/sjy-dv/nnv/pkg/distancer"
 )
 
 type float16Vec []compresshelper.Float16
@@ -32,7 +32,7 @@ type Float16Quantization struct {
 	bufx, bufy Vector
 }
 
-func (q Float16Quantization) Similarity(x, y float16Vec, dist distance.Space) float32 {
+func (q Float16Quantization) Similarity(x, y float16Vec, dist distancer.Provider) (float32, error) {
 	if q.bufx == nil {
 		q.bufx = make(Vector, len(x))
 		q.bufy = make(Vector, len(x))
@@ -41,7 +41,7 @@ func (q Float16Quantization) Similarity(x, y float16Vec, dist distance.Space) fl
 		q.bufx[i] = x[i].Float32()
 		q.bufy[i] = y[i].Float32()
 	}
-	return dist.Distance(q.bufx, q.bufy)
+	return dist.SingleDist(q.bufx, q.bufy)
 }
 
 func (q Float16Quantization) Lower(v Vector) (float16Vec, error) {

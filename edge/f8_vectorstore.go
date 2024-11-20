@@ -5,14 +5,14 @@ import (
 	"sync"
 
 	"github.com/sjy-dv/nnv/pkg/concurrentmap"
-	"github.com/sjy-dv/nnv/pkg/distance"
+	"github.com/sjy-dv/nnv/pkg/distancer"
 )
 
 type f8vecSpace struct {
 	dimension      int
 	vectors        *concurrentmap.Map[uint64, float8Vec]
 	collectionName string
-	distance       distance.Space
+	distance       distancer.Provider
 	quantization   Float8Quantization
 	lock           sync.RWMutex
 }
@@ -22,20 +22,22 @@ func newF8Vectorstore(config CollectionConfig) *f8vecSpace {
 		dimension:      config.Dimension,
 		vectors:        concurrentmap.New[uint64, float8Vec](),
 		collectionName: config.CollectionName,
-		distance: func() distance.Space {
+		distance: func() distancer.Provider {
 			if config.Distance == COSINE {
-				return distance.NewCosine()
+				return distancer.NewCosineDistanceProvider()
 			} else if config.Distance == EUCLIDEAN {
-				return distance.NewEuclidean()
+				return distancer.NewL2SquaredProvider()
 			}
-			return distance.NewCosine()
+			return distancer.NewCosineDistanceProvider()
 		}(),
 		quantization: Float8Quantization{},
 	}
 }
 
 func (qx *f8vecSpace) InsertVector(collectionName string, commitId uint64, vector Vector) error {
-
+	if qx.distance.Type() == "cosine-dot" {
+		vector = Normalize(vector)
+	}
 	lower, err := qx.quantization.Lower(vector)
 	if err != nil {
 		return fmt.Errorf(ErrQuantizedFailed, err)
@@ -48,7 +50,9 @@ func (qx *f8vecSpace) InsertVector(collectionName string, commitId uint64, vecto
 }
 
 func (qx *f8vecSpace) UpdateVector(collectionName string, id uint64, vector Vector) error {
-
+	if qx.distance.Type() == "cosine-dot" {
+		vector = Normalize(vector)
+	}
 	lower, err := qx.quantization.Lower(vector)
 	if err != nil {
 		return fmt.Errorf(ErrQuantizedFailed, err)
@@ -70,6 +74,9 @@ func (qx *f8vecSpace) RemoveVector(collectionName string, id uint64) error {
 
 func (qx *f8vecSpace) FullScan(collectionName string, target Vector, topK int,
 ) (*ResultSet, error) {
+	if qx.distance.Type() == "cosine-dot" {
+		target = Normalize(target)
+	}
 	rs := NewResultSet(topK)
 
 	lower, err := qx.quantization.Lower(target)
@@ -83,7 +90,7 @@ func (qx *f8vecSpace) FullScan(collectionName string, target Vector, topK int,
 	// 	rs.AddResult(ID(index), sim)
 	// }
 	qx.vectors.ForEach(func(u uint64, fv float8Vec) bool {
-		sim := qx.quantization.Similarity(lower, fv, qx.distance)
+		sim, _ := qx.quantization.Similarity(lower, fv, qx.distance)
 		rs.AddResult(ID(u), sim)
 		return true
 	})

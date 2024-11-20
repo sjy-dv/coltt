@@ -10,7 +10,6 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/protobuf/types/known/structpb"
 	"playground.benchmark.nnv/edgeproto"
 )
 
@@ -25,7 +24,7 @@ func main() {
 	_, err = dclient.CreateCollection(context.Background(), &edgeproto.Collection{
 		CollectionName: collectionName,
 		Dim:            128,
-		Distance:       edgeproto.Distance_Cosine,
+		Distance:       edgeproto.Distance_Euclidean,
 		Quantization:   edgeproto.Quantization_None,
 	})
 
@@ -36,13 +35,12 @@ func main() {
 	startTime := time.Now()
 	timer := make(map[int]string)
 	for idx, vec := range test_vecs {
-		m, _ := structpb.NewStruct(map[string]interface{}{
-			"_id": strconv.Itoa(idx),
-		})
+		// m, _ := structpb.NewStruct(map[string]interface{}{
+		// 	"_id": strconv.Itoa(idx),
+		// })
 		_, err := dclient.Insert(context.Background(), &edgeproto.ModifyDataset{
 			Id:             strconv.Itoa(idx),
 			Vector:         vec,
-			Metadata:       m,
 			CollectionName: collectionName,
 		})
 		if err != nil {

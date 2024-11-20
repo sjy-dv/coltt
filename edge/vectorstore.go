@@ -3,6 +3,7 @@ package edge
 import (
 	"errors"
 	"fmt"
+	"math"
 	"sync"
 )
 
@@ -126,4 +127,22 @@ func (xx *Vectorstore) Load(collectionName string, config CollectionConfig) erro
 		return errors.New("not support quantization type")
 	}
 	return nil
+}
+
+func Normalize(vec Vector) Vector {
+	var norm float32
+	out := make([]float32, len(vec))
+	for i := range vec {
+		norm += vec[i] * vec[i]
+	}
+	if norm == 0 {
+		return out
+	}
+
+	norm = float32(math.Sqrt(float64(norm)))
+	for i := range vec {
+		out[i] = vec[i] / norm
+	}
+
+	return out
 }

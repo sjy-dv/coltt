@@ -21,11 +21,11 @@ import (
 	"encoding/binary"
 	"math"
 
-	"github.com/sjy-dv/nnv/pkg/distance"
+	"github.com/sjy-dv/nnv/pkg/distancer"
 )
 
 type Quantization[T any] interface {
-	Similarity(x, y T, dist distance.Space) float32
+	Similarity(x, y T, dist distancer.Provider) (float32, error)
 	Lower(v Vector) (T, error)
 	Name() string
 	LowerSize(dim int) int
@@ -40,8 +40,8 @@ var _ Quantization[Vector] = NoQuantization{}
 
 type NoQuantization struct{}
 
-func (q NoQuantization) Similarity(x, y Vector, dist distance.Space) float32 {
-	return dist.Distance(x, y)
+func (q NoQuantization) Similarity(x, y Vector, dist distancer.Provider) (float32, error) {
+	return dist.SingleDist(x, y)
 }
 
 func (q NoQuantization) Lower(v Vector) (Vector, error) {
