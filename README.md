@@ -18,7 +18,7 @@ Please [note](./examples/release/2024_11_20_release.md) that the performance com
 
 - **Edge Performance Improvement**: Enhanced the performance of Edge.
 - **Decreased Storage Requirement**: Reduced the storage needed for 1,000,000 128-dimensional vectors from **2.5GB** to **1.35GB** (Milvus: **1.46GB**).
-- **Average Search Time** for 1,000,000 128-dimensional vectors: **0.22 sec** (Milvus: **0.04 sec**).
+- **Average Search Time** for 1,000,000 128-dimensional vectors: **0.22 sec** (Milvus: **0.04 sec**). => I think it is a performance worthy of praise compared to the history of Repo. (In simple product recommendations, which are not actually very fast applications, NNV is easier and latency may not be a problem.)
 - **Continuous Performance Enhancement**:
   - Clearly identified points for ongoing performance improvements.
   - Discovered that efficient parallel search using a worker pool and iterating over the vector space as an array significantly boosts performance.
