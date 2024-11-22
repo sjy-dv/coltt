@@ -113,7 +113,7 @@ func main() {
 	fmt.Println("initial hnsw ok")
 	fmt.Println("start pretrained pq")
 	err = hnswPQ.Collections[collection].PQ.
-		PreTrainProductQuantizer(collection, vectorLen, 1000)
+		PreTrainProductQuantizer(collection, vectorLen, 10_000)
 	if err != nil {
 		log.Fatal(err)
 	}

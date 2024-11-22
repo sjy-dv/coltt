@@ -19,6 +19,7 @@ package sharding
 
 import (
 	"encoding/binary"
+	"hash/fnv"
 
 	"github.com/google/uuid"
 )
@@ -28,4 +29,13 @@ func ShardTraffic(x uuid.UUID, c uint64) uint64 {
 	res := ((binary.LittleEndian.Uint64(x[:8]) % c) +
 		(binary.BigEndian.Uint64(x[8:]) % c))
 	return res % c
+}
+
+func ShardVertex(x uint64, c uint64) uint64 {
+	hasher := fnv.New64a()
+	buf := make([]byte, 8)
+	binary.LittleEndian.PutUint64(buf, x)
+	hasher.Write(buf)
+	hashValue := hasher.Sum64()
+	return hashValue % c
 }

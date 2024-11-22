@@ -1,0 +1,77 @@
+[
+  {
+    "base_review": "Where is a place with a comfortable indoor environment?",
+    "similar_review": [
+      {
+        "review": "A large spacious place. If you want; you can relax inside and have something to drink.",
+        "distance": 0.33637643
+      },
+      {
+        "review": "The view is nice; the indoor seating area is quite large.",
+        "distance": 0.3606217
+      },
+      {
+        "review": "The indoor atmosphere was nice; but I can't say the same for the outdoor",
+        "distance": 0.38623506
+      },
+      {
+        "review": "Stylish; decent and clean place. I advise.",
+        "distance": 0.40677905
+      },
+      {
+        "review": "Nice view, good staff, clean place and nice atmosphere.",
+        "distance": 0.44823056
+      }
+    ],
+    "latency": "latency: 0 ms"
+  },
+  {
+    "base_review": "Where is a good restaurant to go to with family?",
+    "similar_review": [
+      {
+        "review": "A decent place. You can eat as a family. You can eat many kinds of fish as grilled; fried or stewed.",
+        "distance": 0.35536587
+      },
+      {
+        "review": "Nice intimate restaurant. Good service. Eye for detail. Clean. Really good food; well presented.",
+        "distance": 0.37199372
+      },
+      {
+        "review": "Everyone is smilingİ the food is delicious. Great place; I recommend it.",
+        "distance": 0.40283746
+      },
+      {
+        "review": "The restaurant is well located and above all it is nicely decorated and clean.",
+        "distance": 0.41870034
+      },
+      {
+        "review": "Location is nice. We love it as a family. Pizza was delicious.",
+        "distance": 0.42497033
+      }
+    ],
+    "latency": "latency: 0 ms"
+  },
+  {
+    "base_review": "A restaurant I strongly do not recommend.",
+    "similar_review": [
+      {
+        "review": "A fast food restaurant with very friendly staff. It didn't appeal to my taste at all. Undercooked dough and lint meat.",
+        "distance": 0.41918492
+      },
+      {
+        "review": "The waiters were indifferent; I was not satisfied.",
+        "distance": 0.45422667
+      },
+      { "review": "Waiters were not very good.", "distance": 0.46370387 },
+      {
+        "review": "The waiters are generally very sullen and unhappy. Service is very slow. Nothing extra comes to the table. Even the starter appetizer; which is available in many kebab shops; does not come. Lahmacun was very dry and tasteless.",
+        "distance": 0.46465564
+      },
+      {
+        "review": "A restaurant that has lost its previous refinement. Lahmacun as seen in the photo. The service is slow. I recommend a little more wannabe and attention.",
+        "distance": 0.47718072
+      }
+    ],
+    "latency": "latency: 0 ms"
+  }
+]
