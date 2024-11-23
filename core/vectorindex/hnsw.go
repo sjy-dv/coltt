@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"unsafe"
@@ -56,8 +58,30 @@ func (xx *Hnsw) Info() string {
 	return fmt.Sprintf("HNSW(dim: %d, distancer: %s, config={%s})", xx.dim, xx.distancer.Type(), xx.config)
 }
 
+func (xx *Hnsw) Dim() uint32 {
+	return uint32(xx.dim)
+}
+
 func (xx *Hnsw) Len() int {
 	return int(atomic.LoadUint64(&xx.len))
+}
+
+func (xx *Hnsw) Config() ProtoConfig {
+	return ProtoConfig{
+		SearchAlgorithm:           strings.ToLower(xx.config.searchAlgorithm.String()),
+		LevelMultiplier:           xx.config.levelMultiplier,
+		Ef:                        xx.config.ef,
+		EfConstruction:            xx.config.efConstruction,
+		M:                         xx.config.m,
+		MMax:                      xx.config.mMax,
+		MMax0:                     xx.config.mMax0,
+		HeuristicExtendCandidates: xx.config.heuristicExtendCandidates,
+		HeuristicKeepPruned:       xx.config.heuristicKeepPruned,
+	}
+}
+
+func (xx *Hnsw) Distance() string {
+	return xx.distancer.Type()
 }
 
 func (xx *Hnsw) Insert(id uint64, value edge.Vector, metadata Metadata, vertexLevel int) error {
@@ -431,4 +455,20 @@ func (xx *Hnsw) pruneNeighbors(vertex *hnswVertex, k, level int) {
 	}
 
 	vertex.setEdges(level, newNeighbors)
+}
+
+func (xx *Hnsw) ByteSize() uint64 {
+	maxLevel := 10
+	if entrypoint := (*hnswVertex)(atomic.LoadPointer(&xx.entrypoint)); entrypoint != nil {
+		maxLevel = entrypoint.level
+	}
+
+	mutb := float64(HNSW_VERTEX_MUTEX_BYTES)
+	var pointersSize float64 = float64(xx.config.mMax0*HNSW_VERTEX_EDGE_BYTES) + mutb
+	for i := 1; i < maxLevel; i++ {
+		pointersSize += (float64(xx.config.mMax*HNSW_VERTEX_EDGE_BYTES) + mutb) * math.Exp(float64(i)/-float64(xx.config.levelMultiplier))
+	}
+
+	verticesDataSize := atomic.LoadUint64(&xx.bytesSize)
+	return uint64(math.Floor(float64(xx.Len())*pointersSize)) + verticesDataSize
 }

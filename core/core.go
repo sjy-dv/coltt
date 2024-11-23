@@ -165,3 +165,60 @@ func (xx *Core) DropCollection(ctx context.Context, req *coreproto.CollectionNam
 	res := <-c
 	return res.Result, res.Error
 }
+
+func (xx *Core) CollectionInfof(ctx context.Context, req *coreproto.CollectionName) (
+	*coreproto.CollectionMsg, error) {
+	type reply struct {
+		Result *coreproto.CollectionMsg
+		Error  error
+	}
+	c := make(chan reply, 1)
+
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				c <- reply{
+					Error: fmt.Errorf(panicr, r),
+				}
+			}
+		}()
+		failFn := func(errMsg string) reply {
+			return reply{
+				Result: &coreproto.CollectionMsg{
+					Status: false,
+					Error:  errorWrap(errMsg),
+				},
+			}
+		}
+
+		if !hasCollection(req.GetCollectionName()) {
+			c <- failFn(fmt.Sprintf(ErrCollectionNotFound, req.GetCollectionName()))
+			return
+		}
+		if !alreadyLoadCollection(req.GetCollectionName()) {
+			c <- failFn(fmt.Sprintf(ErrCollectionNotLoad, req.GetCollectionName()))
+			return
+		}
+		hnsw, ok := xx.DataStore.Get(req.GetCollectionName())
+		if !ok {
+			c <- failFn(fmt.Sprintf(ErrCollectionNotLoad, req.GetCollectionName()))
+			return
+		}
+		c <- reply{
+			Result: &coreproto.CollectionMsg{
+				Status: true,
+				Info: &coreproto.CollectionInfo{
+					CollectionName:    req.GetCollectionName(),
+					CollectionConfig:  reverseConfigHelper(hnsw.Config()),
+					VectorDimension:   hnsw.Dim(),
+					CollectionSize:    fmt.Sprintf("%d bytes", hnsw.ByteSize()),
+					CollectionLength:  uint64(hnsw.Len()),
+					Distance:          reverseprotoDistHelper(hnsw.Distance()),
+					CompressionHelper: coreproto.Quantization_None,
+				},
+			},
+		}
+	}()
+	res := <-c
+	return res.Result, res.Error
+}

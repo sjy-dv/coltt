@@ -102,3 +102,9 @@ func (xx *hnswVertex) setEdges(level int, edges hnswEdgeSet) {
 
 	xx.edges[level] = edges
 }
+
+func (xx *hnswVertex) bytesSize() uint64 {
+	//  uint64 = 8byte
+	// float32 => 4 byte x vector len
+	return 8 + 4*uint64(len(xx.vector)) + xx.metadata.byteSize()
+}

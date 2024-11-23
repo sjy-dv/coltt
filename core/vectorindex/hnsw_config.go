@@ -101,6 +101,18 @@ type hnswConfig struct {
 	heuristicKeepPruned       bool
 }
 
+type ProtoConfig struct {
+	SearchAlgorithm           string
+	LevelMultiplier           float32
+	Ef                        int
+	EfConstruction            int
+	M                         int
+	MMax                      int
+	MMax0                     int
+	HeuristicExtendCandidates bool
+	HeuristicKeepPruned       bool
+}
+
 func newHnswConfig(options []HnswOption) *hnswConfig {
 	config := &hnswConfig{
 		searchAlgorithm:           HnswSearchSimple,
