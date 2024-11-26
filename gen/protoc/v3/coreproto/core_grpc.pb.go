@@ -32,6 +32,7 @@ const (
 	CoreRpc_VectorSearch_FullMethodName      = "/coreproto.CoreRpc/VectorSearch"
 	CoreRpc_FilterSearch_FullMethodName      = "/coreproto.CoreRpc/FilterSearch"
 	CoreRpc_HybridSearch_FullMethodName      = "/coreproto.CoreRpc/HybridSearch"
+	CoreRpc_CompareDist_FullMethodName       = "/coreproto.CoreRpc/CompareDist"
 )
 
 // CoreRpcClient is the client API for CoreRpc service.
@@ -50,6 +51,7 @@ type CoreRpcClient interface {
 	VectorSearch(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (*SearchResponse, error)
 	FilterSearch(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (*SearchResponse, error)
 	HybridSearch(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (*SearchResponse, error)
+	CompareDist(ctx context.Context, in *CompXyDist, opts ...grpc.CallOption) (*XyDist, error)
 }
 
 type coreRpcClient struct {
@@ -180,6 +182,16 @@ func (c *coreRpcClient) HybridSearch(ctx context.Context, in *SearchRequest, opt
 	return out, nil
 }
 
+func (c *coreRpcClient) CompareDist(ctx context.Context, in *CompXyDist, opts ...grpc.CallOption) (*XyDist, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(XyDist)
+	err := c.cc.Invoke(ctx, CoreRpc_CompareDist_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CoreRpcServer is the server API for CoreRpc service.
 // All implementations should embed UnimplementedCoreRpcServer
 // for forward compatibility.
@@ -196,6 +208,7 @@ type CoreRpcServer interface {
 	VectorSearch(context.Context, *SearchRequest) (*SearchResponse, error)
 	FilterSearch(context.Context, *SearchRequest) (*SearchResponse, error)
 	HybridSearch(context.Context, *SearchRequest) (*SearchResponse, error)
+	CompareDist(context.Context, *CompXyDist) (*XyDist, error)
 }
 
 // UnimplementedCoreRpcServer should be embedded to have
@@ -240,6 +253,9 @@ func (UnimplementedCoreRpcServer) FilterSearch(context.Context, *SearchRequest) 
 }
 func (UnimplementedCoreRpcServer) HybridSearch(context.Context, *SearchRequest) (*SearchResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method HybridSearch not implemented")
+}
+func (UnimplementedCoreRpcServer) CompareDist(context.Context, *CompXyDist) (*XyDist, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CompareDist not implemented")
 }
 func (UnimplementedCoreRpcServer) testEmbeddedByValue() {}
 
@@ -477,6 +493,24 @@ func _CoreRpc_HybridSearch_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CoreRpc_CompareDist_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CompXyDist)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreRpcServer).CompareDist(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreRpc_CompareDist_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreRpcServer).CompareDist(ctx, req.(*CompXyDist))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CoreRpc_ServiceDesc is the grpc.ServiceDesc for CoreRpc service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -531,6 +565,10 @@ var CoreRpc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "HybridSearch",
 			Handler:    _CoreRpc_HybridSearch_Handler,
+		},
+		{
+			MethodName: "CompareDist",
+			Handler:    _CoreRpc_CompareDist_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

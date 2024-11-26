@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sjy-dv/nnv/pkg/concurrentmap"
 	"github.com/vmihailenco/msgpack/v5"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -147,3 +148,47 @@ func BenchmarkPureMap(b *testing.B) {
 //     performance_mem_test.go:125: Insert time: 0.10 sec
 //     performance_mem_test.go:141: Estimated memory used to read: 0.00 mb
 //     performance_mem_test.go:142: Get time: 717_14500 ns
+
+func TestMemoryRelease(t *testing.T) {
+	runtime.GC()
+	var mBefore, mAfter runtime.MemStats
+	runtime.ReadMemStats(&mBefore)
+	cmap := concurrentmap.New[int, int]()
+	for i := 0; i < 10_000_000; i++ {
+		cmap.Set(i, i)
+	}
+	runtime.ReadMemStats(&mAfter)
+	memUsed := mAfter.HeapAlloc - mBefore.HeapAlloc
+	memUsedMB := float64(memUsed) / (1024 * 1024)
+	t.Logf("Estimated memory used by myMap: %.2f mb\n", memUsedMB)
+	runtime.GC()
+	for i := 0; i < 5_000_000; i++ {
+		cmap.Del(i)
+	}
+	runtime.ReadMemStats(&mAfter)
+	memUsed = mAfter.HeapAlloc - mBefore.HeapAlloc
+	memUsedMB = float64(memUsed) / (1024 * 1024)
+	t.Logf("Estimated memory used by myMap: %.2f mb\n", memUsedMB)
+
+}
+
+func TestMapRelease(t *testing.T) {
+	runtime.GC()
+	var mBefore, mAfter runtime.MemStats
+	runtime.ReadMemStats(&mBefore)
+	cmap := make(map[string][]int)
+	for i := 0; i < 10_000_000; i++ {
+		cmap["mem1"] = append(cmap["mem1"], i)
+		cmap["mem2"] = append(cmap["mem2"], i)
+	}
+	runtime.ReadMemStats(&mAfter)
+	memUsed := mAfter.HeapAlloc - mBefore.HeapAlloc
+	memUsedMB := float64(memUsed) / (1024 * 1024)
+	t.Logf("Estimated memory used by myMap: %.2f mb\n", memUsedMB)
+	runtime.GC()
+	delete(cmap, "mem2")
+	runtime.ReadMemStats(&mAfter)
+	memUsed = mAfter.HeapAlloc - mBefore.HeapAlloc
+	memUsedMB = float64(memUsed) / (1024 * 1024)
+	t.Logf("Estimated memory used by myMap: %.2f mb\n", memUsedMB)
+}

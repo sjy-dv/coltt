@@ -23,6 +23,17 @@ service CoreRpc {
     rpc VectorSearch(SearchRequest) returns (SearchResponse) {}
     rpc FilterSearch(SearchRequest) returns (SearchResponse) {}
     rpc HybridSearch(SearchRequest) returns (SearchResponse) {}
+
+    rpc CompareDist(CompXyDist) returns (XyDist) {}
+}
+
+message CompXyDist {
+    repeated float vector_x=1;
+    repeated float vector_y=2;
+    Distance dist=3;
+}
+message XyDist {
+    float score=1;
 }
 
 message DatasetChange {

@@ -8,12 +8,11 @@ import (
 	"github.com/sjy-dv/nnv/diskv"
 	"github.com/sjy-dv/nnv/gen/protoc/v3/coreproto"
 	"github.com/sjy-dv/nnv/gen/protoc/v3/diskproto"
-	"github.com/sjy-dv/nnv/pkg/concurrentmap"
 	"google.golang.org/protobuf/proto"
 )
 
 type Core struct {
-	DataStore *concurrentmap.Map[string, *vectorindex.Hnsw]
+	DataStore *autoMap[*vectorindex.Hnsw]
 	CommitLog *diskv.DB
 }
 
@@ -30,7 +29,7 @@ func NewCore() (*Core, error) {
 		return nil, err
 	}
 	return &Core{
-		DataStore: concurrentmap.New[string, *vectorindex.Hnsw](),
+		DataStore: NewAutoMap[*vectorindex.Hnsw](),
 		CommitLog: diskdb,
 	}, nil
 }
@@ -199,11 +198,8 @@ func (xx *Core) CollectionInfof(ctx context.Context, req *coreproto.CollectionNa
 			c <- failFn(fmt.Sprintf(ErrCollectionNotLoad, req.GetCollectionName()))
 			return
 		}
-		hnsw, ok := xx.DataStore.Get(req.GetCollectionName())
-		if !ok {
-			c <- failFn(fmt.Sprintf(ErrCollectionNotLoad, req.GetCollectionName()))
-			return
-		}
+		hnsw := xx.DataStore.Get(req.GetCollectionName())
+
 		c <- reply{
 			Result: &coreproto.CollectionMsg{
 				Status: true,
@@ -221,4 +217,49 @@ func (xx *Core) CollectionInfof(ctx context.Context, req *coreproto.CollectionNa
 	}()
 	res := <-c
 	return res.Result, res.Error
+}
+
+func (xx *Core) LoadCollection(ctx context.Context, req *coreproto.CollectionName) (
+	*coreproto.CollectionMsg, error) {
+	return nil, nil
+}
+
+func (xx *Core) ReleaseCollection(ctx context.Context, req *coreproto.CollectionName) (
+	*coreproto.CollectionMsg, error) {
+	return nil, nil
+}
+
+func (xx *Core) Insert(ctx context.Context, req *coreproto.DatasetChange) (
+	*coreproto.Response, error) {
+	return nil, nil
+}
+
+func (xx *Core) Update(ctx context.Context, req *coreproto.DatasetChange) (
+	*coreproto.Response, error) {
+	return nil, nil
+}
+
+func (xx *Core) Delete(ctx context.Context, req *coreproto.DatasetChange) (
+	*coreproto.Response, error) {
+	return nil, nil
+}
+
+func (xx *Core) VectorSearch(ctx context.Context, req *coreproto.SearchRequest) (
+	*coreproto.SearchResponse, error) {
+	return nil, nil
+}
+
+func (xx *Core) FilterSearch(ctx context.Context, req *coreproto.SearchRequest) (
+	*coreproto.SearchResponse, error) {
+	return nil, nil
+}
+
+func (xx *Core) HybridSearch(ctx context.Context, req *coreproto.SearchRequest) (
+	*coreproto.SearchResponse, error) {
+	return nil, nil
+}
+
+func (xx *Core) CompXyDist(ctx context.Context, req *coreproto.CompXyDist) (
+	*coreproto.XyDist, error) {
+	return nil, nil
 }
