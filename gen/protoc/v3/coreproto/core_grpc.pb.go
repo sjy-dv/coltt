@@ -44,7 +44,7 @@ type CoreRpcClient interface {
 	DropCollection(ctx context.Context, in *CollectionName, opts ...grpc.CallOption) (*Response, error)
 	CollectionInfof(ctx context.Context, in *CollectionName, opts ...grpc.CallOption) (*CollectionMsg, error)
 	LoadCollection(ctx context.Context, in *CollectionName, opts ...grpc.CallOption) (*CollectionMsg, error)
-	ReleaseCollection(ctx context.Context, in *CollectionName, opts ...grpc.CallOption) (*CollectionMsg, error)
+	ReleaseCollection(ctx context.Context, in *CollectionName, opts ...grpc.CallOption) (*ResponseWithMessage, error)
 	Insert(ctx context.Context, in *DatasetChange, opts ...grpc.CallOption) (*Response, error)
 	Update(ctx context.Context, in *DatasetChange, opts ...grpc.CallOption) (*Response, error)
 	Delete(ctx context.Context, in *DatasetChange, opts ...grpc.CallOption) (*Response, error)
@@ -112,9 +112,9 @@ func (c *coreRpcClient) LoadCollection(ctx context.Context, in *CollectionName, 
 	return out, nil
 }
 
-func (c *coreRpcClient) ReleaseCollection(ctx context.Context, in *CollectionName, opts ...grpc.CallOption) (*CollectionMsg, error) {
+func (c *coreRpcClient) ReleaseCollection(ctx context.Context, in *CollectionName, opts ...grpc.CallOption) (*ResponseWithMessage, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CollectionMsg)
+	out := new(ResponseWithMessage)
 	err := c.cc.Invoke(ctx, CoreRpc_ReleaseCollection_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -201,7 +201,7 @@ type CoreRpcServer interface {
 	DropCollection(context.Context, *CollectionName) (*Response, error)
 	CollectionInfof(context.Context, *CollectionName) (*CollectionMsg, error)
 	LoadCollection(context.Context, *CollectionName) (*CollectionMsg, error)
-	ReleaseCollection(context.Context, *CollectionName) (*CollectionMsg, error)
+	ReleaseCollection(context.Context, *CollectionName) (*ResponseWithMessage, error)
 	Insert(context.Context, *DatasetChange) (*Response, error)
 	Update(context.Context, *DatasetChange) (*Response, error)
 	Delete(context.Context, *DatasetChange) (*Response, error)
@@ -233,7 +233,7 @@ func (UnimplementedCoreRpcServer) CollectionInfof(context.Context, *CollectionNa
 func (UnimplementedCoreRpcServer) LoadCollection(context.Context, *CollectionName) (*CollectionMsg, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LoadCollection not implemented")
 }
-func (UnimplementedCoreRpcServer) ReleaseCollection(context.Context, *CollectionName) (*CollectionMsg, error) {
+func (UnimplementedCoreRpcServer) ReleaseCollection(context.Context, *CollectionName) (*ResponseWithMessage, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReleaseCollection not implemented")
 }
 func (UnimplementedCoreRpcServer) Insert(context.Context, *DatasetChange) (*Response, error) {

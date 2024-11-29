@@ -60,6 +60,7 @@ func (xx *Core) CreateCollection(ctx context.Context,
 		}
 		if hasCollection(req.GetCollectionName()) {
 			c <- failFn(fmt.Sprintf(ErrCollectionExists, req.GetCollectionName()))
+			return
 		}
 		distFn, distFnName := protoDistHelper(req.GetDistance())
 		searchAlgo, searchOpts := protoSearchAlgoHelper(req.GetCollectionConfig().GetSearchAlgorithm())
@@ -90,6 +91,7 @@ func (xx *Core) CreateCollection(ctx context.Context,
 		err = xx.CommitLog.Put([]byte(diskFlushName), diskBytes)
 		if err != nil {
 			c <- failFn(err.Error())
+			return
 		}
 		hnsw := vectorindex.NewHnsw(uint(req.GetVectorDimension()),
 			distFn,
@@ -101,12 +103,7 @@ func (xx *Core) CreateCollection(ctx context.Context,
 			c <- failFn(err.Error())
 			return
 		}
-		stateManager.checker.cecLock.Lock()
-		defer stateManager.checker.cecLock.Unlock()
-		stateManager.auth.authLock.Lock()
-		defer stateManager.auth.authLock.Unlock()
-		stateManager.checker.collections[req.GetCollectionName()] = true
-		stateManager.auth.collections[req.GetCollectionName()] = true
+		stateTrueHelper(req.GetCollectionName())
 		c <- reply{
 			Result: &coreproto.CollectionMsg{
 				Status: true,
@@ -152,13 +149,7 @@ func (xx *Core) DropCollection(ctx context.Context, req *coreproto.CollectionNam
 			return
 		}
 		xx.diskClear(req.GetCollectionName())
-		stateManager.auth.authLock.Lock()
-		defer stateManager.auth.authLock.Unlock()
-		stateManager.checker.cecLock.Lock()
-		defer stateManager.checker.cecLock.Unlock()
-		delete(stateManager.auth.collections, req.GetCollectionName())
-		delete(stateManager.checker.collections, req.GetCollectionName())
-
+		stateDestroyHelper(req.GetCollectionName())
 		c <- successFn()
 	}()
 	res := <-c
@@ -221,12 +212,153 @@ func (xx *Core) CollectionInfof(ctx context.Context, req *coreproto.CollectionNa
 
 func (xx *Core) LoadCollection(ctx context.Context, req *coreproto.CollectionName) (
 	*coreproto.CollectionMsg, error) {
-	return nil, nil
+	type reply struct {
+		Result *coreproto.CollectionMsg
+		Error  error
+	}
+	c := make(chan reply, 1)
+
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				c <- reply{
+					Error: fmt.Errorf(panicr, r),
+				}
+			}
+		}()
+		failFn := func(errMsg string) reply {
+			return reply{
+				Result: &coreproto.CollectionMsg{
+					Status: false,
+					Error:  errorWrap(errMsg),
+				},
+			}
+		}
+		if !hasCollection(req.GetCollectionName()) {
+			c <- failFn(fmt.Sprintf(ErrCollectionNotFound, req.GetCollectionName()))
+			return
+		}
+		if alreadyLoadCollection(req.GetCollectionName()) {
+			hnsw := xx.DataStore.Get(req.GetCollectionName())
+			c <- reply{
+				Result: &coreproto.CollectionMsg{
+					Status: true,
+					Info: &coreproto.CollectionInfo{
+						CollectionName:    req.GetCollectionName(),
+						CollectionConfig:  reverseConfigHelper(hnsw.Config()),
+						VectorDimension:   hnsw.Dim(),
+						CollectionSize:    fmt.Sprintf("%d bytes", hnsw.BytesSize()),
+						CollectionLength:  uint64(hnsw.Len()),
+						Distance:          reverseprotoDistHelper(hnsw.Distance()),
+						CompressionHelper: coreproto.Quantization_None,
+					},
+				},
+			}
+			return
+		}
+
+		loadcfg, err := xx.CommitLog.Get([]byte(fmt.Sprintf(diskRule0, req.GetCollectionName())))
+		if err != nil {
+			c <- failFn(err.Error())
+			return
+		}
+		dp := diskproto.Collection{}
+		err = proto.Unmarshal(loadcfg, &dp)
+		if err != nil {
+			c <- failFn(err.Error())
+			return
+		}
+		err = xx.snapShotHelper(req.GetCollectionName(), dp.GetVectorDimension(),
+			reversesingleprotoDistHelper(dp.GetDistance()), reverseSearchAlgoHelper(dp.GetSearchAlgorithm()))
+		if err != nil {
+			c <- failFn(err.Error())
+			return
+		}
+		err = indexLoadHelper(req.GetCollectionName())
+		if err != nil {
+			xx.memFree(req.GetCollectionName())
+			c <- failFn(err.Error())
+			return
+		}
+		stateTrueHelper(req.GetCollectionName())
+		hnsw := xx.DataStore.Get(req.GetCollectionName())
+		c <- reply{
+			Result: &coreproto.CollectionMsg{
+				Status: true,
+				Info: &coreproto.CollectionInfo{
+					CollectionName:    req.GetCollectionName(),
+					CollectionConfig:  reverseConfigHelper(hnsw.Config()),
+					VectorDimension:   hnsw.Dim(),
+					CollectionSize:    fmt.Sprintf("%d bytes", hnsw.BytesSize()),
+					CollectionLength:  uint64(hnsw.Len()),
+					Distance:          reverseprotoDistHelper(hnsw.Distance()),
+					CompressionHelper: coreproto.Quantization_None,
+				},
+			},
+		}
+	}()
+	res := <-c
+	return res.Result, res.Error
 }
 
 func (xx *Core) ReleaseCollection(ctx context.Context, req *coreproto.CollectionName) (
-	*coreproto.CollectionMsg, error) {
-	return nil, nil
+	*coreproto.ResponseWithMessage, error) {
+	type reply struct {
+		Result *coreproto.ResponseWithMessage
+		Error  error
+	}
+	c := make(chan reply, 1)
+
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				c <- reply{
+					Error: fmt.Errorf(panicr, r),
+				}
+			}
+		}()
+		failFn := func(errMsg string) reply {
+			return reply{
+				Result: &coreproto.ResponseWithMessage{
+					Status: false,
+					Error:  errorWrap(errMsg),
+				},
+			}
+		}
+
+		if !hasCollection(req.GetCollectionName()) {
+			c <- failFn(fmt.Sprintf(ErrCollectionNotFound, req.GetCollectionName()))
+			return
+		}
+		if !alreadyLoadCollection(req.GetCollectionName()) {
+			c <- reply{
+				Result: &coreproto.ResponseWithMessage{
+					Status:  true,
+					Message: "collection is already release",
+				},
+			}
+			return
+		}
+		err := xx.createSnapshotHelper(req.GetCollectionName())
+		if err != nil {
+			c <- failFn(err.Error())
+			xx.memFree(req.GetCollectionName())
+			return
+		}
+		err = indexSaveHelper(req.GetCollectionName())
+		if err != nil {
+			c <- failFn(err.Error())
+			xx.memFree(req.GetCollectionName())
+			return
+		}
+		c <- reply{
+			Result: &coreproto.ResponseWithMessage{
+				Status: true,
+			},
+		}
+	}()
+	res := <-c
+	return res.Result, res.Error
 }
 
 func (xx *Core) Insert(ctx context.Context, req *coreproto.DatasetChange) (

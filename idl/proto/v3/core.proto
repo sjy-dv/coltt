@@ -14,7 +14,7 @@ service CoreRpc {
     rpc CollectionInfof(CollectionName) returns (CollectionMsg) {}
 
     rpc LoadCollection(CollectionName) returns (CollectionMsg) {}
-    rpc ReleaseCollection(CollectionName) returns (CollectionMsg) {}
+    rpc ReleaseCollection(CollectionName) returns (ResponseWithMessage) {}
 
     rpc Insert(DatasetChange) returns (Response) {}
     rpc Update(DatasetChange) returns (Response) {}
@@ -73,6 +73,12 @@ message HnswConfig {
     int32 m_max0=7;
     bool heuristic_extend_candidates=8;
     bool heuristic_keep_pruned=9;
+}
+
+message ResponseWithMessage {
+    bool status=1;
+    string message=2;
+    Error error=3;
 }
 
 message Response {
