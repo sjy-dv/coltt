@@ -17,7 +17,11 @@
 
 package edge
 
-import "math"
+import (
+	"encoding/binary"
+	"io"
+	"math"
+)
 
 var (
 	ErrCollectionNotFound = "collection: %s not found"
@@ -74,4 +78,22 @@ func (v Vector) Normalize() {
 
 func (v Vector) Dimensions() int {
 	return len(v)
+}
+
+func (v Vector) Save(w io.Writer) error {
+	for _, val := range v {
+		if err := binary.Write(w, binary.BigEndian, val); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (v Vector) Load(r io.Reader) error {
+	for i := 0; i < len(v); i++ {
+		if err := binary.Read(r, binary.BigEndian, &v[i]); err != nil {
+			return err
+		}
+	}
+	return nil
 }

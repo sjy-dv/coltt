@@ -1,7 +1,9 @@
 package vectorindex
 
 import (
+	"encoding/binary"
 	"fmt"
+	"io"
 
 	"github.com/sjy-dv/nnv/pkg/gomath"
 )
@@ -155,4 +157,72 @@ func (this *hnswConfig) String() string {
 		this.heuristicExtendCandidates,
 		this.heuristicKeepPruned,
 	)
+}
+
+func (this *hnswConfig) save(w io.Writer) error {
+	if err := binary.Write(w, binary.BigEndian, uint32(this.searchAlgorithm)); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, this.levelMultiplier); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, int32(this.ef)); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, int32(this.efConstruction)); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, int32(this.m)); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, int32(this.mMax)); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, int32(this.mMax0)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (this *hnswConfig) load(r io.Reader) error {
+	var uint32Val uint32
+	var int32Val int32
+	var float32Val float32
+
+	if err := binary.Read(r, binary.BigEndian, &uint32Val); err != nil {
+		return err
+	}
+	this.searchAlgorithm = hnswSearchAlgorithm(uint32Val)
+
+	if err := binary.Read(r, binary.BigEndian, &float32Val); err != nil {
+		return err
+	}
+	this.levelMultiplier = float32Val
+
+	if err := binary.Read(r, binary.BigEndian, &int32Val); err != nil {
+		return err
+	}
+	this.ef = int(int32Val)
+
+	if err := binary.Read(r, binary.BigEndian, &int32Val); err != nil {
+		return err
+	}
+	this.efConstruction = int(int32Val)
+
+	if err := binary.Read(r, binary.BigEndian, &int32Val); err != nil {
+		return err
+	}
+	this.m = int(int32Val)
+
+	if err := binary.Read(r, binary.BigEndian, &int32Val); err != nil {
+		return err
+	}
+	this.mMax = int(int32Val)
+
+	if err := binary.Read(r, binary.BigEndian, &int32Val); err != nil {
+		return err
+	}
+	this.mMax0 = int(int32Val)
+
+	return nil
 }

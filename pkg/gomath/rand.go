@@ -43,7 +43,7 @@ func RandomExponential(lambda float32) float32 {
 	return -Log(rand.Float32()) * lambda
 }
 
-func RandomUniformVector(size int) Vector {
+func RandomUniformVector(size int) []float32 {
 	vec := make(Vector, size)
 	for i := 0; i < size; i++ {
 		vec[i] = RandomUniform()

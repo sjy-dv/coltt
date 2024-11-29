@@ -57,3 +57,7 @@ compress-float:
 
 bench-milvus-boot:
 	- docker-compose -f ./benchmark/milvus.docker.compose.yaml -p benchmark-milvus up
+
+e2e-test:
+	@echo "e2e Test [HNSW Commit & Load]"
+	- go run e2e/e2e_hnsw.go

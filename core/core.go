@@ -207,7 +207,7 @@ func (xx *Core) CollectionInfof(ctx context.Context, req *coreproto.CollectionNa
 					CollectionName:    req.GetCollectionName(),
 					CollectionConfig:  reverseConfigHelper(hnsw.Config()),
 					VectorDimension:   hnsw.Dim(),
-					CollectionSize:    fmt.Sprintf("%d bytes", hnsw.ByteSize()),
+					CollectionSize:    fmt.Sprintf("%d bytes", hnsw.BytesSize()),
 					CollectionLength:  uint64(hnsw.Len()),
 					Distance:          reverseprotoDistHelper(hnsw.Distance()),
 					CompressionHelper: coreproto.Quantization_None,

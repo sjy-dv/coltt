@@ -457,7 +457,7 @@ func (xx *Hnsw) pruneNeighbors(vertex *hnswVertex, k, level int) {
 	vertex.setEdges(level, newNeighbors)
 }
 
-func (xx *Hnsw) ByteSize() uint64 {
+func (xx *Hnsw) BytesSize() uint64 {
 	maxLevel := 10
 	if entrypoint := (*hnswVertex)(atomic.LoadPointer(&xx.entrypoint)); entrypoint != nil {
 		maxLevel = entrypoint.level
