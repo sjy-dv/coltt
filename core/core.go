@@ -9,6 +9,7 @@ import (
 	"github.com/sjy-dv/nnv/gen/protoc/v3/coreproto"
 	"github.com/sjy-dv/nnv/gen/protoc/v3/diskproto"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type Core struct {
@@ -351,6 +352,7 @@ func (xx *Core) ReleaseCollection(ctx context.Context, req *coreproto.Collection
 			xx.memFree(req.GetCollectionName())
 			return
 		}
+		stateFalseHelper(req.GetCollectionName())
 		c <- reply{
 			Result: &coreproto.ResponseWithMessage{
 				Status: true,
@@ -363,35 +365,453 @@ func (xx *Core) ReleaseCollection(ctx context.Context, req *coreproto.Collection
 
 func (xx *Core) Insert(ctx context.Context, req *coreproto.DatasetChange) (
 	*coreproto.Response, error) {
-	return nil, nil
+	type reply struct {
+		Result *coreproto.Response
+		Error  error
+	}
+	c := make(chan reply, 1)
+	autoId := autoCommitID()
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				c <- reply{
+					Error: fmt.Errorf(panicr, r),
+				}
+			}
+		}()
+		failFn := func(errMsg string) reply {
+			return reply{
+				Result: &coreproto.Response{
+					Status: false,
+					Error:  errorWrap(errMsg),
+				},
+			}
+		}
+		err := collectionStatusHelper(req.GetCollectionName())
+		if err != nil {
+			c <- failFn(err.Error())
+			return
+		}
+		cloneMap := req.GetMetadata().AsMap()
+		err = indexdb.indexes[req.GetCollectionName()].Add(autoId, cloneMap)
+		if err != nil {
+			c <- failFn(err.Error())
+			return
+		}
+		hnsw := xx.DataStore.Get(req.GetCollectionName())
+		err = hnsw.Insert(autoId, req.GetVector(), cloneMap, hnsw.RandomLevel())
+		if err != nil {
+			c <- failFn(err.Error())
+			return
+		}
+		diskkv := diskproto.Dataset{}
+		diskkv.CollectionUniqueId = autoId
+		diskkv.Metadata = req.GetMetadata()
+		diskkv.UserSpecificId = req.GetId()
+		diskkv.Vector = req.GetVector()
+		diskb, err := proto.Marshal(&diskkv)
+		if err != nil {
+			c <- failFn(err.Error())
+			return
+		}
+		err = xx.CommitLog.Put([]byte(fmt.Sprintf(diskRule1, req.GetCollectionName(), autoId)), diskb)
+		if err != nil {
+			c <- failFn(err.Error())
+			return
+		}
+		c <- reply{
+			Result: &coreproto.Response{Status: true},
+		}
+	}()
+
+	res := <-c
+	if !res.Result.Status || res.Error != nil {
+		xx.rollbackForConsistentHelper(req.GetCollectionName(), autoId, req.GetMetadata().AsMap())
+	}
+	return res.Result, res.Error
 }
 
 func (xx *Core) Update(ctx context.Context, req *coreproto.DatasetChange) (
 	*coreproto.Response, error) {
-	return nil, nil
+	type reply struct {
+		Result   *coreproto.Response
+		IsCreate bool
+		Error    error
+	}
+	c := make(chan reply, 1)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				c <- reply{
+					Error: fmt.Errorf(panicr, r),
+				}
+			}
+		}()
+		failFn := func(errMsg string, create bool) reply {
+			return reply{
+				Result: &coreproto.Response{
+					Status: false,
+					Error:  errorWrap(errMsg),
+				},
+				IsCreate: create,
+			}
+		}
+		err := collectionStatusHelper(req.GetCollectionName())
+		if err != nil {
+			c <- failFn(err.Error(), false)
+			return
+		}
+		getId := indexdb.indexes[req.GetCollectionName()].PureSearch(map[string]string{"_id": req.GetId()})
+		if len(getId) == 0 {
+			c <- failFn("", true)
+			return
+		}
+		hnsw := xx.DataStore.Get(req.GetCollectionName())
+		vertex, err := hnsw.GetVertex(getId[0])
+		if err != nil {
+			c <- failFn(err.Error(), false)
+			return
+		}
+		err = indexdb.indexes[req.GetCollectionName()].Remove(getId[0], vertex.Metadata())
+		if err != nil {
+			c <- failFn(err.Error(), false)
+			return
+		}
+		err = hnsw.Remove(getId[0])
+		if err != nil {
+			c <- failFn(err.Error(), false)
+			return
+		}
+		err = indexdb.indexes[req.GetCollectionName()].Add(getId[0], req.GetMetadata().AsMap())
+		if err != nil {
+			c <- failFn(err.Error(), false)
+			return
+		}
+		err = hnsw.Insert(getId[0], req.GetVector(), req.GetMetadata().AsMap(), hnsw.RandomLevel())
+		if err != nil {
+			c <- failFn(err.Error(), false)
+			return
+		}
+		diskkv := diskproto.Dataset{}
+		diskkv.CollectionUniqueId = getId[0]
+		diskkv.Metadata = req.GetMetadata()
+		diskkv.UserSpecificId = req.GetId()
+		diskkv.Vector = req.GetVector()
+		diskb, err := proto.Marshal(&diskkv)
+		if err != nil {
+			c <- failFn(err.Error(), false)
+			return
+		}
+		err = xx.CommitLog.Put([]byte(fmt.Sprintf(diskRule1, req.GetCollectionName(), getId[0])), diskb)
+		if err != nil {
+			c <- failFn(err.Error(), false)
+			return
+		}
+		c <- reply{
+			Result: &coreproto.Response{
+				Status: true,
+			},
+			IsCreate: false,
+		}
+	}()
+	res := <-c
+	if res.IsCreate {
+		return xx.Insert(ctx, req)
+	}
+	return res.Result, res.Error
 }
 
 func (xx *Core) Delete(ctx context.Context, req *coreproto.DatasetChange) (
 	*coreproto.Response, error) {
-	return nil, nil
+	type reply struct {
+		Result *coreproto.Response
+		Error  error
+	}
+	c := make(chan reply, 1)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				c <- reply{
+					Error: fmt.Errorf(panicr, r),
+				}
+			}
+		}()
+		failFn := func(errMsg string) reply {
+			return reply{
+				Result: &coreproto.Response{
+					Status: false,
+					Error:  errorWrap(errMsg),
+				},
+			}
+		}
+		successFn := func() reply {
+			return reply{
+				Result: &coreproto.Response{
+					Status: true,
+				},
+			}
+		}
+		err := collectionStatusHelper(req.GetCollectionName())
+		if err != nil {
+			c <- failFn(err.Error())
+			return
+		}
+		getId := indexdb.indexes[req.GetCollectionName()].PureSearch(map[string]string{"_id": req.GetId()})
+		if len(getId) == 0 {
+			c <- successFn()
+			return
+		}
+		hnsw := xx.DataStore.Get(req.GetCollectionName())
+		vertex, err := hnsw.GetVertex(getId[0])
+		if err != nil {
+			c <- failFn(err.Error())
+			return
+		}
+		err = indexdb.indexes[req.GetCollectionName()].Remove(getId[0], vertex.Metadata())
+		if err != nil {
+			c <- failFn(err.Error())
+			return
+		}
+		err = hnsw.Remove(getId[0])
+		if err != nil {
+			c <- failFn(err.Error())
+			return
+		}
+		err = xx.CommitLog.Delete([]byte(fmt.Sprintf(diskRule1, req.GetCollectionName(), getId[0])))
+		if err != nil {
+			c <- failFn(err.Error())
+			return
+		}
+		c <- successFn()
+	}()
+	res := <-c
+	return res.Result, res.Error
 }
 
 func (xx *Core) VectorSearch(ctx context.Context, req *coreproto.SearchRequest) (
 	*coreproto.SearchResponse, error) {
-	return nil, nil
+	type reply struct {
+		Result *coreproto.SearchResponse
+		Error  error
+	}
+	c := make(chan reply, 1)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				c <- reply{
+					Error: fmt.Errorf(panicr, r),
+				}
+			}
+		}()
+
+		failFn := func(errMsg string) reply {
+			return reply{
+				Result: &coreproto.SearchResponse{
+					Status: false,
+					Error:  errorWrap(errMsg),
+				},
+			}
+		}
+
+		err := collectionStatusHelper(req.GetCollectionName())
+		if err != nil {
+			c <- failFn(err.Error())
+			return
+		}
+
+		hnsw := xx.DataStore.Get(req.GetCollectionName())
+		candidates, err := hnsw.Search(context.TODO(), req.GetVector(), uint(req.GetTopK()))
+		if err != nil {
+			c <- failFn(err.Error())
+			return
+		}
+		resultSet := make([]*coreproto.Candidates, 0, req.GetTopK())
+		for _, candidate := range candidates {
+			n := new(coreproto.Candidates)
+			n.Id = candidate.Metadata["_id"].(string)
+			n.Metadata, err = structpb.NewStruct(candidate.Metadata)
+			if err != nil {
+				c <- failFn(err.Error())
+				return
+			}
+			n.Score = scoreHelper(candidate.Score, hnsw.Distance())
+			resultSet = append(resultSet, n)
+		}
+		c <- reply{
+			Result: &coreproto.SearchResponse{
+				Status:     true,
+				Candidates: resultSet,
+			},
+		}
+	}()
+	res := <-c
+	return res.Result, res.Error
 }
 
 func (xx *Core) FilterSearch(ctx context.Context, req *coreproto.SearchRequest) (
 	*coreproto.SearchResponse, error) {
-	return nil, nil
+	type reply struct {
+		Result *coreproto.SearchResponse
+		Error  error
+	}
+	c := make(chan reply, 1)
+
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				c <- reply{
+					Error: fmt.Errorf(panicr, r),
+				}
+			}
+		}()
+		failFn := func(errMsg string) reply {
+			return reply{
+				Result: &coreproto.SearchResponse{
+					Status: false,
+					Error:  errorWrap(errMsg),
+				},
+			}
+		}
+
+		err := collectionStatusHelper(req.GetCollectionName())
+		if err != nil {
+			c <- failFn(err.Error())
+			return
+		}
+
+		candidates := indexdb.indexes[req.GetCollectionName()].PureSearch(req.GetFilter())
+		resultSet := make([]*coreproto.Candidates, 0, req.GetTopK())
+
+		for _, id := range candidates {
+			data, err := xx.CommitLog.Get([]byte(fmt.Sprintf(diskRule1, req.GetCollectionName(), id)))
+			if err != nil {
+				c <- failFn(err.Error())
+				return
+			}
+			dec := diskproto.Dataset{}
+			err = proto.Unmarshal(data, &dec)
+			if err != nil {
+				c <- failFn(err.Error())
+				return
+			}
+			n := new(coreproto.Candidates)
+			n.Id = dec.GetUserSpecificId()
+			n.Metadata = dec.GetMetadata()
+			n.Score = 100
+			resultSet = append(resultSet, n)
+		}
+		c <- reply{
+			Result: &coreproto.SearchResponse{
+				Status:     true,
+				Candidates: resultSet,
+			},
+		}
+	}()
+	res := <-c
+	return res.Result, res.Error
 }
 
 func (xx *Core) HybridSearch(ctx context.Context, req *coreproto.SearchRequest) (
 	*coreproto.SearchResponse, error) {
-	return nil, nil
+	type reply struct {
+		Result *coreproto.SearchResponse
+		Error  error
+	}
+	c := make(chan reply, 1)
+
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				c <- reply{
+					Error: fmt.Errorf(panicr, r),
+				}
+			}
+		}()
+		failFn := func(errMsg string) reply {
+			return reply{
+				Result: &coreproto.SearchResponse{
+					Status: false,
+					Error:  errorWrap(errMsg),
+				},
+			}
+		}
+		err := collectionStatusHelper(req.GetCollectionName())
+		if err != nil {
+			c <- failFn(err.Error())
+			return
+		}
+
+		hnsw := xx.DataStore.Get(req.GetCollectionName())
+		candidates, err := hnsw.Search(context.TODO(), req.GetVector(), uint(req.GetTopK()*3))
+		if err != nil {
+			c <- failFn(err.Error())
+			return
+		}
+		vid := make([]uint64, 0, len(candidates))
+		for _, cc := range candidates {
+			vid = append(vid, cc.Id)
+		}
+		//
+		mergeCandidates := indexdb.indexes[req.GetCollectionName()].SearchWitCandidates(vid, req.GetFilter())
+
+		// find for in for => O(n^2)
+		// in map => space complexity is grow but fast O(n)
+		resultSet := make([]*coreproto.Candidates, 0, req.GetTopK())
+		pos := 1
+		chkmap := make(map[uint64]bool)
+		for _, mc := range mergeCandidates {
+			chkmap[mc] = true
+		}
+		for _, candidate := range candidates {
+			if pos >= int(req.GetTopK()) {
+				break
+			}
+			n := new(coreproto.Candidates)
+			n.Id = candidate.Metadata["_id"].(string)
+			n.Metadata, err = structpb.NewStruct(candidate.Metadata)
+			if err != nil {
+				c <- failFn(err.Error())
+				return
+			}
+			n.Score = scoreHelper(candidate.Score, hnsw.Distance())
+			resultSet = append(resultSet, n)
+			pos++
+		}
+		c <- reply{
+			Result: &coreproto.SearchResponse{
+				Status:     true,
+				Candidates: resultSet,
+			},
+		}
+	}()
+	res := <-c
+	return res.Result, res.Error
 }
 
 func (xx *Core) CompXyDist(ctx context.Context, req *coreproto.CompXyDist) (
 	*coreproto.XyDist, error) {
-	return nil, nil
+	type reply struct {
+		Result *coreproto.XyDist
+		Error  error
+	}
+	c := make(chan reply, 1)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				c <- reply{
+					Error: fmt.Errorf(panicr, r),
+				}
+			}
+		}()
+
+		provider, distname := protoDistHelper(req.GetDist())
+		score, _ := provider.SingleDist(req.GetVectorX(), req.GetVectorY())
+		c <- reply{
+			Result: &coreproto.XyDist{
+				Score: scoreHelper(score, distname),
+			},
+		}
+	}()
+	res := <-c
+	return res.Result, res.Error
 }

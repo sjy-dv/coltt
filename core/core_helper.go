@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"os"
 
 	"github.com/sjy-dv/nnv/core/vectorindex"
@@ -196,4 +197,34 @@ func stateDestroyHelper(collectionName string) {
 	delete(stateManager.auth.collections, collectionName)
 	delete(stateManager.checker.collections, collectionName)
 
+}
+
+func collectionStatusHelper(collectionName string) error {
+	if !hasCollection(collectionName) {
+		return fmt.Errorf(ErrCollectionNotFound, collectionName)
+	}
+	if !alreadyLoadCollection(collectionName) {
+		return fmt.Errorf(ErrCollectionNotLoad, collectionName)
+	}
+	return nil
+}
+
+func (xx *Core) rollbackForConsistentHelper(collectionName string, commitId uint64, metadata map[string]interface{}) {
+	if err := xx.CommitLog.Delete([]byte(fmt.Sprintf(diskRule1, collectionName, commitId))); err != nil {
+		// using log after
+	}
+	hnsw := xx.DataStore.Get(collectionName)
+	if err := hnsw.Remove(commitId); err != nil {
+		//
+	}
+	if err := indexdb.indexes[collectionName].Remove(commitId, metadata); err != nil {
+		//
+	}
+}
+
+func scoreHelper(score float32, dist string) float32 {
+	if dist == COSINE {
+		return ((score + 1) / 2) * 100
+	}
+	return float32(math.Max(0, float64(100-score)))
 }
