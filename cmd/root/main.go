@@ -19,6 +19,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"net/http"
 	"net/http/pprof"
 	"os"
@@ -31,7 +32,14 @@ import (
 	rootlayer "github.com/sjy-dv/nnv/root_layer"
 )
 
+var (
+	mode string
+)
+
 func main() {
+	flag.StringVar(&mode, "mode", "root", "mode select")
+	flag.Parse()
+	log.Info().Msgf("user select mode : %s", mode)
 	log.Info().Msg("setup directory..")
 	dirPath := "./data_dir"
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
@@ -44,7 +52,7 @@ func main() {
 	log.Info().Msg("setup complete directory")
 	log.Info().Msg("rootlayer start")
 	go func() {
-		err := rootlayer.NewRootLayer()
+		err := rootlayer.NewRootLayer(mode)
 		if err != nil {
 			log.Warn().Err(err).Msg("rootlayer start failed")
 			os.Exit(1)
@@ -73,7 +81,7 @@ func main() {
 	log.Debug().Msg("received shutdown signal")
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	err := rootlayer.StableRelease(shutdownCtx)
+	err := rootlayer.StableRelease(shutdownCtx, mode)
 	if err != nil {
 		log.Debug().Msgf("info stable release >> %s", err.Error())
 	}

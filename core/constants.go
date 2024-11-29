@@ -20,9 +20,10 @@ const (
 )
 
 var (
-	diskRule0 = "%s_archive"
-	diskRule1 = "%s_%d" // save data segments
-	diskRule2 = "%s_"   // find all collection segments data
+	diskRule0   = "%s_archive"
+	diskRule1   = "%s_%d" // save data segments
+	diskRule2   = "%s_"   // find all collection segments data
+	diskColList = "collections"
 )
 
 var (

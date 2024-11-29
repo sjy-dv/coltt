@@ -21,14 +21,21 @@ import (
 	"context"
 
 	edgelite "github.com/sjy-dv/nnv/root_layer/edge-lite"
+	"github.com/sjy-dv/nnv/root_layer/root"
 )
 
 // after code refactoring
 
-func NewRootLayer() error {
-	return edgelite.NewEdgeLite()
+func NewRootLayer(mode string) error {
+	if mode == "edge" {
+		return edgelite.NewEdgeLite()
+	}
+	return root.NewRoot()
 }
 
-func StableRelease(ctx context.Context) error {
-	return edgelite.StableRelease(ctx)
+func StableRelease(ctx context.Context, mode string) error {
+	if mode == "edge" {
+		return edgelite.StableRelease(ctx)
+	}
+	return root.StableRelease(ctx)
 }

@@ -2,6 +2,7 @@ package core
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"github.com/sjy-dv/nnv/gen/protoc/v3/coreproto"
 	"github.com/sjy-dv/nnv/pkg/distancer"
 	"github.com/sjy-dv/nnv/pkg/index"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 func errorWrap(errMsg string) *coreproto.Error {
@@ -183,6 +185,12 @@ func stateTrueHelper(collectionName string) {
 	stateManager.auth.collections[collectionName] = true
 }
 
+func stateRegistHelper(collectionName string) {
+	stateManager.checker.cecLock.Lock()
+	defer stateManager.checker.cecLock.Unlock()
+	stateManager.checker.collections[collectionName] = true
+}
+
 func stateFalseHelper(collectionName string) {
 	stateManager.auth.authLock.Lock()
 	defer stateManager.auth.authLock.Unlock()
@@ -227,4 +235,104 @@ func scoreHelper(score float32, dist string) float32 {
 		return ((score + 1) / 2) * 100
 	}
 	return float32(math.Max(0, float64(100-score)))
+}
+
+func (xx *Core) saveCollection(collectionName string) error {
+	ok, err := xx.CommitLog.Exist([]byte(diskColList))
+	if err != nil {
+		return err
+	}
+	if ok {
+		gb, err := xx.CommitLog.Get([]byte(diskColList))
+		if err != nil {
+			return err
+		}
+		data := make([]string, 0)
+		err = msgpack.Unmarshal(gb, &data)
+		if err != nil {
+			return err
+		}
+		data = append(data, collectionName)
+		byts, err := msgpack.Marshal(data)
+		if err != nil {
+			return err
+		}
+		err = xx.CommitLog.Put([]byte(diskColList), byts)
+		if err != nil {
+			return err
+		}
+	} else {
+		data := []string{collectionName}
+		bytes, err := msgpack.Marshal(data)
+		if err != nil {
+			return err
+		}
+		err = xx.CommitLog.Put([]byte(diskColList), bytes)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (xx *Core) removeCollection(collectionName string) error {
+	gb, err := xx.CommitLog.Get([]byte(diskColList))
+	if err != nil {
+		return err
+	}
+	data := make([]string, 0)
+	err = msgpack.Unmarshal(gb, &data)
+	if err != nil {
+		return err
+	}
+
+	newData := make([]string, 0)
+	for _, d := range data {
+		if d != collectionName {
+			newData = append(newData, d)
+		}
+	}
+	byts, err := msgpack.Marshal(newData)
+	if err != nil {
+		return err
+	}
+	err = xx.CommitLog.Put([]byte(diskColList), byts)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (xx *Core) RegistCollectionStManager() error {
+	ok, err := xx.CommitLog.Exist([]byte(diskColList))
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return nil
+	}
+	gb, err := xx.CommitLog.Get([]byte(diskColList))
+	if err != nil {
+		return err
+	}
+	data := make([]string, 0)
+	err = msgpack.Unmarshal(gb, &data)
+	if err != nil {
+		return err
+	}
+	for _, col := range data {
+		stateRegistHelper(col)
+	}
+	return nil
+}
+
+func (xx *Core) exitSnapshot() error {
+	for col, ok := range stateManager.auth.collections {
+		if ok {
+			xx.ReleaseCollection(context.Background(), &coreproto.CollectionName{
+				CollectionName: col,
+			})
+		}
+	}
+	return nil
 }

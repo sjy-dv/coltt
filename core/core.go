@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/rs/zerolog/log"
 	"github.com/sjy-dv/nnv/core/vectorindex"
 	"github.com/sjy-dv/nnv/diskv"
 	"github.com/sjy-dv/nnv/gen/protoc/v3/coreproto"
@@ -35,10 +36,23 @@ func NewCore() (*Core, error) {
 	}, nil
 }
 
+func (xx *Core) Close() {
+	if err := xx.CommitLog.Close(); err != nil {
+		log.Error().Err(err).Msg("diskv :> It did not shut down properly ")
+	} else {
+		log.Info().Msg("database shut down successfully")
+	}
+	if err := xx.exitSnapshot(); err != nil {
+		log.Error().Err(err).Msg("snapshot :> each collection is saved failed.")
+		return
+	}
+	log.Info().Msg("all collection is saved success")
+}
+
 func (xx *Core) CreateCollection(ctx context.Context,
-	req *coreproto.CollectionSpec) (*coreproto.CollectionMsg, error) {
+	req *coreproto.CollectionSpec) (*coreproto.CollectionResponse, error) {
 	type reply struct {
-		Result *coreproto.CollectionMsg
+		Result *coreproto.CollectionResponse
 		Error  error
 	}
 	c := make(chan reply, 1)
@@ -53,7 +67,7 @@ func (xx *Core) CreateCollection(ctx context.Context,
 		}()
 		failFn := func(errMsg string) reply {
 			return reply{
-				Result: &coreproto.CollectionMsg{
+				Result: &coreproto.CollectionResponse{
 					Status: false,
 					Error:  errorWrap(errMsg),
 				},
@@ -104,17 +118,17 @@ func (xx *Core) CreateCollection(ctx context.Context,
 			c <- failFn(err.Error())
 			return
 		}
+		err = xx.saveCollection(req.GetCollectionName())
+		if err != nil {
+			xx.diskClear(req.GetCollectionName())
+			c <- failFn(err.Error())
+			return
+		}
 		stateTrueHelper(req.GetCollectionName())
 		c <- reply{
-			Result: &coreproto.CollectionMsg{
+			Result: &coreproto.CollectionResponse{
 				Status: true,
-				Info: &coreproto.CollectionInfo{
-					CollectionName:    req.GetCollectionName(),
-					CollectionConfig:  req.GetCollectionConfig(),
-					VectorDimension:   req.GetVectorDimension(),
-					Distance:          req.GetDistance(),
-					CompressionHelper: req.GetCompressionHelper(),
-				},
+				Spec:   req,
 			},
 		}
 	}()
@@ -150,6 +164,7 @@ func (xx *Core) DropCollection(ctx context.Context, req *coreproto.CollectionNam
 			return
 		}
 		xx.diskClear(req.GetCollectionName())
+		xx.removeCollection(req.GetCollectionName())
 		stateDestroyHelper(req.GetCollectionName())
 		c <- successFn()
 	}()
@@ -788,7 +803,7 @@ func (xx *Core) HybridSearch(ctx context.Context, req *coreproto.SearchRequest) 
 	return res.Result, res.Error
 }
 
-func (xx *Core) CompXyDist(ctx context.Context, req *coreproto.CompXyDist) (
+func (xx *Core) CompareDist(ctx context.Context, req *coreproto.CompXyDist) (
 	*coreproto.XyDist, error) {
 	type reply struct {
 		Result *coreproto.XyDist

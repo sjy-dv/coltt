@@ -5,7 +5,10 @@ PROTO_OUT_DIR=./gen/protoc/v3
 COMPILE_VERSION=V3
 
 start:
-	- go run cmd/root/main.go
+	- go run cmd/root/main.go -mode=root
+
+start-edge:
+	- go run cmd/root/main.go -mode=edge
 
 docker-build-bin:
 	- env GOOS=linux go build -o ./bin/ cmd/root/main.go
