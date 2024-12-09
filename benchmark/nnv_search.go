@@ -9,18 +9,18 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"playground.benchmark.nnv/edgeproto"
+	"playground.benchmark.nnv/coreproto"
 )
 
 func main() {
-	collectionName := "benchmark_flat"
+	collectionName := "benchmark_hnsw"
 	conn, err := grpc.Dial(":50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal(err)
 	}
-	dclient := edgeproto.NewEdgeRpcClient(conn)
+	dclient := coreproto.NewCoreRpcClient(conn)
 	rt := time.Now()
-	resp, err := dclient.LoadCollection(context.Background(), &edgeproto.CollectionName{
+	resp, err := dclient.LoadCollection(context.Background(), &coreproto.CollectionName{
 		CollectionName: collectionName,
 	})
 	if !resp.Status || err != nil {
@@ -34,7 +34,7 @@ func main() {
 	for i := 0; i < 100; i++ {
 		start := time.Now()
 		//	defer wg.Done()
-		resp, err := dclient.VectorSearch(context.Background(), &edgeproto.SearchReq{
+		resp, err := dclient.VectorSearch(context.Background(), &coreproto.SearchRequest{
 			CollectionName: collectionName,
 			Vector:         generateRandomVector(128),
 			TopK:           10,
@@ -52,7 +52,8 @@ func main() {
 	for t := range timeChan {
 		totalTime += t
 	}
-	fmt.Printf("search average time : %.2f", (totalTime.Seconds() / 100))
+	fmt.Println(totalTime.Nanoseconds() / 100)
+	fmt.Printf("search average time : %d", (totalTime.Milliseconds() / 100))
 }
 
 func generateTestVectors(num, dim int) [][]float32 {
@@ -73,3 +74,5 @@ func generateRandomVector(dim int) []float32 {
 
 // release time :  0.004064
 // search average time : 0.34
+
+//0.87 ms / 0.00087 sec

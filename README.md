@@ -4,38 +4,26 @@
 
 NNV (No-Named.V) is a database designed to be implemented from scratch to production. NNV can be deployed in edge environments and used in small-scale production settings. Through the innovative architectural approach described below, it is envisioned and developed to be used reliably in large-scale production environments as well.
 
-## 🎉 Release Update - 2024.11.20
+## 🎉 Release Update - 2024.12.09
 
 For the full update history, see [UPDATE HISTORY](./UPDATE-LOG.md).
+
+We plan to support CFLAT, which can facilitate various services through more complex operations that enable multi-vector searches.
+CFLAT is merely a name I coined. [Please take note!](#cflat-composite-flat--multi-vector-search)
 
 ---
 
 ### 🔹 NNV-Edge
 
-Please [note](./examples/release/2024_11_20_release.md) that the performance comparison is not intended to evaluate the superiority of the software. There are still many shortcomings, and although the repository's history is short, I just want to show indicators of steady progress.
-
-#### Enhancements
-
-- **Edge Performance Improvement**: Enhanced the performance of Edge.
-- **Decreased Storage Requirement**: Reduced the storage needed for 1,000,000 128-dimensional vectors from **2.5GB** to **1.35GB** (Milvus: **1.46GB**).
-- **Average Search Time** for 1,000,000 128-dimensional vectors: **0.22 sec** (Milvus: **0.04 sec**). => I think it is a performance worthy of praise compared to the history of Repo. (In simple product recommendations, which are not actually very fast applications, NNV is easier and latency may not be a problem.)
-- **Continuous Performance Enhancement**:
-  - Clearly identified points for ongoing performance improvements.
-  - Discovered that efficient parallel search using a worker pool and iterating over the vector space as an array significantly boosts performance.
-  - These enhancements require rewriting specific code sections and are planned for long-term development.
-  - Retrieving all data from disk introduces overhead; therefore, combining disk access with memory usage is necessary.
-- **Data Storage**: Data is stored on disk with only the flush operation for indexing remaining.
-- **Safe Recovery**: Even if the server crashes, indexes and all data can be safely recovered.
+- **Planned Work for Enhancing Edge Performance**: During the current core development, we have achieved very fast write and read operations through sharding methods. We plan to add this sharding logic to the edge to expect speed improvements on the edge and to address existing performance enhancements.
 
 ---
 
 ### 🔹 NNV
 
-- **README Revamp**: The README will be updated soon.
-- **Improved HNSW Development**: A more advanced HNSW algorithm is planned for development.
-- **Continued Testing of PQ**: PQ (Product Quantization) is continuously being tested. According to Weaviate's documentation, PQ performs very poorly on datasets with tens of thousands of data points. I am experiencing this myself. (https://weaviate.io/blog/pq-rescoring)
-- **Development of BQ (Binary Quantizer)**: Development of BQ is scheduled.
-- **Quantization of HNSW with F8, F16, BF16**: In this development phase, we are also considering quantizing HNSW with F8, F16, and BF16. (Applying this is not difficult; the challenge is figuring out how BQ and PQ will compete.)
+- **HNSW Test Completed**: Achieved 0.87 milliseconds in searching 1 million vectors. It is 0.87 milliseconds, not seconds (second is 0.00087 seconds). This is a very gratifying achievement.
+- **Progress on PQ and BQ**: Continuous review of PQ and BQ is underway.
+- **Integration of Existing Quantization**: Planning to proceed with quantization integration (Report work is delayed due to a heavy workload. 😢)
 
 ---
 
@@ -77,7 +65,11 @@ Please [note](./examples/release/2024_11_20_release.md) that the performance com
 Windows & Linux
 git clone https://github.com/sjy-dv/nnv
 cd nnv
-go run cmd/root/main.go
+# start edge
+go run cmd/root/main.go -mode=edge
+# start core
+go run cmd/root/main.go -mode=root
+
 
 MacOS
 **The CPU acceleration (SSE, AVX2, AVX-512) code has caused an error where it does not function on Mac, and it is not a priority to address at this time.**
@@ -86,7 +78,7 @@ git clone https://github.com/sjy-dv/nnv
 cd nnv
 source .env
 deploy
-make simple-docker
+make edge-docker
 ```
 
 # Index
@@ -95,9 +87,10 @@ make simple-docker
 - [ARCHITECTURE](#architecture)
 
   - [LoadBalancer&DatabaseIntegration](#loadbalancer--database-integration)
-  - [JetStream(Nats)Multi-Leader](#jetstreamnats-multi-leader)
-  - [InternalDataFlow](#i-will-explain-the-internal-data-storage-flow)
-  - [cache-data-is-safe?](#disk-files-can-sometimes-become-corrupted-and-fail-to-open-leading-to-significant-issues-is-cached-data-safe)
+  - [InternalDataShardDesign](#sharding-design-for-internal-data)
+  - [InternalDataFlow](#internal-data-flow)
+  - [Multi-Vector Search](#cflat-composite-flat--multi-vector-search)
+  - [When is CFLAT Used?](#when-is-cflat-used)
   - [Edge](#what-is-nnv-edge)
 
 - [BugFix](#-bugfix)
@@ -162,30 +155,68 @@ Each database contains its own JetStream, and these JetStreams join the same gro
 4. **Why This Design?**  
    The primary reason is performance. Locking all servers before processing data is safe but slow. Instead, allowing each server to freely modify data and accepting the last modification as the final result is faster and more efficient.
 
-### I will explain the internal data storage flow.
+### Old Architecture(~2024.12.09)
 
-![arch6](./examples/assets/arch6.png)
+[View Old Architecture](./examples/old_architecture.md)
 
-First, HNSW operates in memory internally, and its data is stored as cached files. However, this poses a risk of data corruption in the event of an abnormal shutdown.
+### Sharding Design for Internal Data
 
-To address this, nnlogdb (no-named-tsdb) is internally deployed to track insert, update, and delete events. Since only metadata and vectors are needed without node links, this is not a significant issue.
+![arch10](./examples/assets/arch10.png)
+Typically, systems like databases access the same memory or disk, repeatedly performing read and write operations. In this process, methods like HNSW can achieve efficient time complexities such as **O(log n)**. However, techniques that require accuracy, such as FLAT and CFlat, generally execute linear searches with a time complexity of **O(n)**.
 
-The observer continuously compares the tracked log values with the latest node, and if a problem arises, HNSW recovery is initiated.
+The problem arises when avoiding data contention. When reading or writing, threads like goroutines isolate the respective resources through locks. Specifically:
 
-### Disk files can sometimes become corrupted and fail to open, leading to significant issues. Is cached data safe?
+- **Reading**: Access to locked resources is permitted.
+- **Writing**: Access to locked resources is restricted, preventing reads during write operations.
+  When inserting large volumes of data or handling numerous read requests that require writing, performance bottlenecks gradually emerge.
 
-![arch7](./examples/assets/arch7.png)
-Cache data files support fast loading and saving through the INFLATE/DEFLATE compression algorithm. However, cache files are inherently much less stable than disk files.
+To address this, we have designed the system to efficiently create shards in memory and assign data to each shard without losing the essence of the system. Each shard features a locking mechanism that allows for:
 
-To address this, we deploy "old" versions. These versions are not user-specified; instead, they are managed internally. During idle periods, data changes are saved as new cache data, while the previous stable open file version is stored as the "old" version. When this happens, the last update time of the "old" version aligns with the sync time in nnlogdb.
+**Faster Lock Release**: When inserting large amounts of data or performing read operations.
+**Partitioned Data Insertion**: Facilitating smooth system operations by allowing data to be inserted into divided segments.
+This design ensures that the system can operate seamlessly even under heavy data insertion or high read request scenarios, thereby mitigating performance bottlenecks.
 
-To manage disk usage efficiently, all previous partitions up to the reliably synced period are deleted.
+### Internal Data Flow
 
-This approach ensures stable data management.
+![arch11](./examples/assets/arch11.png)
 
-### Does disk storage also have structural flexibility?
+**HNSW (Hierarchical Navigable Small World):**
 
-Disk storage will not initially have structural flexibility. However, in the long term, we aim to either introduce flexibility for the disk structure or, unfortunately, impose some restrictions on the memory side. While no final decision has been made, we believe memory storage should maintain flexibility, so we’re likely to design disk storage with some degree of structural flexibility in the future. SQLite will be supported as the disk storage option.
+- **Graph Storage**: Recreating the graph every time is inefficient; therefore, the graph is stored lightly in a binary format.
+- **Data Redundancy**: Simultaneously stored in the internal key-value (KV) store to prevent abnormal data loss.
+- **Disk Usage**: However, this approach results in relatively high disk usage, making it an option that users will choose in the long term.
+
+**FLAT/CFLAT(Composite FLAT):**
+
+- **Data Search**: Since data search is inherently linear, it is not stored separately.
+- **Data Handling**: Built using a method where data is stored in the KV store and then uploaded to memory.
+
+### CFLAT (Composite FLAT) : Multi-Vector Search
+
+**CFLAT (Composite FLAT)** is an indexing method that searches multiple vectors and produces composite results based on the importance of two vectors.
+
+Applying composite vector search to graph algorithms like HNSW is challenging because it requires a significant amount of memory and does not align well with neighborhood structures, necessitating multiple graphs. Although the time complexity for search still converges to O(2 log n) ≈ O(log n), the space complexity is considerably poor.
+
+These issues become increasingly problematic as the amount of data grows. Additionally, the method of merging and evaluating based on composite keys within the graph structure ignores topK and significantly increases the heap size for a single search.
+
+Therefore, we have opted to process based on FLAT. Although the time complexity is O(n) (without any constant drops), the space complexity remains the same as FLAT, and it is highly effective for merging and evaluating based on composite keys.
+
+### When is CFLAT Used?
+
+magine we are developing a service for a matchmaking company that helps users find their ideal partners based on input criteria. We will be considering various factors such as personality and other attributes. However, using a single vector means combining these factors into one sentence for the search, which greatly increases the likelihood of accuracy distortion.
+
+For example:
+![arch12](./examples/assets/arch12.png)
+**Desired Traits: {Personality: Decisive, Ideal Type: Tall and Slim}**
+In this scenario, the user prefers a personality trait that makes the ideal type someone likely to appreciate them, focusing on finding a partner based on external attributes.
+
+However, consider another case:
+
+**Desired Traits: {Personality: Easygoing, Ideal Type: Decisive}**
+Here, someone who wants an easygoing personality paired with a decisive ideal type might result in incorrect matches, such as matching with individuals who are decisive in ways that don't align with the user's true preferences.
+
+![arch13](./examples/assets/arch13.png)
+In such cases, CFLAT (Composite FLAT) calculates scores by jointly evaluating the similarity in personality and the similarity in the ideal type. Users can assign importance levels to each attribute, allowing higher scores to be given to the aspects with greater similarity based on user-defined priorities.
 
 ## What is NNV-Edge?
 
