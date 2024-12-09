@@ -643,12 +643,12 @@ func (xx *Core) VectorSearch(ctx context.Context, req *coreproto.SearchRequest) 
 		resultSet := make([]*coreproto.Candidates, 0, req.GetTopK())
 		for _, candidate := range candidates {
 			n := new(coreproto.Candidates)
-			// n.Id = candidate.Metadata["_id"].(string)
-			// n.Metadata, err = structpb.NewStruct(candidate.Metadata)
-			// if err != nil {
-			// 	c <- failFn(err.Error())
-			// 	return
-			// }
+			n.Id = candidate.Metadata["_id"].(string)
+			n.Metadata, err = structpb.NewStruct(candidate.Metadata)
+			if err != nil {
+				c <- failFn(err.Error())
+				return
+			}
 			n.Score = scoreHelper(candidate.Score, hnsw.Distance())
 			resultSet = append(resultSet, n)
 		}
