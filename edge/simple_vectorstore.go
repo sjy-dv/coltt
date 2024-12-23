@@ -3,68 +3,90 @@ package edge
 import (
 	"sync"
 
-	"github.com/sjy-dv/nnv/pkg/concurrentmap"
-	"github.com/sjy-dv/nnv/pkg/distancer"
+	"github.com/sjy-dv/nnv/pkg/distance"
+	"github.com/sjy-dv/nnv/pkg/sharding"
 )
 
 type simplevecSpace struct {
 	dimension int
 	// vectors        map[uint64]Vector
-	vectors        *concurrentmap.Map[uint64, Vector]
+	// vectors        *concurrentmap.Map[uint64, Vector]
+	vertices       [EDGE_MAP_SHARD_COUNT]map[uint64]ENode
+	verticesMu     [EDGE_MAP_SHARD_COUNT]*sync.RWMutex
 	collectionName string
-	distance       distancer.Provider
+	distance       distance.Space
 	quantization   NoQuantization
-	lock           sync.RWMutex
+	// lock           sync.RWMutex
 }
 
 func newSimpleVectorstore(config CollectionConfig) *simplevecSpace {
-	return &simplevecSpace{
+	vecspace := &simplevecSpace{
 		dimension:      config.Dimension,
-		vectors:        concurrentmap.New[uint64, Vector](),
 		collectionName: config.CollectionName,
-		distance: func() distancer.Provider {
+		distance: func() distance.Space {
 			if config.Distance == COSINE {
-				return distancer.NewCosineDistanceProvider()
+				return distance.NewCosine()
 			} else if config.Distance == EUCLIDEAN {
-				return distancer.NewL2SquaredProvider()
+				return distance.NewEuclidean()
 			}
-			return distancer.NewCosineDistanceProvider()
+			return distance.NewCosine()
 		}(),
 		quantization: NoQuantization{},
 	}
+	for i := 0; i < EDGE_MAP_SHARD_COUNT; i++ {
+		vecspace.vertices[i] = make(map[uint64]ENode)
+		vecspace.verticesMu[i] = &sync.RWMutex{}
+	}
+	return vecspace
 }
 
-func (qx *simplevecSpace) InsertVector(collectionName string, commitId uint64, vector Vector) error {
-	if qx.distance.Type() == "cosine-dot" {
-		vector = Normalize(vector)
+func (qx *simplevecSpace) InsertVector(collectionName string, commitId uint64, data ENode) error {
+	if qx.distance.Type() == T_COSINE {
+		data.Vector = Normalize(data.Vector)
 	}
-	qx.vectors.Set(commitId, vector)
+	shardIdx := sharding.ShardVertex(commitId, uint64(EDGE_MAP_SHARD_COUNT))
+	qx.verticesMu[shardIdx].Lock()
+	defer qx.verticesMu[shardIdx].Unlock()
+	qx.vertices[shardIdx][commitId] = data
 	return nil
 }
 
-func (qx *simplevecSpace) UpdateVector(collectionName string, id uint64, vector Vector) error {
-	if qx.distance.Type() == "cosine-dot" {
-		vector = Normalize(vector)
+func (qx *simplevecSpace) UpdateVector(collectionName string, id uint64, data ENode) error {
+	if qx.distance.Type() == T_COSINE {
+		data.Vector = Normalize(data.Vector)
 	}
-	qx.vectors.Set(id, vector)
+	shardIdx := sharding.ShardVertex(id, uint64(EDGE_MAP_SHARD_COUNT))
+	qx.verticesMu[shardIdx].Lock()
+	defer qx.verticesMu[shardIdx].Unlock()
+	qx.vertices[shardIdx][id] = data
 	return nil
 }
 
 func (qx *simplevecSpace) RemoveVector(collectionName string, id uint64) error {
-	qx.vectors.Del(id)
+	shardIdx := sharding.ShardVertex(id, uint64(EDGE_MAP_SHARD_COUNT))
+	qx.verticesMu[shardIdx].Lock()
+	defer qx.verticesMu[shardIdx].Unlock()
+	delete(qx.vertices[shardIdx], id)
 	return nil
 }
 
 func (qx *simplevecSpace) FullScan(collectionName string, target Vector, topK int,
-) (*ResultSet, error) {
-	if qx.distance.Type() == "cosine-dot" {
+) ([]*SearchResultItem, error) {
+	if qx.distance.Type() == T_COSINE {
 		target = Normalize(target)
 	}
-	rs := NewResultSet(topK)
-	qx.vectors.ForEach(func(u uint64, v Vector) bool {
-		sim, _ := qx.quantization.Similarity(target, v, qx.distance)
-		rs.AddResult(ID(u), sim)
-		return true
-	})
-	return rs, nil
+	pq := NewPriorityQueue(topK)
+	for shard := 0; shard < EDGE_MAP_SHARD_COUNT; shard++ {
+		qx.verticesMu[shard].RLock()
+		for uid, node := range qx.vertices[shard] {
+			sim := qx.quantization.Similarity(target, node.Vector, qx.distance)
+			pq.Add(&SearchResultItem{
+				Id:       uid,
+				Score:    sim,
+				Metadata: node.Metadata,
+			})
+		}
+		qx.verticesMu[shard].RUnlock()
+	}
+	return pq.ToSlice(), nil
 }

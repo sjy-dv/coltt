@@ -22,6 +22,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/sjy-dv/nnv/pkg/snowflake"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestShardTraffic(t *testing.T) {
@@ -33,4 +35,27 @@ func TestShardTraffic(t *testing.T) {
 	}
 	fmt.Println(res)
 	t.Log(res)
+}
+
+func TestShardVertex(t *testing.T) {
+	gen, _ := snowflake.NewNode(0)
+	res := make(map[uint64]int)
+
+	for range 10000 {
+		x := uint64(gen.Generate())
+		slice := ShardVertex(x, 16)
+		res[slice] += 1
+	}
+	fmt.Println(res)
+}
+
+func TestShardVertexAlwaysSame(t *testing.T) {
+	dummyValue := 128545215
+
+	staticVal := ShardVertex(uint64(dummyValue), 16)
+
+	for range 10000 {
+		//always same
+		assert.Equal(t, staticVal, ShardVertex(uint64(dummyValue), 16))
+	}
 }

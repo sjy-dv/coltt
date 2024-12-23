@@ -5,14 +5,14 @@ import (
 	"sync"
 
 	"github.com/sjy-dv/nnv/pkg/concurrentmap"
-	"github.com/sjy-dv/nnv/pkg/distancer"
+	"github.com/sjy-dv/nnv/pkg/distance"
 )
 
 type bf16vecSpace struct {
 	dimension      int
 	vectors        *concurrentmap.Map[uint64, bfloat16Vec]
 	collectionName string
-	distance       distancer.Provider
+	distance       distance.Space
 	quantization   BFloat16Quantization
 	lock           sync.RWMutex
 }
@@ -22,13 +22,13 @@ func newBF16Vectorstore(config CollectionConfig) *bf16vecSpace {
 		dimension:      config.Dimension,
 		vectors:        concurrentmap.New[uint64, bfloat16Vec](),
 		collectionName: config.CollectionName,
-		distance: func() distancer.Provider {
+		distance: func() distance.Space {
 			if config.Distance == COSINE {
-				return distancer.NewCosineDistanceProvider()
+				return distance.NewCosine()
 			} else if config.Distance == EUCLIDEAN {
-				return distancer.NewL2SquaredProvider()
+				return distance.NewEuclidean()
 			}
-			return distancer.NewCosineDistanceProvider()
+			return distance.NewCosine()
 		}(),
 		quantization: BFloat16Quantization{},
 	}
@@ -75,7 +75,7 @@ func (qx *bf16vecSpace) FullScan(collectionName string, target Vector, topK int,
 		return nil, fmt.Errorf(ErrQuantizedFailed, err)
 	}
 	qx.vectors.ForEach(func(u uint64, fv bfloat16Vec) bool {
-		sim, _ := qx.quantization.Similarity(lower, fv, qx.distance)
+		sim := qx.quantization.Similarity(lower, fv, qx.distance)
 		rs.AddResult(ID(u), sim)
 		return true
 	})

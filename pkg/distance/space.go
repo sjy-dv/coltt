@@ -30,6 +30,7 @@ type SpaceImpl interface {
 
 type Space interface {
 	Distance([]float32, []float32) float32
+	Type() string
 }
 
 type space struct {
@@ -65,6 +66,10 @@ func (this *Euclidean) String() string {
 	return "euclidean"
 }
 
+func (this *Euclidean) Type() string {
+	return "l2-squared"
+}
+
 func NewManhattan() Space {
 	return &Manhattan{newSpace()}
 }
@@ -74,6 +79,10 @@ func (this *Manhattan) Distance(a, b []float32) float32 {
 }
 
 func (this *Manhattan) String() string {
+	return "manhattan"
+}
+
+func (this *Manhattan) Type() string {
 	return "manhattan"
 }
 
@@ -87,4 +96,8 @@ func (this *Cosine) Distance(a, b []float32) float32 {
 
 func (this *Cosine) String() string {
 	return "cosine"
+}
+
+func (this *Cosine) Type() string {
+	return "cosine-dot"
 }

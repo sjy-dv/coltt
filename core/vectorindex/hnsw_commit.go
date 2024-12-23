@@ -8,7 +8,7 @@ import (
 	"unsafe"
 
 	"github.com/sjy-dv/nnv/edge"
-	"github.com/sjy-dv/nnv/pkg/distancer"
+	"github.com/sjy-dv/nnv/pkg/distance"
 )
 
 var (
@@ -16,7 +16,7 @@ var (
 	NoEntrypointErr     error = errors.New("No entrypoint")
 )
 
-func distToDistIdx(dist distancer.Provider) uint8 {
+func distToDistIdx(dist distance.Space) uint8 {
 	switch dist.Type() {
 	case "cosine-dot":
 		return 1
@@ -26,12 +26,12 @@ func distToDistIdx(dist distancer.Provider) uint8 {
 	return 0
 }
 
-func distIdxToDist(distIdx uint8) (distancer.Provider, error) {
+func distIdxToDist(distIdx uint8) (distance.Space, error) {
 	switch distIdx {
 	case 1:
-		return distancer.NewCosineDistanceProvider(), nil
+		return distance.NewCosine(), nil
 	case 2:
-		return distancer.NewL2SquaredProvider(), nil
+		return distance.NewEuclidean(), nil
 	}
 	return nil, InvalidSpaceTypeErr
 }

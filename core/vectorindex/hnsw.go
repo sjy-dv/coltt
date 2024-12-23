@@ -11,7 +11,7 @@ import (
 	"unsafe"
 
 	"github.com/sjy-dv/nnv/edge"
-	"github.com/sjy-dv/nnv/pkg/distancer"
+	"github.com/sjy-dv/nnv/pkg/distance"
 	"github.com/sjy-dv/nnv/pkg/gomath"
 	"github.com/sjy-dv/nnv/pkg/sharding"
 )
@@ -26,7 +26,7 @@ var (
 type Hnsw struct {
 	dim       uint
 	bytesSize uint64
-	distancer distancer.Provider
+	distancer distance.Space
 	config    *hnswConfig
 
 	len        uint64
@@ -36,7 +36,7 @@ type Hnsw struct {
 	entrypoint unsafe.Pointer
 }
 
-func NewHnsw(dim uint, distancer distancer.Provider, option ...HnswOption) *Hnsw {
+func NewHnsw(dim uint, distancer distance.Space, option ...HnswOption) *Hnsw {
 	index := &Hnsw{
 		dim:       dim,
 		distancer: distancer,
@@ -107,7 +107,7 @@ func (xx *Hnsw) Insert(id uint64, value edge.Vector, metadata Metadata, vertexLe
 	}
 
 	entrypoint := (*hnswVertex)(atomic.LoadPointer(&xx.entrypoint))
-	minDistance, _ := xx.distancer.SingleDist(vertex.vector, entrypoint.vector)
+	minDistance := xx.distancer.Distance(vertex.vector, entrypoint.vector)
 	for l := entrypoint.level; l > vertex.level; l-- {
 		entrypoint, minDistance = xx.greedyClosestNeighbor(vertex.vector, entrypoint, minDistance, l)
 	}
@@ -233,7 +233,7 @@ func (xx *Hnsw) Search(ctx context.Context, query edge.Vector, k uint) (SearchRe
 		return make(SearchResult, 0), nil
 	}
 
-	minDistance, _ := xx.distancer.SingleDist(query, entrypoint.vector)
+	minDistance := xx.distancer.Distance(query, entrypoint.vector)
 	for l := entrypoint.level; l > 0; l-- {
 		entrypoint, minDistance = xx.greedyClosestNeighbor(query, entrypoint, minDistance, l)
 	}
@@ -309,7 +309,7 @@ func (xx *Hnsw) greedyClosestNeighbor(query edge.Vector, entrypoint *hnswVertex,
 			if neighbor.isDeleted() {
 				continue
 			}
-			if distance, _ := xx.distancer.SingleDist(query, neighbor.vector); distance < minDistance {
+			if distance := xx.distancer.Distance(query, neighbor.vector); distance < minDistance {
 				minDistance = distance
 				closestNeighbor = neighbor
 			}
@@ -326,8 +326,7 @@ func (xx *Hnsw) greedyClosestNeighbor(query edge.Vector, entrypoint *hnswVertex,
 }
 
 func (xx *Hnsw) searchLevel(query edge.Vector, entrypoint *hnswVertex, ef, level int) PriorityQueue {
-	entrypointDistance, _ := xx.distancer.SingleDist(query, entrypoint.vector)
-
+	entrypointDistance := xx.distancer.Distance(query, entrypoint.vector)
 	pqItem := NewPriorityQueueItem(entrypointDistance, entrypoint)
 	candidateVertices := NewMinPriorityQueue(pqItem)
 	resultVertices := NewMaxPriorityQueue(pqItem)
@@ -354,7 +353,7 @@ func (xx *Hnsw) searchLevel(query edge.Vector, entrypoint *hnswVertex, ef, level
 			}
 			visitedVertices[neighbor] = struct{}{}
 
-			distance, _ := xx.distancer.SingleDist(query, neighbor.vector)
+			distance := xx.distancer.Distance(query, neighbor.vector)
 			if (distance < lowerBound) || (resultVertices.Len() < ef) {
 				pqItem := NewPriorityQueueItem(distance, neighbor)
 				candidateVertices.Push(pqItem)
@@ -406,7 +405,7 @@ func (xx *Hnsw) selectNeighborsHeuristic(query edge.Vector, neighbors PriorityQu
 				}
 				existingCandidates[neighbor] = struct{}{}
 
-				distance, _ := xx.distancer.SingleDist(query, neighbor.vector)
+				distance := xx.distancer.Distance(query, neighbor.vector)
 				candidateVertices.Push(NewPriorityQueueItem(distance, neighbor))
 			}
 			candidate.edgeMutexes[level].RUnlock()

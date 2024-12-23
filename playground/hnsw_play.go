@@ -10,7 +10,7 @@ import (
 
 	"github.com/sjy-dv/nnv/core/vectorindex"
 	"github.com/sjy-dv/nnv/edge"
-	"github.com/sjy-dv/nnv/pkg/distancer"
+	"github.com/sjy-dv/nnv/pkg/distance"
 	"github.com/sjy-dv/nnv/pkg/snowflake"
 )
 
@@ -53,7 +53,7 @@ func main() {
 	vectorLen := 384
 
 	nhnsw := vectorindex.NewHnsw(uint(vectorLen),
-		distancer.NewCosineDistanceProvider(),
+		distance.NewCosine(),
 		vectorindex.HnswSearchAlgorithm(vectorindex.HnswSearchHeuristic))
 
 	idgen, _ := snowflake.NewNode(0)

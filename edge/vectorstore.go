@@ -42,7 +42,7 @@ func (xx *Vectorstore) CreateCollection(config CollectionConfig) error {
 	} else if config.Quantization == BF16_QUANTIZATION {
 		vectorstore = newBF16Vectorstore(config)
 	} else if config.Quantization == NONE_QAUNTIZATION {
-		vectorstore = newSimpleVectorstore(config)
+		// vectorstore = newSimpleVectorstore(config)
 	} else {
 		return errors.New("not support quantization type")
 	}
@@ -122,26 +122,26 @@ func (xx *Vectorstore) Load(collectionName string, config CollectionConfig) erro
 	} else if config.Quantization == BF16_QUANTIZATION {
 		xx.Space[collectionName] = newBF16Vectorstore(config)
 	} else if config.Quantization == NONE_QAUNTIZATION {
-		xx.Space[collectionName] = newSimpleVectorstore(config)
+		// xx.Space[collectionName] = newSimpleVectorstore(config)
 	} else {
 		return errors.New("not support quantization type")
 	}
 	return nil
 }
 
-func Normalize(vec Vector) Vector {
+func Normalize(v []float32) []float32 {
 	var norm float32
-	out := make([]float32, len(vec))
-	for i := range vec {
-		norm += vec[i] * vec[i]
+	out := make([]float32, len(v))
+	for i := range v {
+		norm += v[i] * v[i]
 	}
 	if norm == 0 {
 		return out
 	}
 
 	norm = float32(math.Sqrt(float64(norm)))
-	for i := range vec {
-		out[i] = vec[i] / norm
+	for i := range v {
+		out[i] = v[i] / norm
 	}
 
 	return out

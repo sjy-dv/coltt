@@ -38,13 +38,20 @@ var (
 )
 
 const (
-	COSINE            = "cosine"
-	EUCLIDEAN         = "euclidean"
-	NONE_QAUNTIZATION = "none"
-	F16_QUANTIZATION  = "f16"
-	F8_QUANTIZATION   = "f8"
-	BF16_QUANTIZATION = "bf16"
+	COSINE                   = "cosine"
+	EUCLIDEAN                = "euclidean"
+	NONE_QAUNTIZATION        = "none"
+	F16_QUANTIZATION         = "f16"
+	F8_QUANTIZATION          = "f8"
+	BF16_QUANTIZATION        = "bf16"
+	T_COSINE                 = "cosine-dot"
+	EDGE_MAP_SHARD_COUNT int = 16
 )
+
+type ENode struct {
+	Vector   Vector
+	Metadata map[string]any
+}
 
 type ID uint64
 

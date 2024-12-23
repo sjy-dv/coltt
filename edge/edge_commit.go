@@ -176,47 +176,47 @@ func (xx *Edge) LoadData(collectionName string, config CollectionConfig) error {
 		defer xx.VectorStore.slock.Unlock()
 		xx.VectorStore.Space[collectionName] = vecspace
 	} else if config.Quantization == NONE_QAUNTIZATION {
-		vecspace := newSimpleVectorstore(config)
-		iserror := false
-		sep := fmt.Sprintf("%s_", collectionName)
-		var werr error
-		xx.Disk.AscendKeys([]byte(sep), true, func(k []byte) (bool, error) {
-			key, err := strconv.Atoi(strings.Split(string(k), sep)[1])
-			if err != nil {
-				iserror = true
-				werr = err
-				return false, err
-			}
-			val, err := xx.Disk.Get(k)
-			if err != nil {
-				iserror = true
-				werr = err
-				return false, err
-			}
-			phony := phonyproto.PhonyWrapper{}
-			err = proto.Unmarshal(val, &phony)
-			if err != nil {
-				iserror = true
-				werr = err
-				return false, err
-			}
-			err = vecspace.InsertVector(collectionName, uint64(key), phony.GetVector())
-			if err != nil {
-				iserror = true
-				werr = err
-				return false, err
-			}
-			// xx.Datas[collectionName].lock.Lock()
-			// xx.Datas[collectionName].Data[uint64(key)] = phony.GetMetadata().AsMap()
-			// xx.Datas[collectionName].lock.Unlock()
-			return true, nil
-		})
-		if iserror {
-			return werr
-		}
-		xx.VectorStore.slock.Lock()
-		defer xx.VectorStore.slock.Unlock()
-		xx.VectorStore.Space[collectionName] = vecspace
+		// vecspace := newSimpleVectorstore(config)
+		// iserror := false
+		// sep := fmt.Sprintf("%s_", collectionName)
+		// var werr error
+		// xx.Disk.AscendKeys([]byte(sep), true, func(k []byte) (bool, error) {
+		// 	key, err := strconv.Atoi(strings.Split(string(k), sep)[1])
+		// 	if err != nil {
+		// 		iserror = true
+		// 		werr = err
+		// 		return false, err
+		// 	}
+		// 	val, err := xx.Disk.Get(k)
+		// 	if err != nil {
+		// 		iserror = true
+		// 		werr = err
+		// 		return false, err
+		// 	}
+		// 	phony := phonyproto.PhonyWrapper{}
+		// 	err = proto.Unmarshal(val, &phony)
+		// 	if err != nil {
+		// 		iserror = true
+		// 		werr = err
+		// 		return false, err
+		// 	}
+		// 	err = vecspace.InsertVector(collectionName, uint64(key), phony.GetVector())
+		// 	if err != nil {
+		// 		iserror = true
+		// 		werr = err
+		// 		return false, err
+		// 	}
+		// 	// xx.Datas[collectionName].lock.Lock()
+		// 	// xx.Datas[collectionName].Data[uint64(key)] = phony.GetMetadata().AsMap()
+		// 	// xx.Datas[collectionName].lock.Unlock()
+		// 	return true, nil
+		// })
+		// if iserror {
+		// 	return werr
+		// }
+		// xx.VectorStore.slock.Lock()
+		// defer xx.VectorStore.slock.Unlock()
+		// xx.VectorStore.Space[collectionName] = vecspace
 	} else {
 		return errors.New("not support quantization type")
 	}

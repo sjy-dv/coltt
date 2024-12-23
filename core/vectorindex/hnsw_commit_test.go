@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/sjy-dv/nnv/pkg/distancer"
+	"github.com/sjy-dv/nnv/pkg/distance"
 	"github.com/sjy-dv/nnv/pkg/gomath"
 	"github.com/stretchr/testify/assert"
 )
@@ -84,7 +84,7 @@ func hnswIsEqual(a, b *Hnsw) error {
 	return nil
 }
 
-func generateRandomIndex(dim, size int, dist distancer.Provider) *Hnsw {
+func generateRandomIndex(dim, size int, dist distance.Space) *Hnsw {
 	insertKeys := make(map[uint64]struct{})
 
 	index := NewHnsw(uint(dim), dist)
@@ -108,8 +108,8 @@ func generateRandomIndex(dim, size int, dist distancer.Provider) *Hnsw {
 }
 
 func TestHnswCommitAndLoad(t *testing.T) {
-	l2index := generateRandomIndex(128, 1000, distancer.NewL2SquaredProvider())
-	cosindex := generateRandomIndex(128, 1000, distancer.NewCosineDistanceProvider())
+	l2index := generateRandomIndex(128, 1000, distance.NewEuclidean())
+	cosindex := generateRandomIndex(128, 1000, distance.NewCosine())
 
 	var l2buf bytes.Buffer
 	var cosbuf bytes.Buffer
@@ -125,8 +125,8 @@ func TestHnswCommitAndLoad(t *testing.T) {
 		return
 	}
 
-	copyl2 := NewHnsw(128, distancer.NewL2SquaredProvider())
-	copycos := NewHnsw(128, distancer.NewCosineDistanceProvider())
+	copyl2 := NewHnsw(128, distance.NewEuclidean())
+	copycos := NewHnsw(128, distance.NewCosine())
 
 	err = copyl2.Load(&l2buf, true)
 	assert.Nil(t, err)
@@ -144,7 +144,7 @@ func TestHnswCommitAndLoad(t *testing.T) {
 }
 
 func TestHnswSimple(t *testing.T) {
-	index := generateRandomIndex(128, 1000, distancer.NewL2SquaredProvider())
+	index := generateRandomIndex(128, 1000, distance.NewEuclidean())
 
 	var buf bytes.Buffer
 	err := index.Commit(&buf, true)
@@ -153,7 +153,7 @@ func TestHnswSimple(t *testing.T) {
 		return
 	}
 
-	otherIndex := NewHnsw(128, distancer.NewL2SquaredProvider())
+	otherIndex := NewHnsw(128, distance.NewEuclidean())
 	err = otherIndex.Load(&buf, true)
 	assert.Nil(t, err)
 	if err != nil {

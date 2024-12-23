@@ -19,7 +19,7 @@ package edge
 
 import (
 	"github.com/sjy-dv/nnv/pkg/compresshelper"
-	"github.com/sjy-dv/nnv/pkg/distancer"
+	"github.com/sjy-dv/nnv/pkg/distance"
 )
 
 type bfloat16Vec []compresshelper.BFloat16
@@ -30,7 +30,7 @@ type BFloat16Quantization struct {
 	bufx, bufy Vector
 }
 
-func (q BFloat16Quantization) Similarity(x, y bfloat16Vec, dist distancer.Provider) (float32, error) {
+func (q BFloat16Quantization) Similarity(x, y bfloat16Vec, dist distance.Space) float32 {
 	if q.bufx == nil {
 		q.bufx = make(Vector, len(x))
 		q.bufy = make(Vector, len(x))
@@ -39,7 +39,7 @@ func (q BFloat16Quantization) Similarity(x, y bfloat16Vec, dist distancer.Provid
 		q.bufx[i] = x[i].Float32()
 		q.bufy[i] = y[i].Float32()
 	}
-	return dist.SingleDist(q.bufx, q.bufy)
+	return dist.Distance(q.bufx, q.bufy)
 }
 
 func (q BFloat16Quantization) Lower(v Vector) (bfloat16Vec, error) {

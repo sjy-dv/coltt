@@ -820,7 +820,7 @@ func (xx *Core) CompareDist(ctx context.Context, req *coreproto.CompXyDist) (
 		}()
 
 		provider, distname := protoDistHelper(req.GetDist())
-		score, _ := provider.SingleDist(req.GetVectorX(), req.GetVectorY())
+		score := provider.Distance(req.GetVectorX(), req.GetVectorY())
 		c <- reply{
 			Result: &coreproto.XyDist{
 				Score: scoreHelper(score, distname),

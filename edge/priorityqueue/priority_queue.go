@@ -1,4 +1,4 @@
-package vectorindex
+package priorityqueue
 
 import "container/heap"
 
@@ -65,7 +65,6 @@ func (pq *priorityQueue) Len() int {
 }
 
 func (pq *priorityQueue) Push(item *PriorityQueueItem) {
-	//????
 	// if item.priority < 0 {
 	// 	panic("Negative priority")
 	// }

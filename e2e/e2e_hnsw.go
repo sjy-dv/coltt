@@ -7,12 +7,12 @@ import (
 	"log"
 
 	"github.com/sjy-dv/nnv/core/vectorindex"
-	"github.com/sjy-dv/nnv/pkg/distancer"
+	"github.com/sjy-dv/nnv/pkg/distance"
 	"github.com/sjy-dv/nnv/pkg/gomath"
 )
 
 func main() {
-	index := generateRandomIndex(128, 1000, distancer.NewCosineDistanceProvider())
+	index := generateRandomIndex(128, 1000, distance.NewCosine())
 	query := gomath.RandomUniformVector(128)
 	c1, err := index.Search(context.Background(), query, 10)
 	if err != nil {
@@ -27,7 +27,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	copyindex := vectorindex.NewHnsw(128, distancer.NewCosineDistanceProvider())
+	copyindex := vectorindex.NewHnsw(128, distance.NewCosine())
 	err = copyindex.Load(&buf, true)
 	if err != nil {
 		log.Fatal(err)
@@ -42,7 +42,7 @@ func main() {
 	}
 }
 
-func generateRandomIndex(dim, size int, dist distancer.Provider) *vectorindex.Hnsw {
+func generateRandomIndex(dim, size int, dist distance.Space) *vectorindex.Hnsw {
 	insertKeys := make(map[uint64]struct{})
 
 	index := vectorindex.NewHnsw(uint(dim), dist)

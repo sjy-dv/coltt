@@ -9,7 +9,7 @@ import (
 
 	"github.com/sjy-dv/nnv/core/vectorindex"
 	"github.com/sjy-dv/nnv/gen/protoc/v3/coreproto"
-	"github.com/sjy-dv/nnv/pkg/distancer"
+	"github.com/sjy-dv/nnv/pkg/distance"
 	"github.com/sjy-dv/nnv/pkg/index"
 	"github.com/vmihailenco/msgpack/v5"
 )
@@ -58,7 +58,7 @@ func (xx *Core) createSnapshotHelper(collectionName string) error {
 	return os.WriteFile(fmt.Sprintf(noQuantizationRule, collectionName), buf.Bytes(), 0644)
 }
 
-func (xx *Core) snapShotHelper(collectionName string, dim uint32, dist distancer.Provider, searchOpts vectorindex.HnswOption) error {
+func (xx *Core) snapShotHelper(collectionName string, dim uint32, dist distance.Space, searchOpts vectorindex.HnswOption) error {
 	data, err := os.ReadFile(fmt.Sprintf(noQuantizationRule, collectionName))
 	if err != nil {
 		return err
@@ -73,11 +73,11 @@ func (xx *Core) snapShotHelper(collectionName string, dim uint32, dist distancer
 	return nil
 }
 
-func protoDistHelper(dist coreproto.Distance) (distancer.Provider, string) {
+func protoDistHelper(dist coreproto.Distance) (distance.Space, string) {
 	if dist == coreproto.Distance_Cosine {
-		return distancer.NewCosineDistanceProvider(), COSINE
+		return distance.NewCosine(), COSINE
 	}
-	return distancer.NewL2SquaredProvider(), EUCLIDEAN
+	return distance.NewEuclidean(), EUCLIDEAN
 }
 
 func reverseprotoDistHelper(dist string) coreproto.Distance {
@@ -87,11 +87,11 @@ func reverseprotoDistHelper(dist string) coreproto.Distance {
 	return coreproto.Distance_Euclidean
 }
 
-func reversesingleprotoDistHelper(dist string) distancer.Provider {
+func reversesingleprotoDistHelper(dist string) distance.Space {
 	if dist == COSINE {
-		return distancer.NewCosineDistanceProvider()
+		return distance.NewCosine()
 	}
-	return distancer.NewL2SquaredProvider()
+	return distance.NewEuclidean()
 }
 
 func protoSearchAlgoHelper(algo coreproto.SearchAlgorithm) (string, vectorindex.HnswOption) {
@@ -232,7 +232,7 @@ func (xx *Core) rollbackForConsistentHelper(collectionName string, commitId uint
 
 func scoreHelper(score float32, dist string) float32 {
 	if dist == COSINE {
-		return ((score + 1) / 2) * 100
+		return ((2 - score) / 2) * 100
 	}
 	return float32(math.Max(0, float64(100-score)))
 }
