@@ -36,20 +36,20 @@ func NewCore() (*Core, error) {
 	}, nil
 }
 
-func (xx *Core) Close() {
-	if err := xx.CommitLog.Close(); err != nil {
+func (crpc *Core) Close() {
+	if err := crpc.CommitLog.Close(); err != nil {
 		log.Error().Err(err).Msg("diskv :> It did not shut down properly ")
 	} else {
 		log.Info().Msg("database shut down successfully")
 	}
-	if err := xx.exitSnapshot(); err != nil {
+	if err := crpc.exitSnapshot(); err != nil {
 		log.Error().Err(err).Msg("snapshot :> each collection is saved failed.")
 		return
 	}
 	log.Info().Msg("all collection is saved success")
 }
 
-func (xx *Core) CreateCollection(ctx context.Context,
+func (crpc *Core) CreateCollection(ctx context.Context,
 	req *coreproto.CollectionSpec) (*coreproto.CollectionResponse, error) {
 	type reply struct {
 		Result *coreproto.CollectionResponse
@@ -103,7 +103,7 @@ func (xx *Core) CreateCollection(ctx context.Context,
 			return
 		}
 		diskFlushName := fmt.Sprintf(diskRule0, req.GetCollectionName())
-		err = xx.CommitLog.Put([]byte(diskFlushName), diskBytes)
+		err = crpc.CommitLog.Put([]byte(diskFlushName), diskBytes)
 		if err != nil {
 			c <- failFn(err.Error())
 			return
@@ -111,16 +111,16 @@ func (xx *Core) CreateCollection(ctx context.Context,
 		hnsw := vectorindex.NewHnsw(uint(req.GetVectorDimension()),
 			distFn,
 			searchOpts)
-		xx.DataStore.Set(req.GetCollectionName(), hnsw)
+		crpc.DataStore.Set(req.GetCollectionName(), hnsw)
 		err = indexdb.CreateIndex(req.GetCollectionName())
 		if err != nil {
-			xx.diskClear(req.GetCollectionName())
+			crpc.diskClear(req.GetCollectionName())
 			c <- failFn(err.Error())
 			return
 		}
-		err = xx.saveCollection(req.GetCollectionName())
+		err = crpc.saveCollection(req.GetCollectionName())
 		if err != nil {
-			xx.diskClear(req.GetCollectionName())
+			crpc.diskClear(req.GetCollectionName())
 			c <- failFn(err.Error())
 			return
 		}
@@ -136,7 +136,7 @@ func (xx *Core) CreateCollection(ctx context.Context,
 	return res.Result, res.Error
 }
 
-func (xx *Core) DropCollection(ctx context.Context, req *coreproto.CollectionName) (
+func (crpc *Core) DropCollection(ctx context.Context, req *coreproto.CollectionName) (
 	*coreproto.Response, error) {
 	type reply struct {
 		Result *coreproto.Response
@@ -163,8 +163,8 @@ func (xx *Core) DropCollection(ctx context.Context, req *coreproto.CollectionNam
 			c <- successFn()
 			return
 		}
-		xx.diskClear(req.GetCollectionName())
-		xx.removeCollection(req.GetCollectionName())
+		crpc.diskClear(req.GetCollectionName())
+		crpc.removeCollection(req.GetCollectionName())
 		stateDestroyHelper(req.GetCollectionName())
 		c <- successFn()
 	}()
@@ -172,7 +172,7 @@ func (xx *Core) DropCollection(ctx context.Context, req *coreproto.CollectionNam
 	return res.Result, res.Error
 }
 
-func (xx *Core) CollectionInfof(ctx context.Context, req *coreproto.CollectionName) (
+func (crpc *Core) CollectionInfof(ctx context.Context, req *coreproto.CollectionName) (
 	*coreproto.CollectionMsg, error) {
 	type reply struct {
 		Result *coreproto.CollectionMsg
@@ -205,7 +205,7 @@ func (xx *Core) CollectionInfof(ctx context.Context, req *coreproto.CollectionNa
 			c <- failFn(fmt.Sprintf(ErrCollectionNotLoad, req.GetCollectionName()))
 			return
 		}
-		hnsw := xx.DataStore.Get(req.GetCollectionName())
+		hnsw := crpc.DataStore.Get(req.GetCollectionName())
 
 		c <- reply{
 			Result: &coreproto.CollectionMsg{
@@ -226,7 +226,7 @@ func (xx *Core) CollectionInfof(ctx context.Context, req *coreproto.CollectionNa
 	return res.Result, res.Error
 }
 
-func (xx *Core) LoadCollection(ctx context.Context, req *coreproto.CollectionName) (
+func (crpc *Core) LoadCollection(ctx context.Context, req *coreproto.CollectionName) (
 	*coreproto.CollectionMsg, error) {
 	type reply struct {
 		Result *coreproto.CollectionMsg
@@ -255,7 +255,7 @@ func (xx *Core) LoadCollection(ctx context.Context, req *coreproto.CollectionNam
 			return
 		}
 		if alreadyLoadCollection(req.GetCollectionName()) {
-			hnsw := xx.DataStore.Get(req.GetCollectionName())
+			hnsw := crpc.DataStore.Get(req.GetCollectionName())
 			c <- reply{
 				Result: &coreproto.CollectionMsg{
 					Status: true,
@@ -273,7 +273,7 @@ func (xx *Core) LoadCollection(ctx context.Context, req *coreproto.CollectionNam
 			return
 		}
 
-		loadcfg, err := xx.CommitLog.Get([]byte(fmt.Sprintf(diskRule0, req.GetCollectionName())))
+		loadcfg, err := crpc.CommitLog.Get([]byte(fmt.Sprintf(diskRule0, req.GetCollectionName())))
 		if err != nil {
 			c <- failFn(err.Error())
 			return
@@ -284,7 +284,7 @@ func (xx *Core) LoadCollection(ctx context.Context, req *coreproto.CollectionNam
 			c <- failFn(err.Error())
 			return
 		}
-		err = xx.snapShotHelper(req.GetCollectionName(), dp.GetVectorDimension(),
+		err = crpc.snapShotHelper(req.GetCollectionName(), dp.GetVectorDimension(),
 			reversesingleprotoDistHelper(dp.GetDistance()), reverseSearchAlgoHelper(dp.GetSearchAlgorithm()))
 		if err != nil {
 			c <- failFn(err.Error())
@@ -292,12 +292,12 @@ func (xx *Core) LoadCollection(ctx context.Context, req *coreproto.CollectionNam
 		}
 		err = indexLoadHelper(req.GetCollectionName())
 		if err != nil {
-			xx.memFree(req.GetCollectionName())
+			crpc.memFree(req.GetCollectionName())
 			c <- failFn(err.Error())
 			return
 		}
 		stateTrueHelper(req.GetCollectionName())
-		hnsw := xx.DataStore.Get(req.GetCollectionName())
+		hnsw := crpc.DataStore.Get(req.GetCollectionName())
 		c <- reply{
 			Result: &coreproto.CollectionMsg{
 				Status: true,
@@ -317,7 +317,7 @@ func (xx *Core) LoadCollection(ctx context.Context, req *coreproto.CollectionNam
 	return res.Result, res.Error
 }
 
-func (xx *Core) ReleaseCollection(ctx context.Context, req *coreproto.CollectionName) (
+func (crpc *Core) ReleaseCollection(ctx context.Context, req *coreproto.CollectionName) (
 	*coreproto.ResponseWithMessage, error) {
 	type reply struct {
 		Result *coreproto.ResponseWithMessage
@@ -355,16 +355,16 @@ func (xx *Core) ReleaseCollection(ctx context.Context, req *coreproto.Collection
 			}
 			return
 		}
-		err := xx.createSnapshotHelper(req.GetCollectionName())
+		err := crpc.createSnapshotHelper(req.GetCollectionName())
 		if err != nil {
 			c <- failFn(err.Error())
-			xx.memFree(req.GetCollectionName())
+			crpc.memFree(req.GetCollectionName())
 			return
 		}
 		err = indexSaveHelper(req.GetCollectionName())
 		if err != nil {
 			c <- failFn(err.Error())
-			xx.memFree(req.GetCollectionName())
+			crpc.memFree(req.GetCollectionName())
 			return
 		}
 		stateFalseHelper(req.GetCollectionName())
@@ -378,7 +378,7 @@ func (xx *Core) ReleaseCollection(ctx context.Context, req *coreproto.Collection
 	return res.Result, res.Error
 }
 
-func (xx *Core) Insert(ctx context.Context, req *coreproto.DatasetChange) (
+func (crpc *Core) Insert(ctx context.Context, req *coreproto.DatasetChange) (
 	*coreproto.Response, error) {
 	type reply struct {
 		Result *coreproto.Response
@@ -413,7 +413,7 @@ func (xx *Core) Insert(ctx context.Context, req *coreproto.DatasetChange) (
 			c <- failFn(err.Error())
 			return
 		}
-		hnsw := xx.DataStore.Get(req.GetCollectionName())
+		hnsw := crpc.DataStore.Get(req.GetCollectionName())
 		err = hnsw.Insert(autoId, req.GetVector(), cloneMap, hnsw.RandomLevel())
 		if err != nil {
 			c <- failFn(err.Error())
@@ -429,7 +429,7 @@ func (xx *Core) Insert(ctx context.Context, req *coreproto.DatasetChange) (
 			c <- failFn(err.Error())
 			return
 		}
-		err = xx.CommitLog.Put([]byte(fmt.Sprintf(diskRule1, req.GetCollectionName(), autoId)), diskb)
+		err = crpc.CommitLog.Put([]byte(fmt.Sprintf(diskRule1, req.GetCollectionName(), autoId)), diskb)
 		if err != nil {
 			c <- failFn(err.Error())
 			return
@@ -441,12 +441,12 @@ func (xx *Core) Insert(ctx context.Context, req *coreproto.DatasetChange) (
 
 	res := <-c
 	if !res.Result.Status || res.Error != nil {
-		xx.rollbackForConsistentHelper(req.GetCollectionName(), autoId, req.GetMetadata().AsMap())
+		crpc.rollbackForConsistentHelper(req.GetCollectionName(), autoId, req.GetMetadata().AsMap())
 	}
 	return res.Result, res.Error
 }
 
-func (xx *Core) Update(ctx context.Context, req *coreproto.DatasetChange) (
+func (crpc *Core) Update(ctx context.Context, req *coreproto.DatasetChange) (
 	*coreproto.Response, error) {
 	type reply struct {
 		Result   *coreproto.Response
@@ -481,7 +481,7 @@ func (xx *Core) Update(ctx context.Context, req *coreproto.DatasetChange) (
 			c <- failFn("", true)
 			return
 		}
-		hnsw := xx.DataStore.Get(req.GetCollectionName())
+		hnsw := crpc.DataStore.Get(req.GetCollectionName())
 		vertex, err := hnsw.GetVertex(getId[0])
 		if err != nil {
 			c <- failFn(err.Error(), false)
@@ -517,7 +517,7 @@ func (xx *Core) Update(ctx context.Context, req *coreproto.DatasetChange) (
 			c <- failFn(err.Error(), false)
 			return
 		}
-		err = xx.CommitLog.Put([]byte(fmt.Sprintf(diskRule1, req.GetCollectionName(), getId[0])), diskb)
+		err = crpc.CommitLog.Put([]byte(fmt.Sprintf(diskRule1, req.GetCollectionName(), getId[0])), diskb)
 		if err != nil {
 			c <- failFn(err.Error(), false)
 			return
@@ -531,12 +531,12 @@ func (xx *Core) Update(ctx context.Context, req *coreproto.DatasetChange) (
 	}()
 	res := <-c
 	if res.IsCreate {
-		return xx.Insert(ctx, req)
+		return crpc.Insert(ctx, req)
 	}
 	return res.Result, res.Error
 }
 
-func (xx *Core) Delete(ctx context.Context, req *coreproto.DatasetChange) (
+func (crpc *Core) Delete(ctx context.Context, req *coreproto.DatasetChange) (
 	*coreproto.Response, error) {
 	type reply struct {
 		Result *coreproto.Response
@@ -576,7 +576,7 @@ func (xx *Core) Delete(ctx context.Context, req *coreproto.DatasetChange) (
 			c <- successFn()
 			return
 		}
-		hnsw := xx.DataStore.Get(req.GetCollectionName())
+		hnsw := crpc.DataStore.Get(req.GetCollectionName())
 		vertex, err := hnsw.GetVertex(getId[0])
 		if err != nil {
 			c <- failFn(err.Error())
@@ -592,7 +592,7 @@ func (xx *Core) Delete(ctx context.Context, req *coreproto.DatasetChange) (
 			c <- failFn(err.Error())
 			return
 		}
-		err = xx.CommitLog.Delete([]byte(fmt.Sprintf(diskRule1, req.GetCollectionName(), getId[0])))
+		err = crpc.CommitLog.Delete([]byte(fmt.Sprintf(diskRule1, req.GetCollectionName(), getId[0])))
 		if err != nil {
 			c <- failFn(err.Error())
 			return
@@ -603,7 +603,7 @@ func (xx *Core) Delete(ctx context.Context, req *coreproto.DatasetChange) (
 	return res.Result, res.Error
 }
 
-func (xx *Core) VectorSearch(ctx context.Context, req *coreproto.SearchRequest) (
+func (crpc *Core) VectorSearch(ctx context.Context, req *coreproto.SearchRequest) (
 	*coreproto.SearchResponse, error) {
 	type reply struct {
 		Result *coreproto.SearchResponse
@@ -634,7 +634,7 @@ func (xx *Core) VectorSearch(ctx context.Context, req *coreproto.SearchRequest) 
 			return
 		}
 
-		hnsw := xx.DataStore.Get(req.GetCollectionName())
+		hnsw := crpc.DataStore.Get(req.GetCollectionName())
 		candidates, err := hnsw.Search(context.TODO(), req.GetVector(), uint(req.GetTopK()))
 		if err != nil {
 			c <- failFn(err.Error())
@@ -663,7 +663,7 @@ func (xx *Core) VectorSearch(ctx context.Context, req *coreproto.SearchRequest) 
 	return res.Result, res.Error
 }
 
-func (xx *Core) FilterSearch(ctx context.Context, req *coreproto.SearchRequest) (
+func (crpc *Core) FilterSearch(ctx context.Context, req *coreproto.SearchRequest) (
 	*coreproto.SearchResponse, error) {
 	type reply struct {
 		Result *coreproto.SearchResponse
@@ -698,7 +698,7 @@ func (xx *Core) FilterSearch(ctx context.Context, req *coreproto.SearchRequest) 
 		resultSet := make([]*coreproto.Candidates, 0, req.GetTopK())
 
 		for _, id := range candidates {
-			data, err := xx.CommitLog.Get([]byte(fmt.Sprintf(diskRule1, req.GetCollectionName(), id)))
+			data, err := crpc.CommitLog.Get([]byte(fmt.Sprintf(diskRule1, req.GetCollectionName(), id)))
 			if err != nil {
 				c <- failFn(err.Error())
 				return
@@ -726,7 +726,7 @@ func (xx *Core) FilterSearch(ctx context.Context, req *coreproto.SearchRequest) 
 	return res.Result, res.Error
 }
 
-func (xx *Core) HybridSearch(ctx context.Context, req *coreproto.SearchRequest) (
+func (crpc *Core) HybridSearch(ctx context.Context, req *coreproto.SearchRequest) (
 	*coreproto.SearchResponse, error) {
 	type reply struct {
 		Result *coreproto.SearchResponse
@@ -756,7 +756,7 @@ func (xx *Core) HybridSearch(ctx context.Context, req *coreproto.SearchRequest) 
 			return
 		}
 
-		hnsw := xx.DataStore.Get(req.GetCollectionName())
+		hnsw := crpc.DataStore.Get(req.GetCollectionName())
 		candidates, err := hnsw.Search(context.TODO(), req.GetVector(), uint(req.GetTopK()*3))
 		if err != nil {
 			c <- failFn(err.Error())
@@ -803,7 +803,7 @@ func (xx *Core) HybridSearch(ctx context.Context, req *coreproto.SearchRequest) 
 	return res.Result, res.Error
 }
 
-func (xx *Core) CompareDist(ctx context.Context, req *coreproto.CompXyDist) (
+func (crpc *Core) CompareDist(ctx context.Context, req *coreproto.CompXyDist) (
 	*coreproto.XyDist, error) {
 	type reply struct {
 		Result *coreproto.XyDist

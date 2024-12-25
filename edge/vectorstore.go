@@ -10,10 +10,10 @@ import (
 type vectorspace interface {
 	// CreateCollection(config CollectionConfig) error
 	// DropCollection(collectionName string) error
-	InsertVector(collectionName string, commitId uint64, vector Vector) error
-	UpdateVector(collectionName string, id uint64, vector Vector) error
+	InsertVector(collectionName string, commitId uint64, data ENode) error
+	UpdateVector(collectionName string, id uint64, data ENode) error
 	RemoveVector(collectionName string, id uint64) error
-	FullScan(collectionName string, target Vector, topK int) (*ResultSet, error)
+	FullScan(collectionName string, target Vector, topK int, highCpu bool) ([]*SearchResultItem, error)
 }
 
 type Vectorstore struct {
@@ -42,7 +42,7 @@ func (xx *Vectorstore) CreateCollection(config CollectionConfig) error {
 	} else if config.Quantization == BF16_QUANTIZATION {
 		vectorstore = newBF16Vectorstore(config)
 	} else if config.Quantization == NONE_QAUNTIZATION {
-		// vectorstore = newSimpleVectorstore(config)
+		vectorstore = newSimpleVectorstore(config)
 	} else {
 		return errors.New("not support quantization type")
 	}
@@ -66,24 +66,24 @@ func (xx *Vectorstore) DropCollection(collectionName string) error {
 	return nil
 }
 
-func (xx *Vectorstore) InsertVector(collectionName string, commitId uint64, vector Vector) error {
+func (xx *Vectorstore) InsertVector(collectionName string, commitId uint64, data ENode) error {
 	xx.slock.RLock()
 	basis, ok := xx.Space[collectionName]
 	xx.slock.RUnlock()
 	if !ok {
 		return fmt.Errorf(ErrCollectionNotFound, collectionName)
 	}
-	return basis.InsertVector(collectionName, commitId, vector)
+	return basis.InsertVector(collectionName, commitId, data)
 }
 
-func (xx *Vectorstore) UpdateVector(collectionName string, id uint64, vector Vector) error {
+func (xx *Vectorstore) UpdateVector(collectionName string, id uint64, data ENode) error {
 	xx.slock.RLock()
 	basis, ok := xx.Space[collectionName]
 	xx.slock.RUnlock()
 	if !ok {
 		return fmt.Errorf(ErrCollectionNotFound, collectionName)
 	}
-	return basis.UpdateVector(collectionName, id, vector)
+	return basis.UpdateVector(collectionName, id, data)
 }
 
 func (xx *Vectorstore) RemoveVector(collectionName string, id uint64) error {
@@ -96,15 +96,15 @@ func (xx *Vectorstore) RemoveVector(collectionName string, id uint64) error {
 	return basis.RemoveVector(collectionName, id)
 }
 
-func (xx *Vectorstore) FullScan(collectionName string, target Vector, topK int,
-) (*ResultSet, error) {
+func (xx *Vectorstore) FullScan(collectionName string, target Vector, topK int, highCpu bool,
+) ([]*SearchResultItem, error) {
 	xx.slock.RLock()
 	basis, ok := xx.Space[collectionName]
 	xx.slock.RUnlock()
 	if !ok {
 		return nil, fmt.Errorf(ErrCollectionNotFound, collectionName)
 	}
-	return basis.FullScan(collectionName, target, topK)
+	return basis.FullScan(collectionName, target, topK, highCpu)
 }
 
 func (xx *Vectorstore) Commit(collectionName string) error {

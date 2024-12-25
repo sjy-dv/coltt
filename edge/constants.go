@@ -35,6 +35,7 @@ var (
 	edgeConfig            = "./data_dir/%s-edge_conf.json"
 	collectionEdgeJson    = "./data_dir/collection-edge.json"
 	TargetIdNotFound      = "NodeID: %d is not found"
+	diskColList           = "edge_collections"
 )
 
 const (
@@ -50,6 +51,21 @@ const (
 
 type ENode struct {
 	Vector   Vector
+	Metadata map[string]any
+}
+
+type ENodeF16 struct {
+	Vector   float16Vec
+	Metadata map[string]any
+}
+
+type ENodeF8 struct {
+	Vector   float8Vec
+	Metadata map[string]any
+}
+
+type ENodeBF16 struct {
+	Vector   bfloat16Vec
 	Metadata map[string]any
 }
 

@@ -32,7 +32,7 @@ func TestSimpleVecSpace(t *testing.T) {
 	}
 
 	for i, vec := range simrank {
-		rs, _ := cosStore.FullScan("test", vec, 15)
+		rs, _ := cosStore.FullScan("test", vec, 15, false)
 		assert.Equal(t, i, rs[0].Id)
 		t.Log(rs[0].Score)
 		fmt.Println("============Candidates=============", ">>>", i)
@@ -46,7 +46,7 @@ func TestSimpleVecSpace(t *testing.T) {
 	euStore := newSimpleVectorstore(CollectionConfig{
 		Dimension:      3196,
 		CollectionName: "test",
-		Distance:       EUCLIDEAN,
+		Distance:       COSINE,
 		Quantization:   NONE_QAUNTIZATION,
 	})
 	simrank = map[uint64][]float32{}
@@ -64,7 +64,7 @@ func TestSimpleVecSpace(t *testing.T) {
 	}
 
 	for i, vec := range simrank {
-		rs, _ := euStore.FullScan("test", vec, 15)
+		rs, _ := euStore.FullScan("test", vec, 15, false)
 		assert.Equal(t, i, rs[0].Id)
 		t.Log(rs[0].Score)
 		fmt.Println("============Candidates=============", ">>>", i)

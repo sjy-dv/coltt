@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v5.28.0
-// source: idl/proto/v2/edge.proto
+// source: idl/proto/v3/edge.proto
 
 package edgeproto
 
@@ -572,5 +572,5 @@ var EdgeRpc_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "idl/proto/v2/edge.proto",
+	Metadata: "idl/proto/v3/edge.proto",
 }

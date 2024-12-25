@@ -7,4 +7,4 @@ RUN chmod +x /main
 
 EXPOSE 50051
 
-ENTRYPOINT ["/main"]
+ENTRYPOINT ["/main", "-mode=edge"]

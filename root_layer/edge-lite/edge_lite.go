@@ -41,6 +41,14 @@ func NewEdgeLite() error {
 	edgelites.Edge = e
 	log.Info().Msg("edge-lite.edge-space init")
 	//-----------------------------------------------//
+	err = edgelites.Edge.RegistCollectionStManager()
+	if err != nil {
+		log.Error().Err(err).Msg("edge-lit.stmanager failed")
+		return err
+	}
+	log.Info().Msg("edge-lit.stmanager init")
+
+	//-----------------------------------------------//
 	edge.NewIndexDB()
 	log.Info().Msg("edge-lite.indexdb init")
 	//-----------------------------------------------//

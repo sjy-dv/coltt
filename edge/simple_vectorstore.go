@@ -70,23 +70,55 @@ func (qx *simplevecSpace) RemoveVector(collectionName string, id uint64) error {
 	return nil
 }
 
-func (qx *simplevecSpace) FullScan(collectionName string, target Vector, topK int,
+func (qx *simplevecSpace) FullScan(collectionName string, target Vector, topK int, highCpu bool,
 ) ([]*SearchResultItem, error) {
 	if qx.distance.Type() == T_COSINE {
 		target = Normalize(target)
 	}
 	pq := NewPriorityQueue(topK)
-	for shard := 0; shard < EDGE_MAP_SHARD_COUNT; shard++ {
-		qx.verticesMu[shard].RLock()
-		for uid, node := range qx.vertices[shard] {
-			sim := qx.quantization.Similarity(target, node.Vector, qx.distance)
-			pq.Add(&SearchResultItem{
-				Id:       uid,
-				Score:    sim,
-				Metadata: node.Metadata,
-			})
+	if !highCpu {
+		for shard := 0; shard < EDGE_MAP_SHARD_COUNT; shard++ {
+			qx.verticesMu[shard].RLock()
+			for uid, node := range qx.vertices[shard] {
+				sim := qx.quantization.Similarity(target, node.Vector, qx.distance)
+				pq.Add(&SearchResultItem{
+					Id:       uid,
+					Score:    sim,
+					Metadata: node.Metadata,
+				})
+			}
+			qx.verticesMu[shard].RUnlock()
 		}
-		qx.verticesMu[shard].RUnlock()
+	} else {
+		type shardResult struct {
+			Items []*SearchResultItem
+		}
+		results := make([]shardResult, EDGE_MAP_SHARD_COUNT)
+		var concurrenyWorker sync.WaitGroup
+		concurrenyWorker.Add(EDGE_MAP_SHARD_COUNT)
+		for shard := 0; shard < EDGE_MAP_SHARD_COUNT; shard++ {
+			go func(shard int) {
+				defer concurrenyWorker.Done()
+				localpq := NewPriorityQueue(topK)
+				qx.verticesMu[shard].RLock()
+				for uid, node := range qx.vertices[shard] {
+					sim := qx.quantization.Similarity(target, node.Vector, qx.distance)
+					localpq.Add(&SearchResultItem{
+						Id:       uid,
+						Score:    sim,
+						Metadata: node.Metadata,
+					})
+				}
+				qx.verticesMu[shard].RUnlock()
+				results[shard].Items = localpq.ToSlice()
+			}(shard)
+		}
+		concurrenyWorker.Wait()
+		for _, res := range results {
+			for _, item := range res.Items {
+				pq.Add(item)
+			}
+		}
 	}
 	return pq.ToSlice(), nil
 }

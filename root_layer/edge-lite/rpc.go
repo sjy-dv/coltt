@@ -13,7 +13,7 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/rs/zerolog/log"
 	"github.com/sjy-dv/nnv/config"
-	"github.com/sjy-dv/nnv/gen/protoc/v2/edgeproto"
+	"github.com/sjy-dv/nnv/gen/protoc/v3/edgeproto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
