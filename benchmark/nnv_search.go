@@ -38,6 +38,7 @@ func main() {
 			CollectionName: collectionName,
 			Vector:         generateRandomVector(128),
 			TopK:           10,
+			
 		})
 		if !resp.Status || err != nil {
 			log.Fatal(resp.Error.ErrorMessage, err.Error())
