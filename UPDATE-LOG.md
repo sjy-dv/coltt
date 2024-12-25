@@ -1,3 +1,19 @@
+## 🎉 Release Update - 2024.12.09
+
+### 🔹 NNV-Edge
+
+- **Planned Work for Enhancing Edge Performance**: During the current core development, we have achieved very fast write and read operations through sharding methods. We plan to add this sharding logic to the edge to expect speed improvements on the edge and to address existing performance enhancements.
+
+---
+
+### 🔹 NNV
+
+- **HNSW Test Completed**: Achieved 0.87 milliseconds in searching 1 million vectors. It is 0.87 milliseconds, not seconds (second is 0.00087 seconds). This is a very gratifying achievement.
+- **Progress on PQ and BQ**: Continuous review of PQ and BQ is underway.
+- **Integration of Existing Quantization**: Planning to proceed with quantization integration (Report work is delayed due to a heavy workload. 😢)
+
+---
+
 ## 🎉 Release Update - 2024.11.20
 
 ### 🔹 NNV-Edge

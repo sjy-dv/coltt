@@ -739,14 +739,14 @@ func (erpc *Edge) VectorSearch(ctx context.Context, req *edgeproto.SearchReq) (
 		dist := erpc.getDist(req.GetCollectionName())
 		retval := make([]*edgeproto.Candidates, 0, req.GetTopK())
 		for _, node := range rs {
-			// st, err := structpb.NewStruct(node.Metadata)
-			// if err != nil {
-			// 	c <- failFn(err.Error())
-			// 	return
-			// }
+			st, err := structpb.NewStruct(node.Metadata)
+			if err != nil {
+				c <- failFn(err.Error())
+				return
+			}
 			candidate := new(edgeproto.Candidates)
-			// candidate.Id = node.Metadata["_id"].(string)
-			// candidate.Metadata = st
+			candidate.Id = node.Metadata["_id"].(string)
+			candidate.Metadata = st
 			candidate.Score = scoreHelper(node.Score, dist)
 			retval = append(retval, candidate)
 		}

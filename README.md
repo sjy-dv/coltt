@@ -4,24 +4,23 @@
 
 NNV (No-Named.V) is a database designed to be implemented from scratch to production. NNV can be deployed in edge environments and used in small-scale production settings. Through the innovative architectural approach described below, it is envisioned and developed to be used reliably in large-scale production environments as well.
 
-## 🎉 Release Update - 2024.12.09
+## 🎉 Release Update - 2024.12.26
 
 For the full update history, see [UPDATE HISTORY](./UPDATE-LOG.md).
-
-We plan to support CFLAT, which can facilitate various services through more complex operations that enable multi-vector searches.
-CFLAT is merely a name I coined. [Please take note!](#cflat-composite-flat--multi-vector-search)
 
 ---
 
 ### 🔹 NNV-Edge
 
-- **Planned Work for Enhancing Edge Performance**: During the current core development, we have achieved very fast write and read operations through sharding methods. We plan to add this sharding logic to the edge to expect speed improvements on the edge and to address existing performance enhancements.
+- **Edge Data Pattern Changes and Performance Upgrades**: Edge has now implemented the shard data pattern of HNSW (Hierarchical Navigable Small World). Additionally, it no longer retrieves data from disk, thereby reducing overhead. However, some performance is still sacrificed to accommodate metadata changes, and there are limitations due to linear search.
+
+- **Addition of highAvailableResource Option**: This is the most critical feature of the current Edge update. To overcome the shortcomings of linear search, parallel searches per shard are supported. The primary objective of Edge is to operate on specific devices or edge environments, which experience less traffic compared to central cloud infrastructures. While parallel goroutines can cause context switching overhead under excessive traffic, in scenarios where operations need to be performed in a specific small dataset space with precision considerations, enabling this option can support faster searches. Currently, with this option disabled, searching through 1 million datasets takes approximately 0.2 to 0.3 seconds. When the option is enabled, the search time reduces to about 0.02 to 0.03 seconds.
+  Similar to Milvus, which internally uses a goroutine worker pool, NNV (presumably your system) generates goroutines based on a fixed shard size. It is expected to perform well on edge environments. When operating in cloud environments, developers may need to adjust this option according to the specific environment, or alternatively, consider using NNV-Core.
 
 ---
 
 ### 🔹 NNV
 
-- **HNSW Test Completed**: Achieved 0.87 milliseconds in searching 1 million vectors. It is 0.87 milliseconds, not seconds (second is 0.00087 seconds). This is a very gratifying achievement.
 - **Progress on PQ and BQ**: Continuous review of PQ and BQ is underway.
 - **Integration of Existing Quantization**: Planning to proceed with quantization integration (Report work is delayed due to a heavy workload. 😢)
 
@@ -35,21 +34,9 @@ CFLAT is merely a name I coined. [Please take note!](#cflat-composite-flat--mult
 
 ### 🔸 Planned Features and Improvements
 
-#### NNV-Edge
+- **Development of an Automated Pipeline for Building LLM Fine-Tuning Datasets** : We plan to develop a pipeline that automatically constructs datasets for future LLM (Large Language Model) fine-tuning. The characteristic of the vector database is that it performs searches based on natural language queries, and the recall dataset implies similar responses. Although immediate training is not possible through this approach, it aims to support internal experts and developers in building datasets more quickly by providing a suitable format.
 
-- **Enhanced Logging**: Detailed logging will be added for better traceability and debugging.
-- **Edge-based Project Integration**: Ongoing work with Edge-based projects will continue, with improvements based on progress and feedback.
-
-#### NNV
-
-- **Cosine Similarity Compatibility**: PQ (Product Quantization) operates primarily with Euclidean distance. However, with Cosine similarity, vector normalization logic is required. (Normalized vectors for Euclidean distance yield performance similar to Cosine similarity.)
-- **RPC Setup for HNSW**: RPC functionality for HNSW is planned to facilitate remote usage.
-- **Storage Enhancements**: Fast in-memory storage and reliable disk-based storage will be introduced.
-- **System Idle-State Backup**: An automatic backup process will be added to periodically save data during idle states.
-- **Automatic Recovery**: A feature for automatic recovery will be implemented.
-- **Advanced Filtering**: Support for expressions and various range searches will be included in the filter functionality.
-- **Performance Benchmarking**: Comprehensive benchmarking will be conducted once the system stabilizes.
-- **Load Balancer**: A load balancer will be developed post-stabilization to manage system load effectively.
+- **CFLAT** : We plan to support CFLAT, which can facilitate various services through more complex operations that enable multi-vector searches.
 
 ---
 
