@@ -1,6 +1,6 @@
 # Coltt (NNV => Coltt Renamed 2025.02.13)
 
-![logo](./examples/assets/new_logo.png.png)
+![logo](./examples/assets/new_logo.png)
 
 Coltt is a database designed to be implemented from scratch to production. coltt can be deployed in edge environments and used in small-scale production settings. Through the innovative architectural approach described below, it is envisioned and developed to be used reliably in large-scale production environments as well.
 
