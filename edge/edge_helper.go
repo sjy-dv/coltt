@@ -165,6 +165,14 @@ func (helper *Edge) saveCollection(collectionName string) error {
 	return nil
 }
 
+func (helper *Edge) ChkValidDimensionality(collectionName string, dim int32) error {
+	collection, _ := helper.Datas.Get(collectionName)
+	if collection.dim != dim {
+		return fmt.Errorf("Err Collection %s expects %d dimensions, but has %d dimensions", collectionName, collection.dim, dim)
+	}
+	return nil
+}
+
 func (helper *Edge) removeCollection(collectionName string) error {
 	gb, err := helper.Disk.Get([]byte(diskColList))
 	if err != nil {

@@ -336,3 +336,11 @@ func (xx *Core) exitSnapshot() error {
 	}
 	return nil
 }
+
+func (xx *Core) chkValidDimensionality(collectionName string, dim int32) error {
+	collection := xx.DataStore.Get(collectionName)
+	if collection.Dim() != uint32(dim) {
+		return fmt.Errorf("Err Collection %s expects %d dimensions, but has %d dimensions", collectionName, collection.Dim(), dim)
+	}
+	return nil
+}

@@ -407,6 +407,11 @@ func (crpc *Core) Insert(ctx context.Context, req *coreproto.DatasetChange) (
 			c <- failFn(err.Error())
 			return
 		}
+		valid := crpc.chkValidDimensionality(req.GetCollectionName(), int32(len(req.GetVector())))
+		if valid != nil {
+			c <- failFn(valid.Error())
+			return
+		}
 		cloneMap := req.GetMetadata().AsMap()
 		err = indexdb.indexes[req.GetCollectionName()].Add(autoId, cloneMap)
 		if err != nil {
@@ -474,6 +479,11 @@ func (crpc *Core) Update(ctx context.Context, req *coreproto.DatasetChange) (
 		err := collectionStatusHelper(req.GetCollectionName())
 		if err != nil {
 			c <- failFn(err.Error(), false)
+			return
+		}
+		valid := crpc.chkValidDimensionality(req.GetCollectionName(), int32(len(req.GetVector())))
+		if valid != nil {
+			c <- failFn(valid.Error(), false)
 			return
 		}
 		getId := indexdb.indexes[req.GetCollectionName()].PureSearch(map[string]string{"_id": req.GetId()})
@@ -633,7 +643,11 @@ func (crpc *Core) VectorSearch(ctx context.Context, req *coreproto.SearchRequest
 			c <- failFn(err.Error())
 			return
 		}
-
+		valid := crpc.chkValidDimensionality(req.GetCollectionName(), int32(len(req.GetVector())))
+		if valid != nil {
+			c <- failFn(valid.Error())
+			return
+		}
 		hnsw := crpc.DataStore.Get(req.GetCollectionName())
 		candidates, err := hnsw.Search(context.TODO(), req.GetVector(), uint(req.GetTopK()))
 		if err != nil {
@@ -755,7 +769,11 @@ func (crpc *Core) HybridSearch(ctx context.Context, req *coreproto.SearchRequest
 			c <- failFn(err.Error())
 			return
 		}
-
+		valid := crpc.chkValidDimensionality(req.GetCollectionName(), int32(len(req.GetVector())))
+		if valid != nil {
+			c <- failFn(valid.Error())
+			return
+		}
 		hnsw := crpc.DataStore.Get(req.GetCollectionName())
 		candidates, err := hnsw.Search(context.TODO(), req.GetVector(), uint(req.GetTopK()*3))
 		if err != nil {

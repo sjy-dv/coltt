@@ -474,6 +474,12 @@ func (erpc *Edge) Insert(ctx context.Context, req *edgeproto.ModifyDataset) (
 			c <- failFn(err.Error())
 			return
 		}
+
+		valid := erpc.ChkValidDimensionality(req.GetCollectionName(), int32(len(req.GetVector())))
+		if valid != nil {
+			c <- failFn(valid.Error())
+			return
+		}
 		autoID := autoCommitID()
 		cloneMap := req.GetMetadata().AsMap()
 
@@ -547,6 +553,11 @@ func (erpc *Edge) Update(ctx context.Context, req *edgeproto.ModifyDataset) (
 		err := collectionStatusHelper(req.GetCollectionName())
 		if err != nil {
 			c <- failFn(err.Error())
+			return
+		}
+		valid := erpc.ChkValidDimensionality(req.GetCollectionName(), int32(len(req.GetVector())))
+		if valid != nil {
+			c <- failFn(valid.Error())
 			return
 		}
 		getId := indexdb.indexes[req.GetCollectionName()].PureSearch(map[string]string{"_id": req.GetId()})
@@ -727,6 +738,11 @@ func (erpc *Edge) VectorSearch(ctx context.Context, req *edgeproto.SearchReq) (
 			c <- failFn(err.Error())
 			return
 		}
+		valid := erpc.ChkValidDimensionality(req.GetCollectionName(), int32(len(req.GetVector())))
+		if valid != nil {
+			c <- failFn(valid.Error())
+			return
+		}
 		var (
 			rs []*SearchResultItem
 		)
@@ -850,6 +866,11 @@ func (erpc *Edge) HybridSearch(ctx context.Context, req *edgeproto.SearchReq) (
 		err := collectionStatusHelper(req.GetCollectionName())
 		if err != nil {
 			c <- failFn(err.Error())
+			return
+		}
+		valid := erpc.ChkValidDimensionality(req.GetCollectionName(), int32(len(req.GetVector())))
+		if valid != nil {
+			c <- failFn(valid.Error())
 			return
 		}
 		// step1. find vector (user request topK * 3)
