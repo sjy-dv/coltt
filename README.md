@@ -8,8 +8,6 @@ Coltt is a database designed to be implemented from scratch to production. coltt
 
 For the full update history, see [UPDATE HISTORY](./UPDATE-LOG.md).
 
-## <!-- 벡터 차원 체크 넣기 (index error방지) -->
-
 ### 🔹 coltt-Edge
 
 - **Edge Data Pattern Changes and Performance Upgrades**: Edge has now implemented the shard data pattern of HNSW (Hierarchical Navigable Small World). Additionally, it no longer retrieves data from disk, thereby reducing overhead. However, some performance is still sacrificed to accommodate metadata changes, and there are limitations due to linear search.
