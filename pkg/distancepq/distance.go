@@ -4,8 +4,8 @@ import (
 	"math"
 	"math/bits"
 
-	"github.com/sjy-dv/nnv/edge"
-	"github.com/sjy-dv/nnv/pkg/distance"
+	"github.com/sjy-dv/coltt/edge"
+	"github.com/sjy-dv/coltt/pkg/distance"
 )
 
 type FloatDistFunc func(x, y []float32) float32

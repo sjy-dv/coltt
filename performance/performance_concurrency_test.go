@@ -40,7 +40,7 @@ func BenchmarkPureJob(b *testing.B) {
 
 // goos: windows
 // goarch: amd64
-// pkg: github.com/sjy-dv/nnv/performance
+// pkg: github.com/sjy-dv/coltt/performance
 // cpu: Intel(R) Core(TM) Ultra 9 185H
 // BenchmarkPureJob-22    	1000000000	         0.007214 ns/op	       0 B/op	       0 allocs/op
 // --- BENCH: BenchmarkPureJob-22
@@ -56,7 +56,7 @@ func BenchmarkPureJob(b *testing.B) {
 //     performance_concurrency_test.go:38: process time: 0.01 sec
 // 	... [output truncated]
 // PASS
-// ok  	github.com/sjy-dv/nnv/performance	0.476s
+// ok  	github.com/sjy-dv/coltt/performance	0.476s
 
 func BenchmarkGoroutineJob(b *testing.B) {
 	memdb := MemDB{}
@@ -98,7 +98,7 @@ func BenchmarkGoroutineJob(b *testing.B) {
 
 // goos: windows
 // goarch: amd64
-// pkg: github.com/sjy-dv/nnv/performance
+// pkg: github.com/sjy-dv/coltt/performance
 // cpu: Intel(R) Core(TM) Ultra 9 185H
 // BenchmarkGoroutineJob-22    	1000000000	         0.5354 ns/op	       0 B/op	       0 allocs/op
 // --- BENCH: BenchmarkGoroutineJob-22
@@ -114,4 +114,4 @@ func BenchmarkGoroutineJob(b *testing.B) {
 //     performance_concurrency_test.go:70: ready workerpool : 44
 // 	... [output truncated]
 // PASS
-// ok  	github.com/sjy-dv/nnv/performance	16.446s
+// ok  	github.com/sjy-dv/coltt/performance	16.446s

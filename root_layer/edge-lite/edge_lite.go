@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/rs/zerolog/log"
-	"github.com/sjy-dv/nnv/edge"
+	"github.com/sjy-dv/coltt/edge"
 )
 
 var edgelites = &EdgeLite{}

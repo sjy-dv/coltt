@@ -20,8 +20,8 @@ package edge
 import (
 	"encoding/binary"
 
-	"github.com/sjy-dv/nnv/pkg/compresshelper"
-	"github.com/sjy-dv/nnv/pkg/distance"
+	"github.com/sjy-dv/coltt/pkg/compresshelper"
+	"github.com/sjy-dv/coltt/pkg/distance"
 )
 
 type float16Vec []compresshelper.Float16

@@ -19,7 +19,7 @@ package distance
 
 import (
 	"github.com/klauspost/cpuid"
-	"github.com/sjy-dv/nnv/pkg/gomath"
+	"github.com/sjy-dv/coltt/pkg/gomath"
 )
 
 type SpaceImpl interface {

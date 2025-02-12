@@ -4,7 +4,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/sjy-dv/nnv/edge/priorityqueue"
+	"github.com/sjy-dv/coltt/edge/priorityqueue"
 )
 
 type SearchResultItem struct {

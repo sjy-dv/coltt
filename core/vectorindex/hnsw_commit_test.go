@@ -7,8 +7,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/sjy-dv/nnv/pkg/distance"
-	"github.com/sjy-dv/nnv/pkg/gomath"
+	"github.com/sjy-dv/coltt/pkg/distance"
+	"github.com/sjy-dv/coltt/pkg/gomath"
 	"github.com/stretchr/testify/assert"
 )
 

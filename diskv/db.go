@@ -12,10 +12,10 @@ import (
 
 	"github.com/gofrs/flock"
 	"github.com/robfig/cron/v3"
-	"github.com/sjy-dv/nnv/diskv/index"
-	"github.com/sjy-dv/nnv/diskv/utils"
-	"github.com/sjy-dv/nnv/pkg/snowflake"
-	"github.com/sjy-dv/nnv/pkg/wal"
+	"github.com/sjy-dv/coltt/diskv/index"
+	"github.com/sjy-dv/coltt/diskv/utils"
+	"github.com/sjy-dv/coltt/pkg/snowflake"
+	"github.com/sjy-dv/coltt/pkg/wal"
 )
 
 const (

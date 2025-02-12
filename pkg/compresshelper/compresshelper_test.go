@@ -6,8 +6,8 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/sjy-dv/nnv/pkg/compresshelper"
-	"github.com/sjy-dv/nnv/pkg/distance"
+	"github.com/sjy-dv/coltt/pkg/compresshelper"
+	"github.com/sjy-dv/coltt/pkg/distance"
 	"github.com/stretchr/testify/assert"
 )
 

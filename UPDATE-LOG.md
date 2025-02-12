@@ -1,12 +1,12 @@
 ## 🎉 Release Update - 2024.12.09
 
-### 🔹 NNV-Edge
+### 🔹 coltt-Edge
 
 - **Planned Work for Enhancing Edge Performance**: During the current core development, we have achieved very fast write and read operations through sharding methods. We plan to add this sharding logic to the edge to expect speed improvements on the edge and to address existing performance enhancements.
 
 ---
 
-### 🔹 NNV
+### 🔹 coltt
 
 - **HNSW Test Completed**: Achieved 0.87 milliseconds in searching 1 million vectors. It is 0.87 milliseconds, not seconds (second is 0.00087 seconds). This is a very gratifying achievement.
 - **Progress on PQ and BQ**: Continuous review of PQ and BQ is underway.
@@ -16,7 +16,7 @@
 
 ## 🎉 Release Update - 2024.11.20
 
-### 🔹 NNV-Edge
+### 🔹 coltt-Edge
 
 #### Enhancements
 
@@ -33,7 +33,7 @@
 
 ---
 
-### 🔹 NNV
+### 🔹 coltt
 
 - **README Revamp**: The README will be updated soon.
 - **Improved HNSW Development**: A more advanced HNSW algorithm is planned for development.
@@ -43,13 +43,13 @@
 
 ## 🎉 Release Update - 2024.11.14
 
-### 🔹 NNV-Edge
+### 🔹 coltt-Edge
 
 - No updates in this release.
 
 ---
 
-### 🔹 NNV
+### 🔹 coltt
 
 See the [detailed comparison with ChromaDB for search results](./examples/release/2024_11_14_release.md).
 
@@ -64,7 +64,7 @@ See the [detailed comparison with ChromaDB for search results](./examples/releas
 
 ### Release Update (2024.11.11)
 
-#### NNV-Edge
+#### coltt-Edge
 
 [Please check the detailed results and changes.](./examples/release/2024_11_11_release.md)
 
@@ -74,7 +74,7 @@ See the [detailed comparison with ChromaDB for search results](./examples/releas
 - It includes F16 quantization.
 - Due to the nature of the Edge version, several conveniences have been removed, requiring more adjustments from the user.
 
-#### NNV
+#### coltt
 
 - With the removal of Usearch, the CGO dependency is also eliminated.
 - We are reviewing speed and accuracy while revising the existing HNSW.

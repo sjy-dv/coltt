@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/sjy-dv/nnv/pkg/distance"
-	"github.com/sjy-dv/nnv/pkg/gomath"
+	"github.com/sjy-dv/coltt/pkg/distance"
+	"github.com/sjy-dv/coltt/pkg/gomath"
 )
 
 type EdgeVector struct {

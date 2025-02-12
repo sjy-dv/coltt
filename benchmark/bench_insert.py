@@ -74,7 +74,7 @@ plt.figure(figsize=(14, 10))
 for name, keys, times in processed_datasets:
     plt.plot(keys, times, marker='o', label=name)
 
-plt.title('CompareNNV History', fontsize=16)
+plt.title('Comparecoltt History', fontsize=16)
 plt.xlabel('insert vector', fontsize=14)
 plt.ylabel('latency (sec)', fontsize=14)
 plt.xscale('log') 

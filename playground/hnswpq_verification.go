@@ -9,10 +9,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/sjy-dv/nnv/edge"
-	"github.com/sjy-dv/nnv/pkg/hnswpq"
-	"github.com/sjy-dv/nnv/pkg/models"
-	"github.com/sjy-dv/nnv/pkg/queue"
+	"github.com/sjy-dv/coltt/edge"
+	"github.com/sjy-dv/coltt/pkg/hnswpq"
+	"github.com/sjy-dv/coltt/pkg/models"
+	"github.com/sjy-dv/coltt/pkg/queue"
 )
 
 // use dataset.csv => https://www.kaggle.com/datasets/lakshmi25npathi/imdb-dataset-of-50k-movie-reviews

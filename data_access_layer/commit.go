@@ -31,9 +31,9 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/sjy-dv/nnv/pkg/hnsw"
-	"github.com/sjy-dv/nnv/pkg/index"
-	"github.com/sjy-dv/nnv/pkg/nnlogdb"
+	"github.com/sjy-dv/coltt/pkg/hnsw"
+	"github.com/sjy-dv/coltt/pkg/index"
+	"github.com/sjy-dv/coltt/pkg/nnlogdb"
 )
 
 const parentDir string = "./data_dir"

@@ -24,10 +24,10 @@ import (
 	"sync"
 
 	"github.com/rs/zerolog/log"
-	"github.com/sjy-dv/nnv/diskv"
-	"github.com/sjy-dv/nnv/gen/protoc/v2/phonyproto"
-	"github.com/sjy-dv/nnv/gen/protoc/v3/edgeproto"
-	"github.com/sjy-dv/nnv/pkg/concurrentmap"
+	"github.com/sjy-dv/coltt/diskv"
+	"github.com/sjy-dv/coltt/gen/protoc/v2/phonyproto"
+	"github.com/sjy-dv/coltt/gen/protoc/v3/edgeproto"
+	"github.com/sjy-dv/coltt/pkg/concurrentmap"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )

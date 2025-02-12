@@ -5,7 +5,7 @@ import (
 	"math"
 	"os"
 
-	"github.com/sjy-dv/nnv/gen/protoc/v3/edgeproto"
+	"github.com/sjy-dv/coltt/gen/protoc/v3/edgeproto"
 	"github.com/vmihailenco/msgpack/v5"
 )
 

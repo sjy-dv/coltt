@@ -7,10 +7,10 @@ import (
 	"math"
 	"os"
 
-	"github.com/sjy-dv/nnv/core/vectorindex"
-	"github.com/sjy-dv/nnv/gen/protoc/v3/coreproto"
-	"github.com/sjy-dv/nnv/pkg/distance"
-	"github.com/sjy-dv/nnv/pkg/index"
+	"github.com/sjy-dv/coltt/core/vectorindex"
+	"github.com/sjy-dv/coltt/gen/protoc/v3/coreproto"
+	"github.com/sjy-dv/coltt/pkg/distance"
+	"github.com/sjy-dv/coltt/pkg/index"
 	"github.com/vmihailenco/msgpack/v5"
 )
 

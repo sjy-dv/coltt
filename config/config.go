@@ -23,8 +23,8 @@ import (
 	"os"
 )
 
-const ClusterGroup = "nnv-stream"
-const NodeNamePrefix = "nnv-node"
+const ClusterGroup = "coltt-stream"
+const NodeNamePrefix = "coltt-node"
 
 var ClusterAddrFlag = flag.String("cluster-addr", "", "Cluster listening address")
 var ClusterPeersFlag = flag.String("cluster-peers", "", "Comma separated list of clusters")
@@ -74,8 +74,8 @@ var Config = &ConfigMap{
 	NodeID:   0,
 	JetStream: JetStream{
 		URLs:                 []string{},
-		SubjectPrefix:        "nnv-change-log",
-		StreamPrefix:         "nnv-changes",
+		SubjectPrefix:        "coltt-change-log",
+		StreamPrefix:         "coltt-changes",
 		ServerConfigFile:     "",
 		SeedFile:             "",
 		CredsPassword:        "",

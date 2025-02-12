@@ -21,7 +21,7 @@ import (
 	"encoding/binary"
 	"math"
 
-	"github.com/sjy-dv/nnv/pkg/distance"
+	"github.com/sjy-dv/coltt/pkg/distance"
 )
 
 type Quantization[T any] interface {

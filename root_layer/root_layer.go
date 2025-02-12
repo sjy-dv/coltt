@@ -20,8 +20,8 @@ package rootlayer
 import (
 	"context"
 
-	edgelite "github.com/sjy-dv/nnv/root_layer/edge-lite"
-	"github.com/sjy-dv/nnv/root_layer/root"
+	edgelite "github.com/sjy-dv/coltt/root_layer/edge-lite"
+	"github.com/sjy-dv/coltt/root_layer/root"
 )
 
 // after code refactoring

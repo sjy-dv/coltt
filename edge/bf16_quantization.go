@@ -18,8 +18,8 @@
 package edge
 
 import (
-	"github.com/sjy-dv/nnv/pkg/compresshelper"
-	"github.com/sjy-dv/nnv/pkg/distance"
+	"github.com/sjy-dv/coltt/pkg/compresshelper"
+	"github.com/sjy-dv/coltt/pkg/distance"
 )
 
 type bfloat16Vec []compresshelper.BFloat16

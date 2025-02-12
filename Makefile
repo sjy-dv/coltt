@@ -39,14 +39,15 @@ add-license:
 	- go-licenser -license ASL2 -licensor sjy-dv
 
 edge-docker:
-	- docker build --file edge.dockerfile -t nnv:edge .
+	- docker build --file edge.dockerfile -t coltt:edge .
 	
+
 simple-docker:
-	- docker build --file simple.dockerfile -t nnv:simple .
-	- docker run nnv:simple -p 50051:50051 -d
+	- docker build --file simple.dockerfile -t coltt:simple .
+	- docker run coltt:simple -p 50051:50051 -d
 
 simple2-docker:
-	- docker build --file simple.v2.dockerfile -t nnv:cgo .
+	- docker build --file simple.v2.dockerfile -t coltt:cgo .
 
 test:
 	- go test -v --count=1 ./pkg/sharding

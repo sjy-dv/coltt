@@ -27,9 +27,9 @@ import (
 	"sort"
 
 	"github.com/rs/zerolog/log"
-	"github.com/sjy-dv/nnv/pkg/distance"
-	"github.com/sjy-dv/nnv/pkg/hnsw"
-	"github.com/sjy-dv/nnv/pkg/index"
+	"github.com/sjy-dv/coltt/pkg/distance"
+	"github.com/sjy-dv/coltt/pkg/hnsw"
+	"github.com/sjy-dv/coltt/pkg/index"
 )
 
 // Recovery logic needs to be added in the future.

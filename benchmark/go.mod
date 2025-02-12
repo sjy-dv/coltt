@@ -1,4 +1,4 @@
-module playground.benchmark.nnv
+module playground.benchmark.coltt
 
 go 1.23.1
 

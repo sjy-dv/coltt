@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/sjy-dv/nnv/core/vectorindex"
-	"github.com/sjy-dv/nnv/pkg/distance"
-	"github.com/sjy-dv/nnv/pkg/gomath"
+	"github.com/sjy-dv/coltt/core/vectorindex"
+	"github.com/sjy-dv/coltt/pkg/distance"
+	"github.com/sjy-dv/coltt/pkg/gomath"
 )
 
 func main() {

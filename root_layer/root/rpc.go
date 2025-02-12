@@ -12,8 +12,8 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/rs/zerolog/log"
-	"github.com/sjy-dv/nnv/config"
-	"github.com/sjy-dv/nnv/gen/protoc/v3/coreproto"
+	"github.com/sjy-dv/coltt/config"
+	"github.com/sjy-dv/coltt/gen/protoc/v3/coreproto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -23,7 +23,7 @@ import (
 
 func gRpcStart() error {
 	logger := rpclog.NewLogfmtLogger(os.Stderr)
-	rpcLogger := rpclog.With(logger, "service", "gRPC/server", "component", "nnv-rpc")
+	rpcLogger := rpclog.With(logger, "service", "gRPC/server", "component", "coltt-rpc")
 	lis, err := net.Listen("tcp", config.Config.RootLayer.BindAddress)
 	if err != nil {
 		return err

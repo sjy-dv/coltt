@@ -7,8 +7,8 @@ import (
 	"sync/atomic"
 	"unsafe"
 
-	"github.com/sjy-dv/nnv/edge"
-	"github.com/sjy-dv/nnv/pkg/distance"
+	"github.com/sjy-dv/coltt/edge"
+	"github.com/sjy-dv/coltt/pkg/distance"
 )
 
 var (

@@ -5,10 +5,10 @@ import (
 	"fmt"
 
 	"github.com/rs/zerolog/log"
-	"github.com/sjy-dv/nnv/core/vectorindex"
-	"github.com/sjy-dv/nnv/diskv"
-	"github.com/sjy-dv/nnv/gen/protoc/v3/coreproto"
-	"github.com/sjy-dv/nnv/gen/protoc/v3/diskproto"
+	"github.com/sjy-dv/coltt/core/vectorindex"
+	"github.com/sjy-dv/coltt/diskv"
+	"github.com/sjy-dv/coltt/gen/protoc/v3/coreproto"
+	"github.com/sjy-dv/coltt/gen/protoc/v3/diskproto"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )

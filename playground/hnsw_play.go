@@ -8,10 +8,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/sjy-dv/nnv/core/vectorindex"
-	"github.com/sjy-dv/nnv/edge"
-	"github.com/sjy-dv/nnv/pkg/distance"
-	"github.com/sjy-dv/nnv/pkg/snowflake"
+	"github.com/sjy-dv/coltt/core/vectorindex"
+	"github.com/sjy-dv/coltt/edge"
+	"github.com/sjy-dv/coltt/pkg/distance"
+	"github.com/sjy-dv/coltt/pkg/snowflake"
 )
 
 type JsonReview struct {

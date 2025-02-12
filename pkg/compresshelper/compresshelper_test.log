@@ -44,4 +44,4 @@
     compresshelper_test.go:394: BF16 3072 dim compress is passed
 --- PASS: TestBF16Losses3072dim (87.65s)
 PASS
-ok      github.com/sjy-dv/nnv/pkg/compresshelper        595.555s
+ok      github.com/sjy-dv/coltt/pkg/compresshelper        595.555s

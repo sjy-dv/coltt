@@ -1,4 +1,4 @@
-module github.com/sjy-dv/nnv
+module github.com/sjy-dv/coltt
 
 go 1.23.1
 

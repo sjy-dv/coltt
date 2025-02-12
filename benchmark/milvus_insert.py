@@ -3,7 +3,7 @@ import numpy as np
 
 
 
-nnv = {
+coltt = {
     1000: 0.74,
     5000: 3.43,
     10000: 6.72,
@@ -29,7 +29,7 @@ milvus = {
 
 
 datasets = [
-    ("NNV", nnv),
+    ("coltt", coltt),
     ("Milvus", milvus)
 ]
 

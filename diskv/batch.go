@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sjy-dv/nnv/diskv/utils"
-	"github.com/sjy-dv/nnv/pkg/bytebufferpool"
-	"github.com/sjy-dv/nnv/pkg/snowflake"
+	"github.com/sjy-dv/coltt/diskv/utils"
+	"github.com/sjy-dv/coltt/pkg/bytebufferpool"
+	"github.com/sjy-dv/coltt/pkg/snowflake"
 )
 
 type Batch struct {

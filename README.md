@@ -1,25 +1,25 @@
-# NNV (No-Named.V)
+# Coltt (NNV => Coltt Renamed 2025.02.13)
 
-![logo](./examples/assets/logo.png)
+![logo](./examples/assets/new_logo.png.png)
 
-NNV (No-Named.V) is a database designed to be implemented from scratch to production. NNV can be deployed in edge environments and used in small-scale production settings. Through the innovative architectural approach described below, it is envisioned and developed to be used reliably in large-scale production environments as well.
+Coltt is a database designed to be implemented from scratch to production. coltt can be deployed in edge environments and used in small-scale production settings. Through the innovative architectural approach described below, it is envisioned and developed to be used reliably in large-scale production environments as well.
 
-## 🎉 Release Update - 2024.12.26
+## 🎉 Release Update - 2025.02.13
 
 For the full update history, see [UPDATE HISTORY](./UPDATE-LOG.md).
 
----
+## <!-- 벡터 차원 체크 넣기 (index error방지) -->
 
-### 🔹 NNV-Edge
+### 🔹 coltt-Edge
 
 - **Edge Data Pattern Changes and Performance Upgrades**: Edge has now implemented the shard data pattern of HNSW (Hierarchical Navigable Small World). Additionally, it no longer retrieves data from disk, thereby reducing overhead. However, some performance is still sacrificed to accommodate metadata changes, and there are limitations due to linear search.
 
 - **Addition of highAvailableResource Option**: This is the most critical feature of the current Edge update. To overcome the shortcomings of linear search, parallel searches per shard are supported. The primary objective of Edge is to operate on specific devices or edge environments, which experience less traffic compared to central cloud infrastructures. While parallel goroutines can cause context switching overhead under excessive traffic, in scenarios where operations need to be performed in a specific small dataset space with precision considerations, enabling this option can support faster searches. Currently, with this option disabled, searching through 1 million datasets takes approximately 0.2 to 0.3 seconds. When the option is enabled, the search time reduces to about 0.02 to 0.03 seconds.
-  Similar to Milvus, which internally uses a goroutine worker pool, NNV generates goroutines based on a fixed shard size. It is expected to perform well on edge environments. When operating in cloud environments, developers may need to adjust this option according to the specific environment, or alternatively, consider using NNV-Core.
+  Similar to Milvus, which internally uses a goroutine worker pool, coltt generates goroutines based on a fixed shard size. It is expected to perform well on edge environments. When operating in cloud environments, developers may need to adjust this option according to the specific environment, or alternatively, consider using coltt-Core.
 
 ---
 
-### 🔹 NNV
+### 🔹 Coltt
 
 - **Progress on PQ and BQ**: Continuous review of PQ and BQ is underway.
 - **Integration of Existing Quantization**: Planning to proceed with quantization integration (Report work is delayed due to a heavy workload. 😢)
@@ -27,6 +27,19 @@ For the full update history, see [UPDATE HISTORY](./UPDATE-LOG.md).
 ---
 
 ## 🚀 Update Preview
+
+# Data Insertion
+
+- **Vector Dimension Validation:** During data insertion, vector dimension validation is performed.
+- **Index Range Error Elimination:** This process resolves index range errors caused by incorrect dimension entries.
+
+# Index Storage Enhancement via MinIO
+
+- **Improved Index Storage:** Index storage capabilities are enhanced using MinIO.
+- **Faster Loading and Saving:** This enables rapid load and save operations.
+- **Robust Disaster Recovery:** Ensures reliable disaster recovery.
+
+-
 
 ⚠️ _Expected release date is TBD. Development is ongoing, and updates will be added as we progress.(It's slow because I work in my spare time outside of work.)_ 😭
 
@@ -50,8 +63,8 @@ For the full update history, see [UPDATE HISTORY](./UPDATE-LOG.md).
 
 ```sh
 Windows & Linux
-git clone https://github.com/sjy-dv/nnv
-cd nnv
+git clone https://github.com/sjy-dv/coltt
+cd coltt
 # start edge
 go run cmd/root/main.go -mode=edge
 # start core
@@ -61,8 +74,8 @@ go run cmd/root/main.go -mode=root
 MacOS
 **The CPU acceleration (SSE, AVX2, AVX-512) code has caused an error where it does not function on Mac, and it is not a priority to address at this time.**
 
-git clone https://github.com/sjy-dv/nnv
-cd nnv
+git clone https://github.com/sjy-dv/coltt
+cd coltt
 source .env
 deploy
 make edge-docker
@@ -78,7 +91,7 @@ make edge-docker
   - [InternalDataFlow](#internal-data-flow)
   - [Multi-Vector Search](#cflat-composite-flat--multi-vector-search)
   - [When is CFLAT Used?](#when-is-cflat-used)
-  - [Edge](#what-is-nnv-edge)
+  - [Edge](#what-is-coltt-edge)
 
 - [BugFix](#-bugfix)
 
@@ -138,7 +151,7 @@ Each database contains its own JetStream, and these JetStreams join the same gro
 2. **Last Writer Wins**  
    Even if one server writes data first, the server that writes last ultimately "wins." This means that the data from the last server to write will overwrite the previous server’s data.
 3. **Transaction Serialization Concerns**  
-   Transaction serialization refers to ensuring that consistent actions occur across multiple tables. In NNV, to improve performance, global locking (locking all servers before writing data) is avoided. Instead, when multiple servers modify data simultaneously, the last one to modify it will win. This approach is feasible because vector databases are simpler than traditional databases—they don’t require complex transaction serialization across multiple tables or collections.
+   Transaction serialization refers to ensuring that consistent actions occur across multiple tables. In coltt, to improve performance, global locking (locking all servers before writing data) is avoided. Instead, when multiple servers modify data simultaneously, the last one to modify it will win. This approach is feasible because vector databases are simpler than traditional databases—they don’t require complex transaction serialization across multiple tables or collections.
 4. **Why This Design?**  
    The primary reason is performance. Locking all servers before processing data is safe but slow. Instead, allowing each server to freely modify data and accepting the last modification as the final result is faster and more efficient.
 
@@ -205,14 +218,14 @@ Here, someone who wants an easygoing personality paired with a decisive ideal ty
 ![arch13](./examples/assets/arch13.png)
 In such cases, CFLAT (Composite FLAT) calculates scores by jointly evaluating the similarity in personality and the similarity in the ideal type. Users can assign importance levels to each attribute, allowing higher scores to be given to the aspects with greater similarity based on user-defined priorities.
 
-## What is NNV-Edge?
+## What is coltt-Edge?
 
 Edge refers to the ability to transmit and receive data on nearby devices without communication with a central server. However, in practice, "Edge" in software may sometimes differ from this concept, as it is often deployed in lighter, resource-constrained environments compared to a central server.
 
-NNV-Edge is designed to operate quickly on smaller-scale vector datasets (up to 1 million vectors) in a lightweight manner, transferring automated tasks from the original NNV back to the user for greater control.
+coltt-Edge is designed to operate quickly on smaller-scale vector datasets (up to 1 million vectors) in a lightweight manner, transferring automated tasks from the original coltt back to the user for greater control.
 
 Advanced algorithms like HNSW, Faiss, and Annoy are excellent, but don’t you think they may be a bit heavy for smaller-scale specs? And setting aside algorithms, while projects like Milvus, Weaviate, and Qdrant are built by brilliant minds, aren’t they somewhat too resource-intensive to run alongside other software on small, portable devices?
 ![arch9](./examples/assets/arch9.png)
-That’s where NNV-Edge comes in.
+That’s where coltt-Edge comes in.
 
-What if you distribute multiple edges? By using NNV-Edge with the previously mentioned load balancer, you can create an advanced setup that shards data across multiple edges and aggregates it seamlessly!
+What if you distribute multiple edges? By using coltt-Edge with the previously mentioned load balancer, you can create an advanced setup that shards data across multiple edges and aggregates it seamlessly!

@@ -25,8 +25,8 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/sjy-dv/nnv/pkg/fs"
-	"github.com/sjy-dv/nnv/pkg/murmurV3"
+	"github.com/sjy-dv/coltt/pkg/fs"
+	"github.com/sjy-dv/coltt/pkg/murmurV3"
 )
 
 const (

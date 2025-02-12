@@ -3,8 +3,8 @@ package edge
 import (
 	"sync"
 
-	"github.com/sjy-dv/nnv/pkg/distance"
-	"github.com/sjy-dv/nnv/pkg/sharding"
+	"github.com/sjy-dv/coltt/pkg/distance"
+	"github.com/sjy-dv/coltt/pkg/sharding"
 )
 
 type simplevecSpace struct {

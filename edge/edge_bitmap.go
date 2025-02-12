@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/sjy-dv/nnv/pkg/index"
+	"github.com/sjy-dv/coltt/pkg/index"
 )
 
 type IndexGroup struct {

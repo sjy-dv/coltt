@@ -28,8 +28,8 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"github.com/sjy-dv/nnv/config"
-	rootlayer "github.com/sjy-dv/nnv/root_layer"
+	"github.com/sjy-dv/coltt/config"
+	rootlayer "github.com/sjy-dv/coltt/root_layer"
 )
 
 var (

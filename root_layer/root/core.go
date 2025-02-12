@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/rs/zerolog/log"
-	"github.com/sjy-dv/nnv/core"
+	"github.com/sjy-dv/coltt/core"
 )
 
 var rc = &RootCore{}

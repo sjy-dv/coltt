@@ -28,10 +28,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sjy-dv/nnv/gen/protoc/v2/phonyproto"
-	"github.com/sjy-dv/nnv/pkg/distance"
-	"github.com/sjy-dv/nnv/pkg/gomath"
-	"github.com/sjy-dv/nnv/pkg/index"
+	"github.com/sjy-dv/coltt/gen/protoc/v2/phonyproto"
+	"github.com/sjy-dv/coltt/pkg/distance"
+	"github.com/sjy-dv/coltt/pkg/gomath"
+	"github.com/sjy-dv/coltt/pkg/index"
 	"google.golang.org/protobuf/proto"
 )
 
