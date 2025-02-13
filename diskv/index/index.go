@@ -1,6 +1,6 @@
 package index
 
-import "github.com/sjy-dv/nnv/pkg/wal"
+import "github.com/sjy-dv/coltt/pkg/wal"
 
 type Indexer interface {
 	Put(key []byte, position *wal.ChunkPosition) *wal.ChunkPosition

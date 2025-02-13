@@ -18,7 +18,7 @@
 package distance
 
 import (
-	"github.com/sjy-dv/nnv/pkg/distance/simd/sse"
+	"github.com/sjy-dv/coltt/pkg/distance/simd/sse"
 )
 
 type sseSpaceImpl struct{}

@@ -18,7 +18,7 @@
 package distance
 
 import (
-	"github.com/sjy-dv/nnv/pkg/distance/simd/avx"
+	"github.com/sjy-dv/coltt/pkg/distance/simd/avx"
 )
 
 type avxSpaceImpl struct{}

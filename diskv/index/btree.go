@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/google/btree"
-	"github.com/sjy-dv/nnv/pkg/wal"
+	"github.com/sjy-dv/coltt/pkg/wal"
 )
 
 type MemoryBTree struct {

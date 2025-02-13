@@ -17,7 +17,7 @@
 
 package distance
 
-import "github.com/sjy-dv/nnv/pkg/gomath"
+import "github.com/sjy-dv/coltt/pkg/gomath"
 
 type nativeSpaceImpl struct{}
 

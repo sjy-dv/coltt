@@ -15,6 +15,24 @@ require (
 
 require (
 	github.com/bits-and-blooms/bitset v1.12.0 // indirect
+	github.com/blevesearch/bleve/v2 v2.4.4 // indirect
+	github.com/blevesearch/bleve_index_api v1.1.12 // indirect
+	github.com/blevesearch/geo v0.1.20 // indirect
+	github.com/blevesearch/go-faiss v1.0.24 // indirect
+	github.com/blevesearch/go-porterstemmer v1.0.3 // indirect
+	github.com/blevesearch/gtreap v0.1.1 // indirect
+	github.com/blevesearch/mmap-go v1.0.4 // indirect
+	github.com/blevesearch/scorch_segment_api/v2 v2.2.16 // indirect
+	github.com/blevesearch/segment v0.9.1 // indirect
+	github.com/blevesearch/snowballstem v0.9.0 // indirect
+	github.com/blevesearch/upsidedown_store_api v1.0.2 // indirect
+	github.com/blevesearch/vellum v1.0.10 // indirect
+	github.com/blevesearch/zapx/v11 v11.3.10 // indirect
+	github.com/blevesearch/zapx/v12 v12.3.10 // indirect
+	github.com/blevesearch/zapx/v13 v13.3.10 // indirect
+	github.com/blevesearch/zapx/v14 v14.3.10 // indirect
+	github.com/blevesearch/zapx/v15 v15.3.16 // indirect
+	github.com/blevesearch/zapx/v16 v16.1.9-0.20241217210638-a0519e7caf3b // indirect
 	github.com/chewxy/math32 v1.11.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgraph-io/ristretto v1.0.0 // indirect
@@ -23,12 +41,15 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
+	github.com/golang/snappy v0.0.1 // indirect
 	github.com/google/flatbuffers v24.3.25+incompatible // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.0 // indirect
 	github.com/huandu/skiplist v1.2.1 // indirect
+	github.com/json-iterator/go v0.0.0-20171115153421-f7279a603ede // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect

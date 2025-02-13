@@ -4,7 +4,7 @@ import (
 	"runtime"
 
 	"github.com/rs/zerolog/log"
-	"github.com/sjy-dv/nnv/pkg/distancepq/asm"
+	"github.com/sjy-dv/coltt/pkg/distancepq/asm"
 	"golang.org/x/sys/cpu"
 )
 

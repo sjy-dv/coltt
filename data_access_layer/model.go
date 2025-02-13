@@ -22,7 +22,7 @@ import (
 
 	"github.com/RoaringBitmap/roaring"
 	"github.com/google/uuid"
-	"github.com/sjy-dv/nnv/pkg/hnsw"
+	"github.com/sjy-dv/coltt/pkg/hnsw"
 )
 
 func init() {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/sjy-dv/nnv/core"
+	"github.com/sjy-dv/coltt/core"
 	"google.golang.org/grpc"
 )
 

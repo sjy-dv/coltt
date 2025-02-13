@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/sjy-dv/nnv/edge"
+	"github.com/sjy-dv/coltt/edge"
 	"google.golang.org/grpc"
 )
 

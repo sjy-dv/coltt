@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/sjy-dv/nnv/pkg/snowflake"
+	"github.com/sjy-dv/coltt/pkg/snowflake"
 	"github.com/stretchr/testify/assert"
 )
 

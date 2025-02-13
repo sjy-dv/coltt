@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sjy-dv/nnv/pkg/concurrentmap"
+	"github.com/sjy-dv/coltt/pkg/concurrentmap"
 	"github.com/vmihailenco/msgpack/v5"
 	"google.golang.org/protobuf/types/known/structpb"
 )

@@ -9,7 +9,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/sjy-dv/nnv/pkg/bytebufferpool"
+	"github.com/sjy-dv/coltt/pkg/bytebufferpool"
 )
 
 type ChunkType = byte

@@ -4,7 +4,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/sjy-dv/nnv/edge"
+	"github.com/sjy-dv/coltt/edge"
 )
 
 const HNSW_VERTEX_EDGE_BYTES = 8 + 4

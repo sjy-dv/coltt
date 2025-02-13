@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/sjy-dv/nnv/pkg/gomath"
+	"github.com/sjy-dv/coltt/pkg/gomath"
 )
 
 var hnswSearchAlgorithmNames = [...]string{

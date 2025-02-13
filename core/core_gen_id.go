@@ -1,6 +1,6 @@
 package core
 
-import "github.com/sjy-dv/nnv/pkg/snowflake"
+import "github.com/sjy-dv/coltt/pkg/snowflake"
 
 var autogen *snowflake.Node
 

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/huandu/skiplist"
-	"github.com/sjy-dv/nnv/pkg/concurrentmap"
+	"github.com/sjy-dv/coltt/pkg/concurrentmap"
 )
 
 func BenchmarkIterGoMap(b *testing.B) {
