@@ -146,7 +146,7 @@ func (erpc *Edge) CreateCollection(ctx context.Context, req *edgeproto.Collectio
 			}
 			return
 		}
-		err = erpc.CommitCollection()
+		err = erpc.CommitCollection(req.GetCollectionName())
 		if err != nil {
 			erpc.Datas.Del(req.GetCollectionName())
 			erpc.VectorStore.DropCollection(req.GetCollectionName())
@@ -761,7 +761,7 @@ func (erpc *Edge) VectorSearch(ctx context.Context, req *edgeproto.SearchReq) (
 				return
 			}
 			candidate := new(edgeproto.Candidates)
-			candidate.Id = node.Metadata["_id"].(string)
+			// candidate.Id = node.Metadata["_id"].(string)
 			candidate.Metadata = st
 			candidate.Score = scoreHelper(node.Score, dist)
 			retval = append(retval, candidate)

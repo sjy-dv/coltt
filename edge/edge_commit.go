@@ -311,7 +311,7 @@ func (xx *Edge) CommitVector(collectionName string) error {
 	return nil
 }
 
-func (xx *Edge) CommitCollection() error {
+func (xx *Edge) CommitCollection(collectionName string) error {
 	_, err := os.Stat(collectionEdgeJson)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -330,6 +330,7 @@ func (xx *Edge) CommitCollection() error {
 			cols = append(cols, c)
 		}
 	}
+	cols = append(cols, collectionName)
 	c.Collections = cols
 	f, err := os.Create(collectionEdgeJson)
 	if err != nil {
