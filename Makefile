@@ -13,6 +13,14 @@ start-edge:
 docker-build-bin:
 	- env GOOS=linux go build -o ./bin/ cmd/root/main.go
 
+make-minio:
+	- docker run -p 9000:9000 -p 9001:9001 \
+  -e MINIO_ROOT_USER=minioadmin \
+  -e MINIO_ROOT_PASSWORD=minioadmin \
+  minio/minio server /data --console-address ":9001"
+
+
+
 compile-gogoproto:
 	@echo "Compiling proto files..."
 	mkdir -p $(GOGOPROTO_OUT_DIR)
