@@ -17,7 +17,7 @@ service ExperimentalMultiVectorRpc {
 
     rpc Index(IndexChange) returns (Response) {}
     rpc VectorSearch(SearchMultiIndex) returns (SearchResponse) {}
-    rpc HybridSearch(SearchHybridMultiIndex) returns (SearchResponse) {}
+    // rpc HybridSearch(SearchHybridMultiIndex) returns (SearchResponse) {}
 
 }
 
@@ -32,6 +32,7 @@ message Collection {
     Distance distance=3;
     Quantization quantization=4;
     uint32 dim=5;
+    bool versioning=6;
 }
 
 message CollectionResponse {
@@ -45,8 +46,8 @@ message Index {
     IndexType index_type=2;
     bool primary_key=3;
     bool enable_null=4;
-    bool fulltext=5;
-    bool filterable=6;
+    // bool fulltext=5;
+    // bool filterable=6;
 }
 
 enum IndexType {
@@ -120,20 +121,18 @@ message SearchMultiIndex {
     string collection_name=1;
     repeated MultiVectorIndex vector=2;
     uint64 topK=3;
-    map<string,string> filter=4;
-    bool with_latency=5;
-    bool high_resource_avaliable=6;
+    bool high_resource_avaliable=4;
 }
 
-message SearchHybridMultiIndex {
-    string collection_name=1;
-    repeated MultiVectorIndex vector=2;
-    uint64 topK=3;
-    map<string,string> filter=4;
-    string fulltext_search_query=5;
-    bool with_latency=6;
-    bool high_resource_avaliable=7;
-}
+// message SearchHybridMultiIndex {
+//     string collection_name=1;
+//     repeated MultiVectorIndex vector=2;
+//     uint64 topK=3;
+//     map<string,string> filter=4;
+//     string fulltext_search_query=5;
+//     bool with_latency=6;
+//     bool high_resource_avaliable=7;
+// }
 
 
 message MultiVectorIndex {
@@ -146,7 +145,6 @@ message SearchResponse {
     bool status = 1;
     Error error=2;
     repeated Candidates candidates=3;
-    string latency=4;
 }
 
 message Candidates {

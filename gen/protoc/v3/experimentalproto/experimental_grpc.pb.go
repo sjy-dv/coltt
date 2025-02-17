@@ -29,7 +29,6 @@ const (
 	ExperimentalMultiVectorRpc_Flush_FullMethodName             = "/experimentalproto.ExperimentalMultiVectorRpc/Flush"
 	ExperimentalMultiVectorRpc_Index_FullMethodName             = "/experimentalproto.ExperimentalMultiVectorRpc/Index"
 	ExperimentalMultiVectorRpc_VectorSearch_FullMethodName      = "/experimentalproto.ExperimentalMultiVectorRpc/VectorSearch"
-	ExperimentalMultiVectorRpc_HybridSearch_FullMethodName      = "/experimentalproto.ExperimentalMultiVectorRpc/HybridSearch"
 )
 
 // ExperimentalMultiVectorRpcClient is the client API for ExperimentalMultiVectorRpc service.
@@ -45,7 +44,6 @@ type ExperimentalMultiVectorRpcClient interface {
 	Flush(ctx context.Context, in *CollectionName, opts ...grpc.CallOption) (*Response, error)
 	Index(ctx context.Context, in *IndexChange, opts ...grpc.CallOption) (*Response, error)
 	VectorSearch(ctx context.Context, in *SearchMultiIndex, opts ...grpc.CallOption) (*SearchResponse, error)
-	HybridSearch(ctx context.Context, in *SearchHybridMultiIndex, opts ...grpc.CallOption) (*SearchResponse, error)
 }
 
 type experimentalMultiVectorRpcClient struct {
@@ -146,16 +144,6 @@ func (c *experimentalMultiVectorRpcClient) VectorSearch(ctx context.Context, in 
 	return out, nil
 }
 
-func (c *experimentalMultiVectorRpcClient) HybridSearch(ctx context.Context, in *SearchHybridMultiIndex, opts ...grpc.CallOption) (*SearchResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SearchResponse)
-	err := c.cc.Invoke(ctx, ExperimentalMultiVectorRpc_HybridSearch_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // ExperimentalMultiVectorRpcServer is the server API for ExperimentalMultiVectorRpc service.
 // All implementations should embed UnimplementedExperimentalMultiVectorRpcServer
 // for forward compatibility.
@@ -169,7 +157,6 @@ type ExperimentalMultiVectorRpcServer interface {
 	Flush(context.Context, *CollectionName) (*Response, error)
 	Index(context.Context, *IndexChange) (*Response, error)
 	VectorSearch(context.Context, *SearchMultiIndex) (*SearchResponse, error)
-	HybridSearch(context.Context, *SearchHybridMultiIndex) (*SearchResponse, error)
 }
 
 // UnimplementedExperimentalMultiVectorRpcServer should be embedded to have
@@ -205,9 +192,6 @@ func (UnimplementedExperimentalMultiVectorRpcServer) Index(context.Context, *Ind
 }
 func (UnimplementedExperimentalMultiVectorRpcServer) VectorSearch(context.Context, *SearchMultiIndex) (*SearchResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method VectorSearch not implemented")
-}
-func (UnimplementedExperimentalMultiVectorRpcServer) HybridSearch(context.Context, *SearchHybridMultiIndex) (*SearchResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method HybridSearch not implemented")
 }
 func (UnimplementedExperimentalMultiVectorRpcServer) testEmbeddedByValue() {}
 
@@ -391,24 +375,6 @@ func _ExperimentalMultiVectorRpc_VectorSearch_Handler(srv interface{}, ctx conte
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ExperimentalMultiVectorRpc_HybridSearch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SearchHybridMultiIndex)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ExperimentalMultiVectorRpcServer).HybridSearch(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ExperimentalMultiVectorRpc_HybridSearch_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ExperimentalMultiVectorRpcServer).HybridSearch(ctx, req.(*SearchHybridMultiIndex))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // ExperimentalMultiVectorRpc_ServiceDesc is the grpc.ServiceDesc for ExperimentalMultiVectorRpc service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -451,10 +417,6 @@ var ExperimentalMultiVectorRpc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "VectorSearch",
 			Handler:    _ExperimentalMultiVectorRpc_VectorSearch_Handler,
-		},
-		{
-			MethodName: "HybridSearch",
-			Handler:    _ExperimentalMultiVectorRpc_HybridSearch_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
