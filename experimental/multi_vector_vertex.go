@@ -69,6 +69,10 @@ func (vertex *multiVectorVertex) MultiVertexSearch(topK uint64, multiVectors []*
 	[]*NearestNeighbor, error,
 ) {
 	for idx, vectors := range multiVectors {
+		c, ok := vertex.vertexMetadata.IndexType[vectors.GetIndexName()]
+		if !ok || experimentalproto.IndexType(c.IndexType) != experimentalproto.IndexType_Vector {
+			return nil, fmt.Errorf("index [%s] is not defined vector fields", vectors.GetIndexName())
+		}
 		if vertex.vertexMetadata.Dimensional() != uint32(len(vectors.Vector)) {
 			return nil, fmt.Errorf("index [%s] expect dimension: [%d], but got [%d]", vectors.GetIndexName(), vertex.vertexMetadata.Dimensional(), len(vectors.Vector))
 		}
@@ -92,7 +96,7 @@ func (vertex *multiVectorVertex) MultiVertexSearch(topK uint64, multiVectors []*
 				for _, vectors := range multiVectors {
 					if vectors.IncludeOrNot {
 						sim := vertex.distance.Distance(node.MultiVectors[vectors.IndexName], vectors.GetVector())
-						score += (scoreHelper(sim, vertex.distance.Type()) * (1 + vectors.Ratio))
+						score += (scoreHelper(sim, vertex.distance.Type()) * (float32(vectors.Ratio) / 100))
 					}
 				}
 				localpq.Add(&NearestNeighbor{
@@ -101,7 +105,7 @@ func (vertex *multiVectorVertex) MultiVertexSearch(topK uint64, multiVectors []*
 					Score:    score,
 				})
 			}
-			vertex.verticesMu[shard].Unlock()
+			vertex.verticesMu[shard].RUnlock()
 			results[shard].NN = localpq.ToSlice()
 		}(shard)
 	}

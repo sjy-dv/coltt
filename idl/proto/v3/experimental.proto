@@ -108,7 +108,8 @@ message IndexChange {
     string id=1;
     string collection_name=2;
     google.protobuf.Struct metadata=3;
-    IndexChagedType changed=4;
+    repeated VectorIndex vectors=4;
+    IndexChagedType changed=5;
 }
 
 enum IndexChagedType {
@@ -134,6 +135,10 @@ message SearchMultiIndex {
 //     bool high_resource_avaliable=7;
 // }
 
+message VectorIndex {
+    string index_name = 1;
+    repeated float vector=2;
+}
 
 message MultiVectorIndex {
     string index_name = 1;
@@ -141,7 +146,7 @@ message MultiVectorIndex {
     // false is not include, true is include
     // when false, this index dealing nil in coltt, internal process
     bool include_or_not = 3;
-    float ratio=4;
+    uint32 ratio=4;
 }
 
 

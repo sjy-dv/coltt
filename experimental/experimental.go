@@ -78,10 +78,6 @@ func (emv *ExperimentalMultiVector) CreateCollection(ctx context.Context,
 			c <- failFn(fmt.Sprintf(edge.ErrCollectionExists, req.GetCollectionName()))
 			return
 		}
-		if err := basicConditionAnalyzer(req.GetIndex()); err != nil {
-			c <- failFn(err.Error())
-			return
-		}
 		err := emv.Storage.CreateBucket(req.GetCollectionName())
 		if err != nil {
 			c <- failFn(err.Error())
@@ -318,6 +314,7 @@ func (emv *ExperimentalMultiVector) LoadCollection(ctx context.Context,
 			c <- successFn()
 			return
 		}
+		emv.VectorStore.FillEmpty(req.GetCollectionName())
 		metadata, err := emv.loadMetadataHelper(req.GetCollectionName())
 		if err != nil {
 			c <- failFn(err.Error())
@@ -338,6 +335,7 @@ func (emv *ExperimentalMultiVector) LoadCollection(ctx context.Context,
 			c <- failFn(err.Error())
 			return
 		}
+		newAuthorizationBucketHelper(req.GetCollectionName())
 		emv.BucketLifeCycleJob(req.GetCollectionName())
 		c <- successFn()
 	}()
@@ -519,7 +517,7 @@ func (emv *ExperimentalMultiVector) Index(ctx context.Context,
 				c <- failFn(err.Error())
 				return
 			}
-			if err := emv.VectorStore.ChangedVertex(req.GetCollectionName(), req.GetId(), req.GetMetadata().AsMap()); err != nil {
+			if err := emv.VectorStore.ChangedVertex(req.GetCollectionName(), req.GetId(), req.GetMetadata().AsMap(), req.GetVectors()); err != nil {
 				c <- failFn(err.Error())
 				return
 			}

@@ -7,19 +7,22 @@ import (
 	"github.com/sjy-dv/coltt/gen/protoc/v3/experimentalproto"
 )
 
-func basicConditionAnalyzer(indexes []*experimentalproto.Index) error {
-	for _, index := range indexes {
-		if index.IndexType == experimentalproto.IndexType_Vector {
-			if index.EnableNull {
-				return fmt.Errorf("index: [%s] is vector, vector is not allowed null", index.IndexName)
-			}
-		}
-	}
-	return nil
-}
+// func basicConditionAnalyzer(indexes []*experimentalproto.VectorIndex) error {
+// 	for _, index := range indexes {
+// 		if index.IndexType == experimentalproto.IndexType_Vector {
+// 			if index.EnableNull {
+// 				return fmt.Errorf("index: [%s] is vector, vector is not allowed null", index.IndexName)
+// 			}
+// 		}
+// 	}
+// 	return nil
+// }
 
 func metadataAnalyzer(inMap map[string]interface{}, analyzer map[string]IndexFeature) error {
 	for _, column := range analyzer {
+		if experimentalproto.IndexType(column.IndexType) == experimentalproto.IndexType_Vector {
+			continue
+		}
 		value, ok := inMap[column.IndexName]
 		if !ok {
 			if column.EnableNull {
@@ -101,13 +104,6 @@ func metadataAnalyzer(inMap map[string]interface{}, analyzer map[string]IndexFea
 					experimentalproto.IndexChagedType_name[column.IndexType])
 			}
 			break
-		case 4:
-			_, ok := value.([]float32)
-			if !ok {
-				return fmt.Errorf("index: [%s] type error, expect Type: %s", column.IndexName,
-					experimentalproto.IndexChagedType_name[column.IndexType])
-			}
-			break
 		}
 	}
 	return nil
@@ -123,22 +119,19 @@ func defaultType(typeLevel int32) interface{} {
 		return float64(0)
 	case 3:
 		return false
-	case 4:
-		return []float32{}
 	default:
 		return nil
 	}
 }
-
 func validateRatio(multiVectors []*experimentalproto.MultiVectorIndex) error {
-	ratio := 0.0
+	var ratio uint32 = 0
 	for _, vector := range multiVectors {
 		if vector.IncludeOrNot {
-			ratio += float64(vector.GetRatio())
+			ratio += vector.GetRatio()
 		}
 	}
-	if ratio > 1 || ratio < 1 {
-		return errors.New("The sum of the ratios must be 1.")
+	if int(ratio) != 100 {
+		return errors.New("sum of the ratios must be 100")
 	}
 	return nil
 }

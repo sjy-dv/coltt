@@ -78,6 +78,7 @@ require (
 	github.com/gofrs/uuid/v5 v5.3.0
 	github.com/google/btree v1.1.3
 	github.com/google/orderedcode v0.0.1
+	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/klauspost/cpuid v1.3.1
 	github.com/minio/minio-go/v7 v7.0.86

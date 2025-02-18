@@ -1,6 +1,8 @@
 package experimental
 
-import "sync"
+import (
+	"sync"
+)
 
 var stateManager *collectionCoordinator
 

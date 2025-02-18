@@ -21,7 +21,7 @@ type PriorityQueue struct {
 
 func NewPriorityQueue(maxSize int) *PriorityQueue {
 	return &PriorityQueue{
-		queue:   priorityqueue.NewMaxPriorityQueue(),
+		queue:   priorityqueue.NewMinPriorityQueue(),
 		maxSize: maxSize,
 	}
 }
