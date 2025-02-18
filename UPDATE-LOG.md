@@ -1,3 +1,36 @@
+## 🎉 Release Update - 2025.02.13
+
+For the full update history, see [UPDATE HISTORY](./UPDATE-LOG.md).
+
+### 🔹 coltt-Edge
+
+- **Edge Data Pattern Changes and Performance Upgrades**: Edge has now implemented the shard data pattern of HNSW (Hierarchical Navigable Small World). Additionally, it no longer retrieves data from disk, thereby reducing overhead. However, some performance is still sacrificed to accommodate metadata changes, and there are limitations due to linear search.
+
+- **Addition of highAvailableResource Option**: This is the most critical feature of the current Edge update. To overcome the shortcomings of linear search, parallel searches per shard are supported. The primary objective of Edge is to operate on specific devices or edge environments, which experience less traffic compared to central cloud infrastructures. While parallel goroutines can cause context switching overhead under excessive traffic, in scenarios where operations need to be performed in a specific small dataset space with precision considerations, enabling this option can support faster searches. Currently, with this option disabled, searching through 1 million datasets takes approximately 0.2 to 0.3 seconds. When the option is enabled, the search time reduces to about 0.02 to 0.03 seconds.
+  Similar to Milvus, which internally uses a goroutine worker pool, coltt generates goroutines based on a fixed shard size. It is expected to perform well on edge environments. When operating in cloud environments, developers may need to adjust this option according to the specific environment, or alternatively, consider using coltt-Core.
+
+---
+
+### 🔹 Coltt
+
+- **Progress on PQ and BQ**: Continuous review of PQ and BQ is underway.
+- **Integration of Existing Quantization**: Planning to proceed with quantization integration (Report work is delayed due to a heavy workload. 😢)
+
+---
+
+## 🚀 Update Preview
+
+# Data Insertion
+
+- **Vector Dimension Validation:** During data insertion, vector dimension validation is performed.
+- **Index Range Error Elimination:** This process resolves index range errors caused by incorrect dimension entries.
+
+# Index Storage Enhancement via MinIO
+
+- **Improved Index Storage:** Index storage capabilities are enhanced using MinIO.
+- **Faster Loading and Saving:** This enables rapid load and save operations.
+- **Robust Disaster Recovery:** Ensures reliable disaster recovery.
+
 ## 🎉 Release Update - 2024.12.09
 
 ### 🔹 coltt-Edge
