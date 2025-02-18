@@ -21,6 +21,7 @@ import (
 	"context"
 
 	edgelite "github.com/sjy-dv/coltt/root_layer/edge-lite"
+	"github.com/sjy-dv/coltt/root_layer/experimentalLayer"
 	"github.com/sjy-dv/coltt/root_layer/root"
 )
 
@@ -29,6 +30,8 @@ import (
 func NewRootLayer(mode string) error {
 	if mode == "edge" {
 		return edgelite.NewEdgeLite()
+	} else if mode == "experimental" {
+		return experimentalLayer.NewExperimentalLayer()
 	}
 	return root.NewRoot()
 }
@@ -36,6 +39,8 @@ func NewRootLayer(mode string) error {
 func StableRelease(ctx context.Context, mode string) error {
 	if mode == "edge" {
 		return edgelite.StableRelease(ctx)
+	} else if mode == "experimental" {
+		return experimentalLayer.StableRelease(ctx)
 	}
 	return root.StableRelease(ctx)
 }

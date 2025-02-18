@@ -39,3 +39,10 @@ func ShardVertex(x uint64, c uint64) uint64 {
 	hashValue := hasher.Sum64()
 	return hashValue % c
 }
+
+func ShardVertexV2(s string, c uint64) uint64 {
+	hasher := fnv.New64a()
+	hasher.Write([]byte(s))
+	hashValue := hasher.Sum64()
+	return hashValue % c
+}

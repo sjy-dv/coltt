@@ -11,6 +11,7 @@ import (
 
 	"github.com/sjy-dv/coltt/gen/protoc/v3/experimentalproto"
 	"github.com/sjy-dv/coltt/pkg/distance"
+	"github.com/sjy-dv/coltt/pkg/sharding"
 )
 
 type multiVectorVertex struct {
@@ -40,16 +41,78 @@ func newMultiVectorVertex(collectionName string, metadata Metadata) *multiVector
 	return vecspace
 }
 
-func (vertex *multiVectorVertex) InsertVertex(collectionName string, Id string, edge VertexEdge) error {
+func (vertex *multiVectorVertex) ChangedVertex(Id string, edge VertexEdge) error {
+	for key, vec := range edge.MultiVectors {
+		if vertex.vertexMetadata.Dimensional() != uint32(vec.Dimensions()) {
+			return fmt.Errorf("index [%s] expect dimension: [%d], but got [%d]", key, vertex.vertexMetadata.Dimensional(), vec.Dimensions())
+		}
+		if vertex.distance.Type() == T_COSINE {
+			edge.MultiVectors[key] = Normalize(vec)
+		}
+	}
+	shardArea := sharding.ShardVertexV2(Id, uint64(VERTEX_SHARD_COUNT))
+	vertex.verticesMu[shardArea].Lock()
+	defer vertex.verticesMu[shardArea].Unlock()
+	vertex.vertices[shardArea][Id] = edge
 	return nil
 }
 
-func (vertex *multiVectorVertex) UpdateVertex(collectionName string, Id string, edge VertexEdge) error {
+func (vertex *multiVectorVertex) RemoveVertex(Id string) error {
+	shardArea := sharding.ShardVertexV2(Id, uint64(VERTEX_SHARD_COUNT))
+	vertex.verticesMu[shardArea].Lock()
+	defer vertex.verticesMu[shardArea].Unlock()
+	delete(vertex.vertices[shardArea], Id)
 	return nil
 }
 
-func (vertex *multiVectorVertex) RemoveVertex(collectionName string, Id string) error {
-	return nil
+func (vertex *multiVectorVertex) MultiVertexSearch(topK uint64, multiVectors []*experimentalproto.MultiVectorIndex) (
+	[]*NearestNeighbor, error,
+) {
+	for idx, vectors := range multiVectors {
+		if vertex.vertexMetadata.Dimensional() != uint32(len(vectors.Vector)) {
+			return nil, fmt.Errorf("index [%s] expect dimension: [%d], but got [%d]", vectors.GetIndexName(), vertex.vertexMetadata.Dimensional(), len(vectors.Vector))
+		}
+		if vectors.IncludeOrNot {
+			if vertex.distance.Type() == T_COSINE {
+				multiVectors[idx].Vector = Normalize(vectors.GetVector())
+			}
+		}
+	}
+	pq := NewPriorityQueue(int(topK))
+	results := make([]shardNeighbor, VERTEX_SHARD_COUNT)
+	var shardManager sync.WaitGroup
+	shardManager.Add(VERTEX_SHARD_COUNT)
+	for shard := 0; shard < VERTEX_SHARD_COUNT; shard++ {
+		go func(shard int) {
+			defer shardManager.Done()
+			localpq := NewPriorityQueue(int(topK))
+			vertex.verticesMu[shard].RLock()
+			for pk, node := range vertex.vertices[shard] {
+				score := float32(0)
+				for _, vectors := range multiVectors {
+					if vectors.IncludeOrNot {
+						sim := vertex.distance.Distance(node.MultiVectors[vectors.IndexName], vectors.GetVector())
+						score += (scoreHelper(sim, vertex.distance.Type()) * (1 + vectors.Ratio))
+					}
+				}
+				localpq.Add(&NearestNeighbor{
+					Id:       pk,
+					Metadata: node.Metadata,
+					Score:    score,
+				})
+			}
+			vertex.verticesMu[shard].Unlock()
+			results[shard].NN = localpq.ToSlice()
+		}(shard)
+	}
+	shardManager.Wait()
+	for _, res := range results {
+		for _, item := range res.NN {
+			pq.Add(item)
+		}
+	}
+
+	return pq.ToSlice(), nil
 }
 
 func (vertex *multiVectorVertex) SaveVertexMetadata() ([]byte, error) {

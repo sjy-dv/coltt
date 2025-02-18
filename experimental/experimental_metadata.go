@@ -15,7 +15,6 @@ type Metadata struct {
 type IndexFeature struct {
 	IndexName  string `json:"index_name"`
 	IndexType  int32  `json:"index_type"`
-	PrimaryKey bool   `json:"primary_key"`
 	EnableNull bool   `json:"enable_null"`
 }
 

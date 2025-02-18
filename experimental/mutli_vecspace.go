@@ -10,9 +10,10 @@ import (
 )
 
 type vectorVertex interface {
-	InsertVertex(collectionName string, Id string, edge VertexEdge) error
-	UpdateVertex(collectionName string, Id string, edge VertexEdge) error
-	RemoveVertex(collectionName string, Id string) error
+	ChangedVertex(Id string, edge VertexEdge) error
+	RemoveVertex(Id string) error
+	MultiVertexSearch(topK uint64, multiVectors []*experimentalproto.MultiVectorIndex) (
+		[]*NearestNeighbor, error)
 	SaveVertexMetadata() ([]byte, error)
 	LoadVertexMetadata(collectionName string, data []byte) error
 	SaveVertex() ([]byte, error)
@@ -97,4 +98,25 @@ func (multiSpace *MultiVectorSpace) DestroySpace(collectionName string) {
 	multiSpace.mvsLock.Lock()
 	delete(multiSpace.Space, collectionName)
 	multiSpace.mvsLock.Unlock()
+}
+
+func (multiSpace *MultiVectorSpace) ChangedVertex(collectioName string, Id string, metadata map[string]interface{}) error {
+	feautres := multiSpace.Indexer(collectioName)
+	newVertex := VertexEdge{}
+	for key, data := range feautres {
+		if experimentalproto.IndexType(data.IndexType) == experimentalproto.IndexType_Vector {
+			newVertex.MultiVectors[key] = metadata[key].([]float32)
+			delete(metadata, key)
+		}
+	}
+	newVertex.Metadata = metadata
+	return multiSpace.Space[collectioName].ChangedVertex(Id, newVertex)
+}
+
+func (multiSpace *MultiVectorSpace) RemoveVertex(collectionName string, Id string) error {
+	return multiSpace.Space[collectionName].RemoveVertex(Id)
+}
+
+func (multiSpace *MultiVectorSpace) MultiVertexSearch(collectioName string, topK uint64, multiVectors []*experimentalproto.MultiVectorIndex) ([]*NearestNeighbor, error) {
+	return multiSpace.Space[collectioName].MultiVertexSearch(topK, multiVectors)
 }

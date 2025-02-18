@@ -10,6 +10,9 @@ start:
 start-edge:
 	- go run cmd/root/main.go -mode=edge
 
+start-rc:
+	- go run cmd/root/main.go -mode=experimental
+
 docker-build-bin:
 	- env GOOS=linux go build -o ./bin/ cmd/root/main.go
 

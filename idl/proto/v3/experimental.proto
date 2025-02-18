@@ -44,8 +44,7 @@ message CollectionResponse {
 message Index {
     string index_name=1;
     IndexType index_type=2;
-    bool primary_key=3;
-    bool enable_null=4;
+    bool enable_null=3;
     // bool fulltext=5;
     // bool filterable=6;
 }
@@ -113,9 +112,9 @@ message IndexChange {
 }
 
 enum IndexChagedType {
-    INSERT = 0;
-    UPDATE = 1;
-    DELETE = 2;
+    //Insert Or Update
+    CHANGED = 0;
+    DELETE = 1;
 }
 
 message SearchMultiIndex {
@@ -142,6 +141,7 @@ message MultiVectorIndex {
     // false is not include, true is include
     // when false, this index dealing nil in coltt, internal process
     bool include_or_not = 3;
+    float ratio=4;
 }
 
 

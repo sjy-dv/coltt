@@ -8,6 +8,7 @@ import (
 	"github.com/sjy-dv/coltt/edge"
 	"github.com/sjy-dv/coltt/gen/protoc/v3/experimentalproto"
 	"github.com/sjy-dv/coltt/pkg/minio"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type ExperimentalMultiVector struct {
@@ -75,6 +76,10 @@ func (emv *ExperimentalMultiVector) CreateCollection(ctx context.Context,
 		}
 		if hasCollection(req.GetCollectionName()) {
 			c <- failFn(fmt.Sprintf(edge.ErrCollectionExists, req.GetCollectionName()))
+			return
+		}
+		if err := basicConditionAnalyzer(req.GetIndex()); err != nil {
+			c <- failFn(err.Error())
 			return
 		}
 		err := emv.Storage.CreateBucket(req.GetCollectionName())
@@ -333,6 +338,7 @@ func (emv *ExperimentalMultiVector) LoadCollection(ctx context.Context,
 			c <- failFn(err.Error())
 			return
 		}
+		emv.BucketLifeCycleJob(req.GetCollectionName())
 		c <- successFn()
 	}()
 	res := <-c
@@ -465,6 +471,130 @@ func (emv *ExperimentalMultiVector) Flush(ctx context.Context,
 			return
 		}
 		c <- successFn()
+	}()
+	res := <-c
+	return res.Result, res.Error
+}
+
+func (emv *ExperimentalMultiVector) Index(ctx context.Context,
+	req *experimentalproto.IndexChange) (
+	*experimentalproto.Response, error,
+) {
+	type reply struct {
+		Result *experimentalproto.Response
+		Error  error
+	}
+	c := make(chan reply, 1)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				c <- reply{
+					Error: fmt.Errorf(panicr, r),
+				}
+			}
+		}()
+		failFn := func(errMsg string) reply {
+			return reply{
+				Result: &experimentalproto.Response{
+					Status: false,
+					Error:  errorWrap(errMsg),
+				},
+			}
+		}
+		successFn := func() reply {
+			return reply{
+				Result: &experimentalproto.Response{
+					Status: true,
+				},
+			}
+		}
+		if err := authorization(req.GetCollectionName()); err != nil {
+			c <- failFn(err.Error())
+			return
+		}
+
+		switch req.GetChanged() {
+		case experimentalproto.IndexChagedType_CHANGED:
+			if err := metadataAnalyzer(req.GetMetadata().AsMap(), emv.VectorStore.Indexer(req.GetCollectionName())); err != nil {
+				c <- failFn(err.Error())
+				return
+			}
+			if err := emv.VectorStore.ChangedVertex(req.GetCollectionName(), req.GetId(), req.GetMetadata().AsMap()); err != nil {
+				c <- failFn(err.Error())
+				return
+			}
+		case experimentalproto.IndexChagedType_DELETE:
+			if err := emv.VectorStore.RemoveVertex(req.GetCollectionName(), req.GetId()); err != nil {
+				c <- failFn(err.Error())
+				return
+			}
+		default:
+			c <- failFn("unsupported changed type")
+			return
+		}
+		c <- successFn()
+	}()
+	res := <-c
+	return res.Result, res.Error
+}
+
+func (emv *ExperimentalMultiVector) VectorSearch(ctx context.Context,
+	req *experimentalproto.SearchMultiIndex) (
+	*experimentalproto.SearchResponse, error,
+) {
+	type reply struct {
+		Result *experimentalproto.SearchResponse
+		Error  error
+	}
+	c := make(chan reply, 1)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				c <- reply{
+					Error: fmt.Errorf(panicr, r),
+				}
+			}
+		}()
+		failFn := func(errMsg string) reply {
+			return reply{
+				Result: &experimentalproto.SearchResponse{
+					Status: false,
+					Error:  errorWrap(errMsg),
+				},
+			}
+		}
+		if err := authorization(req.GetCollectionName()); err != nil {
+			c <- failFn(err.Error())
+			return
+		}
+		if err := validateRatio(req.GetVector()); err != nil {
+			c <- failFn(err.Error())
+			return
+		}
+		recalls, err := emv.VectorStore.MultiVertexSearch(req.GetCollectionName(), req.GetTopK(), req.GetVector())
+		if err != nil {
+			c <- failFn(err.Error())
+			return
+		}
+		retval := make([]*experimentalproto.Candidates, 0, len(recalls))
+		for _, recall := range recalls {
+			st, err := structpb.NewStruct(recall.Metadata)
+			if err != nil {
+				c <- failFn(err.Error())
+				return
+			}
+			candidate := new(experimentalproto.Candidates)
+			candidate.Id = recall.Id
+			candidate.Metadata = st
+			candidate.Score = recall.Score
+			retval = append(retval, candidate)
+		}
+		c <- reply{
+			Result: &experimentalproto.SearchResponse{
+				Status:     true,
+				Candidates: retval,
+			},
+		}
 	}()
 	res := <-c
 	return res.Result, res.Error
