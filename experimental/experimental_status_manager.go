@@ -6,40 +6,40 @@ var stateManager *collectionCoordinator
 
 func NewStateManager() {
 	stateManager = &collectionCoordinator{
-		checker: &collectionExistChecker{
+		Exists: &collectionExistChecker{
 			collections: make(map[string]bool),
 		},
-		auth: &authorizationCollection{
+		Load: &authorizationCollection{
 			collections: make(map[string]bool),
 		},
 	}
 }
 
 type collectionCoordinator struct {
-	checker *collectionExistChecker
-	auth    *authorizationCollection
+	Exists *collectionExistChecker
+	Load   *authorizationCollection
 }
 
 type collectionExistChecker struct {
-	cecLock     sync.RWMutex
+	Lock        sync.RWMutex
 	collections map[string]bool
 }
 
 type authorizationCollection struct {
 	collections map[string]bool
-	authLock    sync.RWMutex
+	Lock        sync.RWMutex
 }
 
 func hasCollection(collectionName string) bool {
-	stateManager.checker.cecLock.RLock()
-	exists := stateManager.checker.collections[collectionName]
-	stateManager.checker.cecLock.RUnlock()
+	stateManager.Exists.Lock.RLock()
+	exists := stateManager.Exists.collections[collectionName]
+	stateManager.Exists.Lock.RUnlock()
 	return exists
 }
 
 func alreadyLoadCollection(collectionName string) bool {
-	stateManager.auth.authLock.RLock()
-	exists := stateManager.auth.collections[collectionName]
-	stateManager.auth.authLock.RUnlock()
+	stateManager.Load.Lock.RLock()
+	exists := stateManager.Load.collections[collectionName]
+	stateManager.Load.Lock.RUnlock()
 	return exists
 }

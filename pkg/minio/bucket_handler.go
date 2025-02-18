@@ -28,6 +28,18 @@ func NewMinio(endPoint string) (*MinioAPI, error) {
 	}, nil
 }
 
+func (api *MinioAPI) LoadBucketList() ([]string, error) {
+	buckets, err := api.session.ListBuckets(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	lists := make([]string, 0, len(buckets))
+	for _, bucket := range buckets {
+		lists = append(lists, bucket.Name)
+	}
+	return lists, nil
+}
+
 func (api *MinioAPI) ExistsBucket(bucketName string) (bool, error) {
 	exists, err := api.session.BucketExists(context.Background(), bucketName)
 	if err != nil {
