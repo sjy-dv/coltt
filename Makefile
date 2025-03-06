@@ -1,8 +1,8 @@
 GOGOPROTO_SRC_DIR=./idl/gogoproto/v1
 GOGOPROTO_OUT_DIR=./gen/gogoprotoc/v1
-PROTO_SRC_DIR=./idl/proto/v3
-PROTO_OUT_DIR=./gen/protoc/v3
-COMPILE_VERSION=V3
+PROTO_SRC_DIR=./idl/proto/v4
+PROTO_OUT_DIR=./gen/protoc/v4
+COMPILE_VERSION=V4
 
 start:
 	- go run cmd/root/main.go -mode=root
