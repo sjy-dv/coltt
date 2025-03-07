@@ -7,13 +7,13 @@ import (
 )
 
 func main() {
-
-	idx := inverted.NewBitmapIndex()
+	var idx *inverted.BitmapIndex
+	idx = inverted.NewBitmapIndex()
 
 	_ = idx.Add(00001, map[string]interface{}{"age": 22, "name": "A", "gender": true})
 	_ = idx.Add(00002, map[string]interface{}{"age": 21, "name": "B", "gender": true})
 	_ = idx.Add(00003, map[string]interface{}{"age": 20, "name": "C", "gender": true})
-	_ = idx.Add(00004, map[string]interface{}{"age": 27, "name": "C", "gender": false})
+	_ = idx.Add(00003, map[string]interface{}{"age": 27, "name": "C", "gender": false})
 	_ = idx.Add(00005, map[string]interface{}{"age": 25, "name": "C", "gender": true})
 	_ = idx.Add(00006, map[string]interface{}{"age": 19, "name": "D", "gender": true})
 	_ = idx.Add(00007, map[string]interface{}{"age": 30, "name": "E", "gender": true})
@@ -48,14 +48,14 @@ func main() {
 	}
 	log.Println(resMulti)
 
-	ageFilterM = inverted.NewFilter("age", inverted.OpGreaterThanEqual, 20)
+	ageFilterM = inverted.NewFilter("age", inverted.OpGreaterThan, 10)
 	nameFilterM = inverted.NewFilter("name", inverted.OpEqual, "C")
-	genderFilterM := inverted.NewFilter("gender", inverted.OpNotEqual, true)
+	// genderFilterM := inverted.NewFilter("gender", inverted.OpNotEqual, true)
 	resMulti, err = idx.SearchMultiFilter([]*inverted.Filter{
-		ageFilterM, nameFilterM, genderFilterM,
+		ageFilterM, nameFilterM,
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println(resMulti)
+	log.Println(resMulti, 111)
 }

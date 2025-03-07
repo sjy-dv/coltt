@@ -1,52 +1,60 @@
 package edge
 
 import (
+	"bytes"
 	"fmt"
 	"math"
-	"os"
 
-	"github.com/sjy-dv/coltt/gen/protoc/v3/edgeproto"
-	"github.com/vmihailenco/msgpack/v5"
+	"github.com/rs/zerolog/log"
+	"github.com/sjy-dv/coltt/gen/protoc/v4/edgepb"
+	"github.com/sjy-dv/coltt/pkg/inverted"
 )
 
-func errorWrap(errMsg string) *edgeproto.Error {
-	return &edgeproto.Error{
+func (helper *Edge) LoadAuthorizationBuckets() error {
+	authorizationBuckets, err := helper.Storage.LoadBucketList()
+	if err != nil {
+		return err
+	}
+	stateManager.Exists.Lock.Lock()
+	defer stateManager.Exists.Lock.Unlock()
+	for _, bucket := range authorizationBuckets {
+		stateManager.Exists.collections[bucket] = true
+	}
+	return nil
+}
+
+func errorWrap(errMsg string) *edgepb.Error {
+	return &edgepb.Error{
 		ErrorMessage: errMsg,
-		ErrorCode:    edgeproto.ErrorCode_INTERNAL_FUNC_ERROR,
+		ErrorCode:    edgepb.ErrorCode_INTERNAL_FUNC_ERROR,
 	}
 }
 
-func stateTrueHelper(collectionName string) {
-	stateManager.checker.cecLock.Lock()
-	defer stateManager.checker.cecLock.Unlock()
-	stateManager.auth.authLock.Lock()
-	defer stateManager.auth.authLock.Unlock()
-	stateManager.checker.collections[collectionName] = true
-	stateManager.auth.collections[collectionName] = true
+func newAuthorizationBucketHelper(collectionName string) {
+	stateManager.Exists.Lock.Lock()
+	stateManager.Exists.collections[collectionName] = true
+	stateManager.Exists.Lock.Unlock()
+	stateManager.Load.Lock.Lock()
+	stateManager.Load.collections[collectionName] = true
+	stateManager.Load.Lock.Unlock()
 }
 
-func stateRegistHelper(collectionName string) {
-	stateManager.checker.cecLock.Lock()
-	defer stateManager.checker.cecLock.Unlock()
-	stateManager.checker.collections[collectionName] = true
+func eliminateBucketMemoryHelper(collectionName string) {
+	stateManager.Load.Lock.Lock()
+	delete(stateManager.Load.collections, collectionName)
+	stateManager.Load.Lock.Unlock()
 }
 
-func stateFalseHelper(collectionName string) {
-	stateManager.auth.authLock.Lock()
-	defer stateManager.auth.authLock.Unlock()
-	stateManager.auth.collections[collectionName] = false
+func destroyBucketHelper(collectionName string) {
+	stateManager.Exists.Lock.Lock()
+	delete(stateManager.Exists.collections, collectionName)
+	stateManager.Exists.Lock.Unlock()
+	stateManager.Load.Lock.Lock()
+	delete(stateManager.Load.collections, collectionName)
+	stateManager.Load.Lock.Unlock()
 }
 
-func stateDestroyHelper(collectionName string) {
-	stateManager.auth.authLock.Lock()
-	defer stateManager.auth.authLock.Unlock()
-	stateManager.checker.cecLock.Lock()
-	defer stateManager.checker.cecLock.Unlock()
-	delete(stateManager.auth.collections, collectionName)
-	delete(stateManager.checker.collections, collectionName)
-}
-
-func collectionStatusHelper(collectionName string) error {
+func authorization(collectionName string) error {
 	if !hasCollection(collectionName) {
 		return fmt.Errorf(ErrCollectionNotFound, collectionName)
 	}
@@ -56,175 +64,93 @@ func collectionStatusHelper(collectionName string) error {
 	return nil
 }
 
-func protoDistQuantizationHelper(dist edgeproto.Distance, quantiz edgeproto.Quantization) (string, string) {
-	return func() string {
-			if dist == edgeproto.Distance_Cosine {
-				return COSINE
-			}
-			return EUCLIDEAN
-		}(), func() string {
-			if quantiz == edgeproto.Quantization_F16 {
-				return F16_QUANTIZATION
-			}
-			if quantiz == edgeproto.Quantization_F8 {
-				return F8_QUANTIZATION
-			}
-			if quantiz == edgeproto.Quantization_BF16 {
-				return BF16_QUANTIZATION
-			}
-			return NONE_QAUNTIZATION
-		}()
-
+func (helper *Edge) saveMetadataHelper(collectionName string, data []byte) error {
+	return helper.Storage.PutObject(collectionName, fmt.Sprintf("%s.meta.json", collectionName), bytes.NewReader(data), int64(len(data)))
 }
 
-func allremover(collectionName string) {
-	os.Remove(fmt.Sprintf(edgeData, collectionName))
-	os.Remove(fmt.Sprintf(edgeIndex, collectionName))
-	os.Remove(fmt.Sprintf(edgeVector, collectionName))
-	os.Remove(fmt.Sprintf(edgeConfig, collectionName))
+func (helper *Edge) saveVertexHelper(collectionName string, data []byte) error {
+	return helper.Storage.PutObject(collectionName, fmt.Sprintf("%s.vertex", collectionName), bytes.NewReader(data), int64(len(data)))
 }
 
-func (helper *Edge) memFree(collectionName string) {
-	helper.Datas.Del(collectionName)
+func (helper *Edge) saveInvertedIndexHelper(collectionName string, data []byte) error {
+	return helper.Storage.PutObject(collectionName, fmt.Sprintf("%s.inverted.raw", collectionName), bytes.NewReader(data), int64(len(data)))
+}
 
-	indexdb.indexLock.Lock()
-	delete(indexdb.indexes, collectionName)
-	indexdb.indexLock.Unlock()
+func (helper *Edge) BucketLifeCycleJob(collectionName string) {
+	versioning, err := helper.Storage.IsVersionBucket(collectionName)
+	if err != nil {
+		log.Error().Msgf("bucket [%s] version check error: %s", collectionName, err.Error())
+	}
+	if versioning {
+		helper.Storage.VersionCleanUp(collectionName)
+	}
+}
 
-	helper.VectorStore.slock.Lock()
-	delete(helper.VectorStore.Space, collectionName)
-	helper.VectorStore.slock.Unlock()
+func (helper *Edge) loadMetadataHelper(collectionName string) ([]byte, error) {
+	return helper.Storage.GetObject(collectionName, fmt.Sprintf("%s.meta.json", collectionName))
+}
+
+func (helper *Edge) loadVertexHelper(collectionName string) ([]byte, error) {
+	return helper.Storage.GetObject(collectionName, fmt.Sprintf("%s.vertex", collectionName))
+}
+
+func (helper *Edge) loadInvertedIndexHelper(collectionName string) ([]byte, error) {
+	return helper.Storage.GetObject(collectionName, fmt.Sprintf("%s.inverted.raw", collectionName))
+}
+
+func indexDesignAnalyze(indexDesign []*edgepb.Index) map[string]IndexFeature {
+	features := make(map[string]IndexFeature)
+	for _, column := range indexDesign {
+		features[column.IndexName] = IndexFeature{
+			IndexName:  column.IndexName,
+			IndexType:  int32(column.IndexType),
+			EnableNull: column.EnableNull,
+		}
+	}
+	return features
+}
+
+func reverseIndexDesign(features map[string]IndexFeature) []*edgepb.Index {
+	design := make([]*edgepb.Index, 0)
+	for _, column := range features {
+		design = append(design, &edgepb.Index{
+			IndexName:  column.IndexName,
+			IndexType:  edgepb.IndexType(column.IndexType),
+			EnableNull: column.EnableNull,
+		})
+	}
+	return design
 }
 
 func scoreHelper(score float32, dist string) float32 {
-	if dist == COSINE {
+	if dist == T_COSINE {
 		return ((2 - score) / 2) * 100
 	}
 	return float32(math.Max(0, float64(100-score)))
 }
 
-func (helper *Edge) diskClear(collectionName string) {
-	var err error
-	err = helper.VectorStore.DropCollection(collectionName)
-	if err != nil {
-		//
-		return
+func convertProtoOp(op edgepb.Op) inverted.FilterOp {
+	switch op {
+	case edgepb.Op_EQ:
+		return inverted.OpEqual
+	case edgepb.Op_NEQ:
+		return inverted.OpNotEqual
+	case edgepb.Op_GT:
+		return inverted.OpGreaterThan
+	case edgepb.Op_GTE:
+		return inverted.OpGreaterThanEqual
+	case edgepb.Op_LT:
+		return inverted.OpLessThan
+	case edgepb.Op_LTE:
+		return inverted.OpLessThanEqual
+	default:
+		return inverted.OpEqual
 	}
-	err = indexdb.DropIndex(collectionName)
-	if err != nil {
-		//
-		return
-	}
-	sep := fmt.Sprintf("%s_", collectionName)
-	// add commit -trace log
-	helper.Disk.AscendKeys([]byte(sep), true, func(k []byte) (bool, error) {
-		err := helper.Disk.Delete(k)
-		if err != nil {
-			return false, err
-		}
-		return true, nil
-	})
-	allremover(collectionName)
 }
 
-func (helper *Edge) saveCollection(collectionName string) error {
-	ok, err := helper.Disk.Exist([]byte(diskColList))
-	if err != nil {
-		return err
+func convertProtoLogicalOperator(op edgepb.LogicalOperator) inverted.LogicalOp {
+	if op == edgepb.LogicalOperator_OR {
+		return inverted.LogicalOr
 	}
-	if ok {
-		gb, err := helper.Disk.Get([]byte(diskColList))
-		if err != nil {
-			return err
-		}
-		data := make([]string, 0)
-		err = msgpack.Unmarshal(gb, &data)
-		if err != nil {
-			return err
-		}
-		data = append(data, collectionName)
-		byts, err := msgpack.Marshal(data)
-		if err != nil {
-			return err
-		}
-		err = helper.Disk.Put([]byte(diskColList), byts)
-		if err != nil {
-			return err
-		}
-	} else {
-		data := []string{collectionName}
-		bytes, err := msgpack.Marshal(data)
-		if err != nil {
-			return err
-		}
-		err = helper.Disk.Put([]byte(diskColList), bytes)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (helper *Edge) ChkValidDimensionality(collectionName string, dim int32) error {
-	collection, _ := helper.Datas.Get(collectionName)
-	if collection.dim != dim {
-		return fmt.Errorf("Err Collection %s expects %d dimensions, but has %d dimensions", collectionName, collection.dim, dim)
-	}
-	return nil
-}
-
-func (helper *Edge) removeCollection(collectionName string) error {
-	gb, err := helper.Disk.Get([]byte(diskColList))
-	if err != nil {
-		return err
-	}
-	data := make([]string, 0)
-	err = msgpack.Unmarshal(gb, &data)
-	if err != nil {
-		return err
-	}
-
-	newData := make([]string, 0)
-	for _, d := range data {
-		if d != collectionName {
-			newData = append(newData, d)
-		}
-	}
-	byts, err := msgpack.Marshal(newData)
-	if err != nil {
-		return err
-	}
-	err = helper.Disk.Put([]byte(diskColList), byts)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (helper *Edge) RegistCollectionStManager() error {
-	ok, err := helper.Disk.Exist([]byte(diskColList))
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return nil
-	}
-	gb, err := helper.Disk.Get([]byte(diskColList))
-	if err != nil {
-		return err
-	}
-	data := make([]string, 0)
-	err = msgpack.Unmarshal(gb, &data)
-	if err != nil {
-		return err
-	}
-	for _, col := range data {
-		stateRegistHelper(col)
-	}
-	return nil
-}
-
-func (helper *Edge) failIsDelete(id uint64, collectionName string, metadata map[string]any) {
-	indexdb.indexes[collectionName].Remove(id, metadata)
-	helper.VectorStore.RemoveVector(collectionName, id)
+	return inverted.LogicalAnd
 }

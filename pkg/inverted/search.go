@@ -93,3 +93,10 @@ func (idx *BitmapIndex) SearchMultiFilter(filters []*Filter) ([]uint64, error) {
 	}
 	return result.ToArray(), nil
 }
+func (idx *BitmapIndex) SearchWithExpression(expr *FilterExpression) ([]uint64, error) {
+	bm, err := idx.evaluateFilterExpression(expr)
+	if err != nil {
+		return nil, err
+	}
+	return bm.ToArray(), nil
+}

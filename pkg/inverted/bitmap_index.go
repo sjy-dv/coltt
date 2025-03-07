@@ -2,8 +2,6 @@ package inverted
 
 import (
 	"fmt"
-	"reflect"
-	"strings"
 	"sync"
 
 	roaring "github.com/RoaringBitmap/roaring/v2/roaring64"
@@ -81,52 +79,71 @@ func (idx *BitmapIndex) Remove(nodeId uint64, metadata map[string]interface{}) e
 }
 
 func compareValues(a, b interface{}) (int, error) {
-	if reflect.TypeOf(a) != reflect.TypeOf(b) {
-		sa := fmt.Sprintf("%v", a)
-		sb := fmt.Sprintf("%v", b)
-		return strings.Compare(sa, sb), nil
-	}
 	switch va := a.(type) {
-	case string:
-		vb := b.(string)
-		return strings.Compare(va, vb), nil
 	case int:
-		vb := b.(int)
+		vb, ok := b.(int)
+		if !ok {
+			return 0, fmt.Errorf("type mismatch")
+		}
 		if va < vb {
 			return -1, nil
-		} else if va > vb {
+		}
+		if va > vb {
 			return 1, nil
 		}
 		return 0, nil
 	case int64:
-		vb := b.(int64)
+		vb, ok := b.(int64)
+		if !ok {
+			return 0, fmt.Errorf("type mismatch")
+		}
 		if va < vb {
 			return -1, nil
-		} else if va > vb {
+		}
+		if va > vb {
 			return 1, nil
 		}
 		return 0, nil
 	case float64:
-		vb := b.(float64)
+		vb, ok := b.(float64)
+		if !ok {
+			return 0, fmt.Errorf("type mismatch")
+		}
 		if va < vb {
 			return -1, nil
-		} else if va > vb {
+		}
+		if va > vb {
+			return 1, nil
+		}
+		return 0, nil
+	case string:
+		vb, ok := b.(string)
+		if !ok {
+			return 0, fmt.Errorf("type mismatch")
+		}
+		if va < vb {
+			return -1, nil
+		}
+		if va > vb {
 			return 1, nil
 		}
 		return 0, nil
 	case bool:
-		vb := b.(bool)
+		vb, ok := b.(bool)
+		if !ok {
+			return 0, fmt.Errorf("type mismatch")
+		}
 		if !va && vb {
 			return -1, nil
-		} else if va && !vb {
+		}
+		if va && !vb {
 			return 1, nil
 		}
 		return 0, nil
 	default:
-		return 0, fmt.Errorf("unsupported type comparison")
+		return 0, fmt.Errorf("unsupported type: %T", a)
 	}
 }
-
 func satisfiesOp(f *Filter, key interface{}) (bool, error) {
 	cmp, err := compareValues(key, f.Value)
 	if err != nil {
