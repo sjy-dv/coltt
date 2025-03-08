@@ -380,14 +380,11 @@ func (edge *Edge) LoadCollection(ctx context.Context,
 			c <- failFn(err.Error())
 			return
 		}
-		fmt.Println(1111)
 		err = edge.VectorStore.LoadedVertex(req.GetCollectionName(), vertexdata)
 		if err != nil {
-			fmt.Println(1224421412, err.Error())
 			c <- failFn(err.Error())
 			return
 		}
-		fmt.Println(2222)
 		newAuthorizationBucketHelper(req.GetCollectionName())
 		edge.BucketLifeCycleJob(req.GetCollectionName())
 		c <- successFn()

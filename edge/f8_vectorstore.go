@@ -416,9 +416,7 @@ func (n *f8vecSpace) SaveVertex() ([]byte, error) {
 }
 
 func (n *f8vecSpace) LoadVertex(data []byte) error {
-	fmt.Println(data)
 	buf := bytes.NewReader(data)
-	fmt.Println(buf)
 	var shards [EDGE_MAP_SHARD_COUNT]map[uint64]ENodeF8
 
 	for i := 0; i < EDGE_MAP_SHARD_COUNT; i++ {
