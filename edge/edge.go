@@ -215,9 +215,8 @@ func (edge *Edge) DeleteCollection(ctx context.Context, req *edgepb.CollectionNa
 			c <- successFn()
 			return
 		}
-		if err := authorization(req.GetCollectionName()); err == nil {
-			destroyBucketHelper(req.GetCollectionName())
-		}
+		destroyBucketHelper(req.GetCollectionName())
+
 		edge.VectorStore.DestroySpace(req.GetCollectionName())
 		if err := edge.Storage.RemoveBucket(req.GetCollectionName()); err != nil {
 			c <- failFn(err.Error())
@@ -347,12 +346,19 @@ func (edge *Edge) LoadCollection(ctx context.Context,
 			c <- successFn()
 			return
 		}
-		edge.VectorStore.FillEmpty(req.GetCollectionName())
 		metadata, err := edge.loadMetadataHelper(req.GetCollectionName())
 		if err != nil {
 			c <- failFn(err.Error())
 			return
 		}
+
+		quantization, err := convertBytesMetadata(metadata)
+		if err != nil {
+			c <- failFn(err.Error())
+			return
+		}
+		edge.VectorStore.FillEmpty(req.GetCollectionName(), quantization)
+
 		err = edge.VectorStore.LoadedMetadata(req.GetCollectionName(), metadata)
 		if err != nil {
 			c <- failFn(err.Error())
@@ -374,11 +380,14 @@ func (edge *Edge) LoadCollection(ctx context.Context,
 			c <- failFn(err.Error())
 			return
 		}
+		fmt.Println(1111)
 		err = edge.VectorStore.LoadedVertex(req.GetCollectionName(), vertexdata)
 		if err != nil {
+			fmt.Println(1224421412, err.Error())
 			c <- failFn(err.Error())
 			return
 		}
+		fmt.Println(2222)
 		newAuthorizationBucketHelper(req.GetCollectionName())
 		edge.BucketLifeCycleJob(req.GetCollectionName())
 		c <- successFn()
@@ -574,7 +583,6 @@ func (edge *Edge) Index(ctx context.Context, req *edgepb.IndexChange) (
 			c <- failFn(err.Error())
 			return
 		}
-
 		switch req.GetChanged() {
 		case edgepb.IndexChagedType_CHANGED:
 			if err := edge.VectorStore.ChangedVertex(req.GetCollectionName(), req.GetPrimaryKey(), autoCommitID(), req.GetMetadata().AsMap(), req.GetVectors()); err != nil {

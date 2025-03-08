@@ -2,6 +2,7 @@ package edge
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"math"
 
@@ -153,4 +154,12 @@ func convertProtoLogicalOperator(op edgepb.LogicalOperator) inverted.LogicalOp {
 		return inverted.LogicalOr
 	}
 	return inverted.LogicalAnd
+}
+
+func convertBytesMetadata(data []byte) (edgepb.Quantization, error) {
+	var metadata Metadata
+	if err := json.Unmarshal(data, &metadata); err != nil {
+		return edgepb.Quantization_None, err
+	}
+	return edgepb.Quantization(metadata.Quantization), nil
 }

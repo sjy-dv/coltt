@@ -51,22 +51,22 @@ const (
 
 type ENode struct {
 	Vector   Vector
-	Metadata map[string]any
+	Metadata map[string]interface{}
 }
 
 type ENodeF16 struct {
 	Vector   float16Vec
-	Metadata map[string]any
+	Metadata map[string]interface{}
 }
 
 type ENodeF8 struct {
 	Vector   float8Vec
-	Metadata map[string]any
+	Metadata map[string]interface{}
 }
 
 type ENodeBF16 struct {
 	Vector   bfloat16Vec
-	Metadata map[string]any
+	Metadata map[string]interface{}
 }
 
 type ID uint64

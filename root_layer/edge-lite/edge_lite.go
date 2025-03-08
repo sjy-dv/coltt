@@ -26,13 +26,6 @@ func NewEdgeLite() error {
 	}
 	log.Info().Msg("edge-lite.id-generator init")
 	//-----------------------------------------------//
-	err = edgelites.Edge.LoadCommitCollection()
-	if err != nil {
-		log.Error().Err(err).Msg("edge-lite.loadcommitcollection failed")
-		return err
-	}
-	log.Info().Msg("edge-lite.loadcommitcollection init")
-	//-----------------------------------------------//
 	e, err := edge.NewEdge()
 	if err != nil {
 		log.Error().Err(err).Msg("edge-lite.disk open failed")
@@ -41,23 +34,13 @@ func NewEdgeLite() error {
 	edgelites.Edge = e
 	log.Info().Msg("edge-lite.edge-space init")
 	//-----------------------------------------------//
-	err = edgelites.Edge.RegistCollectionStManager()
+	err = edgelites.Edge.LoadAuthorizationBuckets()
 	if err != nil {
-		log.Error().Err(err).Msg("edge-lit.stmanager failed")
+		log.Error().Err(err).Msg("edge-lit.authorization bucket load failed")
 		return err
 	}
-	log.Info().Msg("edge-lit.stmanager init")
+	log.Info().Msg("edge-lit.authorization bucket load")
 
-	//-----------------------------------------------//
-	edge.NewIndexDB()
-	log.Info().Msg("edge-lite.indexdb init")
-	//-----------------------------------------------//
-	// edge.NewEdgeVectorCollection()
-	// log.Info().Msg("edge-lite.normalize-vector-store init")
-	//-----------------------------------------------//
-	// edge.NewQuantizedEdgeVectorCollection()
-	// log.Info().Msg("edge-lite.quantized-vector-store init")
-	//-----------------------------------------------//
 	if err := gRpcStart(); err != nil {
 		log.Warn().Err(err).Msg("edge-lite.root.go(50) grpc start failed")
 		os.Exit(1)

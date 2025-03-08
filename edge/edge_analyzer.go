@@ -29,7 +29,7 @@ func standardAnalyzer(metadata map[string]interface{}, analyzer map[string]Index
 		if column.PrimaryKey {
 			_, ok := value.(string)
 			if !ok {
-				return fmt.Errorf("primaryKey [%s] is must string", column.IndexName)
+				return fmt.Errorf("primaryKey [%s] must be string", column.IndexName)
 			}
 			continue
 		}
@@ -37,76 +37,35 @@ func standardAnalyzer(metadata map[string]interface{}, analyzer map[string]Index
 		case 0:
 			_, ok := value.(string)
 			if !ok {
-				return fmt.Errorf("index: [%s] type error, expect Type: %s", column.IndexName,
-					edgepb.IndexChagedType_name[column.IndexType])
+				return fmt.Errorf("index: [%s] type error, expect Type: %s", column.IndexName, edgepb.IndexType_name[column.IndexType])
 			}
-			break
 		case 1:
-			_, ok := value.(int)
-			if ok {
-				break
+			switch v := value.(type) {
+			case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+			case float64:
+				if v != float64(int64(v)) {
+					return fmt.Errorf("index: [%s] type error, expect Type: %s", column.IndexName, edgepb.IndexType_name[column.IndexType])
+				}
+				//prevent map forced convert int => float
+				metadata[column.IndexName] = int64(v)
+			default:
+				return fmt.Errorf("index: [%s] type error, expect Type: %s", column.IndexName, edgepb.IndexType_name[column.IndexType])
 			}
-			_, ok = value.(int8)
-			if ok {
-				break
-			}
-			_, ok = value.(int16)
-			if ok {
-				break
-			}
-			_, ok = value.(int32)
-			if ok {
-				break
-			}
-			_, ok = value.(int64)
-			if ok {
-				break
-			}
-			_, ok = value.(uint)
-			if ok {
-				break
-			}
-			_, ok = value.(uint8)
-			if ok {
-				break
-			}
-			_, ok = value.(uint16)
-			if ok {
-				break
-			}
-			_, ok = value.(uint32)
-			if ok {
-				break
-			}
-			_, ok = value.(uint64)
-			if ok {
-				break
-			}
-			return fmt.Errorf("index: [%s] type error, expect Type: %s", column.IndexName,
-				edgepb.IndexChagedType_name[column.IndexType])
 		case 2:
-			_, ok := value.(float32)
-			if ok {
-				break
+			switch value.(type) {
+			case float32, float64:
+			default:
+				return fmt.Errorf("index: [%s] type error, expect Type: %s", column.IndexName, edgepb.IndexType_name[column.IndexType])
 			}
-			_, ok = value.(float64)
-			if ok {
-				break
-			}
-			return fmt.Errorf("index: [%s] type error, expect Type: %s", column.IndexName,
-				edgepb.IndexChagedType_name[column.IndexType])
 		case 3:
 			_, ok := value.(bool)
 			if !ok {
-				return fmt.Errorf("index: [%s] type error, expect Type: %s", column.IndexName,
-					edgepb.IndexChagedType_name[column.IndexType])
+				return fmt.Errorf("index: [%s] type error, expect Type: %s", column.IndexName, edgepb.IndexType_name[column.IndexType])
 			}
-			break
 		}
 	}
 	return nil
 }
-
 func defaultType(typeLevel int32) interface{} {
 	switch typeLevel {
 	case 0:
@@ -143,73 +102,32 @@ func dropKeyAnalyzer(dropKey map[string]interface{}, analyzer map[string]IndexFe
 		case 0:
 			_, ok := indexValue.(string)
 			if !ok {
-				return fmt.Errorf("index: [%s] type error, expect Type: %s", indexName,
-					edgepb.IndexChagedType_name[value.IndexType])
+				return fmt.Errorf("index: [%s] type error, expect Type: %s", indexName, edgepb.IndexType_name[value.IndexType])
 			}
-			break
 		case 1:
-			_, ok := indexValue.(int)
-			if ok {
-				break
+			switch v := indexValue.(type) {
+			case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+			case float64:
+				if v != float64(int64(v)) {
+					return fmt.Errorf("index: [%s] type error, expect Type: %s", indexName, edgepb.IndexType_name[value.IndexType])
+				}
+			default:
+				return fmt.Errorf("index: [%s] type error, expect Type: %s", indexName, edgepb.IndexType_name[value.IndexType])
 			}
-			_, ok = indexValue.(int8)
-			if ok {
-				break
-			}
-			_, ok = indexValue.(int16)
-			if ok {
-				break
-			}
-			_, ok = indexValue.(int32)
-			if ok {
-				break
-			}
-			_, ok = indexValue.(int64)
-			if ok {
-				break
-			}
-			_, ok = indexValue.(uint)
-			if ok {
-				break
-			}
-			_, ok = indexValue.(uint8)
-			if ok {
-				break
-			}
-			_, ok = indexValue.(uint16)
-			if ok {
-				break
-			}
-			_, ok = indexValue.(uint32)
-			if ok {
-				break
-			}
-			_, ok = indexValue.(uint64)
-			if ok {
-				break
-			}
-			return fmt.Errorf("index: [%s] type error, expect Type: %s", indexName,
-				edgepb.IndexChagedType_name[value.IndexType])
 		case 2:
-			_, ok := indexValue.(float32)
-			if ok {
-				break
+			switch indexValue.(type) {
+			case float32, float64:
+			default:
+				return fmt.Errorf("index: [%s] type error, expect Type: %s", indexName, edgepb.IndexType_name[value.IndexType])
 			}
-			_, ok = indexValue.(float64)
-			if ok {
-				break
-			}
-			return fmt.Errorf("index: [%s] type error, expect Type: %s", indexName,
-				edgepb.IndexChagedType_name[value.IndexType])
 		case 3:
 			_, ok := indexValue.(bool)
 			if !ok {
-				return fmt.Errorf("index: [%s] type error, expect Type: %s", indexName,
-					edgepb.IndexChagedType_name[value.IndexType])
+				return fmt.Errorf("index: [%s] type error, expect Type: %s", indexName, edgepb.IndexType_name[value.IndexType])
 			}
-			break
 		}
 	}
+
 	return nil
 }
 

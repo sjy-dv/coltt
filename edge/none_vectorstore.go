@@ -168,7 +168,6 @@ func (vertex *noneVecSpace) FilterableVertexSearch(filter *inverted.FilterExpres
 	if vertex.distance.Type() == T_COSINE {
 		target = Normalize(target)
 	}
-
 	candidates, err := vertex.invertedIndex.SearchWithExpression(filter)
 	if err != nil {
 		return nil, err
@@ -364,6 +363,37 @@ func (n *noneVecSpace) SaveVertex() ([]byte, error) {
 						n.verticesMu[i].RUnlock()
 						return nil, err
 					}
+				case float32:
+					if err := buf.WriteByte(2); err != nil {
+						n.verticesMu[i].RUnlock()
+						return nil, err
+					}
+					if err := binary.Write(&buf, binary.BigEndian, float64(v)); err != nil {
+						n.verticesMu[i].RUnlock()
+						return nil, err
+					}
+				case float64:
+					if err := buf.WriteByte(2); err != nil {
+						n.verticesMu[i].RUnlock()
+						return nil, err
+					}
+					if err := binary.Write(&buf, binary.BigEndian, v); err != nil {
+						n.verticesMu[i].RUnlock()
+						return nil, err
+					}
+				case bool:
+					if err := buf.WriteByte(3); err != nil {
+						n.verticesMu[i].RUnlock()
+						return nil, err
+					}
+					var b byte = 0
+					if v {
+						b = 1
+					}
+					if err := buf.WriteByte(b); err != nil {
+						n.verticesMu[i].RUnlock()
+						return nil, err
+					}
 				default:
 					n.verticesMu[i].RUnlock()
 					return nil, fmt.Errorf("unsupported metadata type: %T", v)
@@ -441,6 +471,18 @@ func (n *noneVecSpace) LoadVertex(data []byte) error {
 						return err
 					}
 					node.Metadata[metaKey] = string(strBytes)
+				case 2:
+					var val float64
+					if err := binary.Read(buf, binary.BigEndian, &val); err != nil {
+						return err
+					}
+					node.Metadata[metaKey] = val
+				case 3:
+					boolByte, err := buf.ReadByte()
+					if err != nil {
+						return err
+					}
+					node.Metadata[metaKey] = boolByte != 0
 				default:
 					return fmt.Errorf("unsupported metadata type tag: %d", typ)
 				}

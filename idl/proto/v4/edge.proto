@@ -131,7 +131,7 @@ message SearchFilter {
     oneof value {
         string string_val = 3;
         int64 int_val = 4;
-        float float_val = 5;
+        double float_val = 5;
         bool bool_val = 6;
     }
 }

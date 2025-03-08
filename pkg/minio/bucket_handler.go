@@ -2,6 +2,7 @@ package minio
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -58,6 +59,22 @@ func (api *MinioAPI) Versioning(bucketName string) error {
 	})
 }
 func (api *MinioAPI) RemoveBucket(bucketName string) error {
+	listOpts := minio.ListObjectsOptions{
+		Recursive:    true,
+		WithVersions: true,
+	}
+	for object := range api.session.ListObjects(context.Background(), bucketName, listOpts) {
+		if object.Err != nil {
+			return fmt.Errorf("[minio]select list obj: %v", object.Err)
+		}
+		removeOpts := minio.RemoveObjectOptions{
+			VersionID: object.VersionID,
+		}
+		err := api.session.RemoveObject(context.Background(), bucketName, object.Key, removeOpts)
+		if err != nil {
+			return fmt.Errorf("[minio] object delete failed [%s]: %v", object.Key, err)
+		}
+	}
 	return api.session.RemoveBucket(context.Background(), bucketName)
 }
 

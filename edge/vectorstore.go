@@ -137,9 +137,19 @@ func (vs *Vectorstore) FilterableVertexSearch(collectioName string, filter *inve
 	return vs.Space[collectioName].FilterableVertexSearch(filter, vector, int(topK), highCpu)
 }
 
-func (vs *Vectorstore) FillEmpty(collectionName string) {
+func (vs *Vectorstore) FillEmpty(collectionName string, quantization edgepb.Quantization) {
 	vs.slock.Lock()
-	vs.Space[collectionName] = &noneVecSpace{}
+	// vs.Space[collectionName] = &noneVecSpace{}
+	switch quantization {
+	case edgepb.Quantization_None:
+		vs.Space[collectionName] = &noneVecSpace{}
+	case edgepb.Quantization_F8:
+		vs.Space[collectionName] = &f8vecSpace{}
+	case edgepb.Quantization_F16:
+		vs.Space[collectionName] = &f16vecSpace{}
+	case edgepb.Quantization_BF16:
+		vs.Space[collectionName] = &bf16vecSpace{}
+	}
 	vs.slock.Unlock()
 }
 

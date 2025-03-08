@@ -373,6 +373,37 @@ func (n *f8vecSpace) SaveVertex() ([]byte, error) {
 						n.verticesMu[i].RUnlock()
 						return nil, err
 					}
+				case float32:
+					if err := buf.WriteByte(2); err != nil {
+						n.verticesMu[i].RUnlock()
+						return nil, err
+					}
+					if err := binary.Write(&buf, binary.BigEndian, float64(v)); err != nil {
+						n.verticesMu[i].RUnlock()
+						return nil, err
+					}
+				case float64:
+					if err := buf.WriteByte(2); err != nil {
+						n.verticesMu[i].RUnlock()
+						return nil, err
+					}
+					if err := binary.Write(&buf, binary.BigEndian, v); err != nil {
+						n.verticesMu[i].RUnlock()
+						return nil, err
+					}
+				case bool:
+					if err := buf.WriteByte(3); err != nil {
+						n.verticesMu[i].RUnlock()
+						return nil, err
+					}
+					var b byte = 0
+					if v {
+						b = 1
+					}
+					if err := buf.WriteByte(b); err != nil {
+						n.verticesMu[i].RUnlock()
+						return nil, err
+					}
 				default:
 					n.verticesMu[i].RUnlock()
 					return nil, fmt.Errorf("unsupported metadata type: %T", v)
@@ -385,7 +416,9 @@ func (n *f8vecSpace) SaveVertex() ([]byte, error) {
 }
 
 func (n *f8vecSpace) LoadVertex(data []byte) error {
+	fmt.Println(data)
 	buf := bytes.NewReader(data)
+	fmt.Println(buf)
 	var shards [EDGE_MAP_SHARD_COUNT]map[uint64]ENodeF8
 
 	for i := 0; i < EDGE_MAP_SHARD_COUNT; i++ {
@@ -406,20 +439,17 @@ func (n *f8vecSpace) LoadVertex(data []byte) error {
 			if err := binary.Read(buf, binary.BigEndian, &vecLen); err != nil {
 				return err
 			}
-			vecBytes := make([]uint8, vecLen)
+			fmt.Println(vecLen)
+			vecBytes := make([]compresshelper.Float8, vecLen)
 			for k := uint32(0); k < vecLen; k++ {
 				var b uint8
 				if err := binary.Read(buf, binary.BigEndian, &b); err != nil {
 					return err
 				}
-				vecBytes[k] = b
+				vecBytes[k] = compresshelper.Float8(b)
 			}
-			vecF8 := make(float8Vec, len(vecBytes))
-			for k, b := range vecBytes {
-				vecF8[k] = compresshelper.Float8(b)
-			}
-			node.Vector = vecF8
-
+			node.Vector = vecBytes
+			fmt.Println(node.Vector)
 			var metaCount uint32
 			if err := binary.Read(buf, binary.BigEndian, &metaCount); err != nil {
 				return err
@@ -457,6 +487,18 @@ func (n *f8vecSpace) LoadVertex(data []byte) error {
 						return err
 					}
 					node.Metadata[metaKey] = string(strBytes)
+				case 2:
+					var val float64
+					if err := binary.Read(buf, binary.BigEndian, &val); err != nil {
+						return err
+					}
+					node.Metadata[metaKey] = val
+				case 3:
+					boolByte, err := buf.ReadByte()
+					if err != nil {
+						return err
+					}
+					node.Metadata[metaKey] = boolByte != 0
 				default:
 					return fmt.Errorf("unsupported metadata type tag: %d", typ)
 				}
