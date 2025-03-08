@@ -1,3 +1,15 @@
+## 🎉 Release Update - 2025.02.19
+
+For the full update history, see [UPDATE HISTORY](./UPDATE-LOG.md).
+
+### 🔹 Multi-Vector(Experimental)
+
+- **Integration with Minio Object Storage**: By combining with robust Minio, we have prioritized disaster recovery and scalability.
+
+- **Multi-Vector Support and Robust Index Design**: While the previous edge and core projects were successful by my standards, their data modeling was crude compared to other solutions. Now, with the addition of a robust index design and support for multiple vectors, users can enjoy more refined search capabilities and achieve improved recall rates under diverse conditions.
+
+---
+
 ## 🎉 Release Update - 2025.02.13
 
 For the full update history, see [UPDATE HISTORY](./UPDATE-LOG.md).

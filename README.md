@@ -4,15 +4,17 @@
 
 Coltt is a database designed to be implemented from scratch to production. coltt can be deployed in edge environments and used in small-scale production settings. Through the innovative architectural approach described below, it is envisioned and developed to be used reliably in large-scale production environments as well.
 
-## 🎉 Release Update - 2025.02.19
+## 🎉 Release Update - 2025.03.08
 
 For the full update history, see [UPDATE HISTORY](./UPDATE-LOG.md).
 
-### 🔹 Multi-Vector(Experimental)
+### 🔹 Edge(Minio & Composite Filter)
 
 - **Integration with Minio Object Storage**: By combining with robust Minio, we have prioritized disaster recovery and scalability.
 
-- **Multi-Vector Support and Robust Index Design**: While the previous edge and core projects were successful by my standards, their data modeling was crude compared to other solutions. Now, with the addition of a robust index design and support for multiple vectors, users can enjoy more refined search capabilities and achieve improved recall rates under diverse conditions.
+- **Added an index structure to Edge through MultiVector validation**: Users can now model data with well-defined types, and by leveraging features such as a PrimaryKey and allowing NULL values, they can design data in a variety of formats.
+
+- **Added complex filter operators**: Comparison operators, logical operators, and more are now supported, enabling the modeling and filtering of various relational data for vector search.
 
 ---
 
