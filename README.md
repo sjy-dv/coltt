@@ -16,6 +16,78 @@ For the full update history, see [UPDATE HISTORY](./UPDATE-LOG.md).
 
 - **Added complex filter operators**: Comparison operators, logical operators, and more are now supported, enabling the modeling and filtering of various relational data for vector search.
 
+Below is a simple example.
+
+```go
+[case1] : like type >= 5
+
+filter := &edgepb.SearchFilter{
+		IndexName: "type",
+		Op:        edgepb.Op_GTE,
+		Value: &edgepb.SearchFilter_IntVal{
+			IntVal: 5,
+		},
+	}
+	expr := &edgepb.FilterExpression{
+		Expr: &edgepb.FilterExpression_Filter{
+			Filter: filter,
+		},
+}
+
+[case2] : like type > 5 and size < 4
+
+typeGTFilter := &edgepb.SearchFilter{
+		IndexName: "type",
+		Op:        edgepb.Op_GT,
+		Value:     &edgepb.SearchFilter_IntVal{IntVal: 5},
+	}
+	sizeLTFilter := &edgepb.SearchFilter{
+		IndexName: "size",
+		Op:        edgepb.Op_LT,
+		Value:     &edgepb.SearchFilter_IntVal{IntVal: 4},
+	}
+	mixFilter := &edgepb.CompositeFilter{
+		Op: edgepb.LogicalOperator_AND,
+		Expressions: []*edgepb.FilterExpression{
+			{Expr: &edgepb.FilterExpression_Filter{Filter: typeGTFilter}},
+			{Expr: &edgepb.FilterExpression_Filter{Filter: sizeLTFilter}},
+		},
+}
+
+[case3] : like (type > 5 and size > 1) or volume < 0.5
+
+typeGTDFilter := &edgepb.SearchFilter{
+		IndexName: "type",
+		Op:        edgepb.Op_GT,
+		Value:     &edgepb.SearchFilter_IntVal{IntVal: 5},
+	}
+sizeLTDFilter := &edgepb.SearchFilter{
+		IndexName: "size",
+		Op:        edgepb.Op_GT,
+		Value:     &edgepb.SearchFilter_IntVal{IntVal: 1},
+	}
+compositeFilter := &edgepb.CompositeFilter{
+		Op: edgepb.LogicalOperator_AND,
+		Expressions: []*edgepb.FilterExpression{
+			{Expr: &edgepb.FilterExpression_Filter{Filter: typeGTDFilter}},
+			{Expr: &edgepb.FilterExpression_Filter{Filter: sizeLTDFilter}},
+		},
+	}
+volumeFilter := &edgepb.SearchFilter{
+		IndexName: "volume",
+		Op:        edgepb.Op_LT,
+		Value:     &edgepb.SearchFilter_FloatVal{FloatVal: 0.5},
+	}
+depthCompositeFilter := &edgepb.CompositeFilter{
+		Op: edgepb.LogicalOperator_OR,
+		Expressions: []*edgepb.FilterExpression{
+			{Expr: &edgepb.FilterExpression_Composite{Composite: compositeFilter}},
+			{Expr: &edgepb.FilterExpression_Filter{Filter: volumeFilter}},
+		},
+}
+
+```
+
 ---
 
 ## 🚀 Update Preview
