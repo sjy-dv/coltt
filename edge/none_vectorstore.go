@@ -10,25 +10,24 @@ import (
 	"sync/atomic"
 
 	"github.com/sjy-dv/coltt/gen/protoc/v4/edgepb"
-	"github.com/sjy-dv/coltt/pkg/compresshelper"
 	"github.com/sjy-dv/coltt/pkg/distance"
 	"github.com/sjy-dv/coltt/pkg/inverted"
 	"github.com/sjy-dv/coltt/pkg/sharding"
 )
 
-type f8vecSpace struct {
+type noneVecSpace struct {
 	vertexMetadata Metadata
 	collectionName string
 	size           uint64
-	vertices       [EDGE_MAP_SHARD_COUNT]map[uint64]ENodeF8
+	vertices       [EDGE_MAP_SHARD_COUNT]map[uint64]ENode
 	verticesMu     [EDGE_MAP_SHARD_COUNT]*sync.RWMutex
 	distance       distance.Space
-	quantization   Float8Quantization
+	quantization   NoQuantization
 	invertedIndex  *inverted.BitmapIndex
 }
 
-func newF8Vectorstore(collectionName string, metadata Metadata) *f8vecSpace {
-	vecspace := &f8vecSpace{
+func newNoneVectorstore(collectionName string, metadata Metadata) *noneVecSpace {
+	vecspace := &noneVecSpace{
 		vertexMetadata: metadata,
 		collectionName: collectionName,
 		distance: func() distance.Space {
@@ -37,17 +36,17 @@ func newF8Vectorstore(collectionName string, metadata Metadata) *f8vecSpace {
 			}
 			return distance.NewEuclidean()
 		}(),
-		quantization:  Float8Quantization{},
+		quantization:  NoQuantization{},
 		invertedIndex: inverted.NewBitmapIndex(),
 	}
 	for i := 0; i < EDGE_MAP_SHARD_COUNT; i++ {
-		vecspace.vertices[i] = make(map[uint64]ENodeF8)
+		vecspace.vertices[i] = make(map[uint64]ENode)
 		vecspace.verticesMu[i] = &sync.RWMutex{}
 	}
 	return vecspace
 }
 
-func (vertex *f8vecSpace) ChangedVertex(updateId string, commitId uint64, data ENode) error {
+func (vertex *noneVecSpace) ChangedVertex(updateId string, commitId uint64, data ENode) error {
 	if updateId != "" {
 		var primaryIndex string
 		for _, indexer := range vertex.Indexer() {
@@ -62,6 +61,8 @@ func (vertex *f8vecSpace) ChangedVertex(updateId string, commitId uint64, data E
 			return err
 		}
 		if len(ids) != 0 {
+			//없다면 생성
+			//있다면 기존 id로 덮어씌우기
 			commitId = ids[0]
 		}
 	}
@@ -77,22 +78,18 @@ func (vertex *f8vecSpace) ChangedVertex(updateId string, commitId uint64, data E
 	if vertex.distance.Type() == T_COSINE {
 		data.Vector = Normalize(data.Vector)
 	}
-	lower, err := vertex.quantization.Lower(data.Vector)
-	if err != nil {
-		return fmt.Errorf(ErrQuantizedFailed, err)
-	}
-
 	shardIdx := sharding.ShardVertex(commitId, uint64(EDGE_MAP_SHARD_COUNT))
 	vertex.verticesMu[shardIdx].Lock()
 	defer vertex.verticesMu[shardIdx].Unlock()
-	vertex.vertices[shardIdx][commitId] = ENodeF8{Vector: lower, Metadata: data.Metadata}
+	vertex.vertices[shardIdx][commitId] = data
 	return nil
 }
 
-func (vertex *f8vecSpace) RemoveVertex(dropFilter map[string]interface{}) error {
+func (vertex *noneVecSpace) RemoveVertex(dropFilter map[string]interface{}) error {
 	if err := dropKeyAnalyzer(dropFilter, vertex.Indexer()); err != nil {
 		return err
 	}
+	//해당 조건 모두 찾음
 	filters := make([]*inverted.Filter, 0)
 	for index, indexValue := range dropFilter {
 		filter := inverted.NewFilter(index, inverted.OpEqual, indexValue)
@@ -112,21 +109,17 @@ func (vertex *f8vecSpace) RemoveVertex(dropFilter map[string]interface{}) error 
 	return nil
 }
 
-func (vertex *f8vecSpace) VertexSearch(target Vector, topK int, highCpu bool,
+func (vertex *noneVecSpace) VertexSearch(target Vector, topK int, highCpu bool,
 ) ([]*SearchResultItem, error) {
 	if vertex.distance.Type() == T_COSINE {
 		target = Normalize(target)
-	}
-	lower, err := vertex.quantization.Lower(target)
-	if err != nil {
-		return nil, fmt.Errorf(ErrQuantizedFailed, err)
 	}
 	pq := NewPriorityQueue(topK)
 	if !highCpu {
 		for shard := 0; shard < EDGE_MAP_SHARD_COUNT; shard++ {
 			vertex.verticesMu[shard].RLock()
 			for uid, node := range vertex.vertices[shard] {
-				sim := vertex.quantization.Similarity(lower, node.Vector, vertex.distance)
+				sim := vertex.quantization.Similarity(target, node.Vector, vertex.distance)
 				pq.Add(&SearchResultItem{
 					Id:       uid,
 					Score:    sim,
@@ -148,7 +141,7 @@ func (vertex *f8vecSpace) VertexSearch(target Vector, topK int, highCpu bool,
 				localpq := NewPriorityQueue(topK)
 				vertex.verticesMu[shard].RLock()
 				for uid, node := range vertex.vertices[shard] {
-					sim := vertex.quantization.Similarity(lower, node.Vector, vertex.distance)
+					sim := vertex.quantization.Similarity(target, node.Vector, vertex.distance)
 					localpq.Add(&SearchResultItem{
 						Id:       uid,
 						Score:    sim,
@@ -169,14 +162,11 @@ func (vertex *f8vecSpace) VertexSearch(target Vector, topK int, highCpu bool,
 	return pq.ToSlice(), nil
 }
 
-func (vertex *f8vecSpace) FilterableVertexSearch(filter *inverted.FilterExpression, target Vector, topK int, highCpu bool,
-) ([]*SearchResultItem, error) {
+func (vertex *noneVecSpace) FilterableVertexSearch(filter *inverted.FilterExpression, target Vector, topK int, highCpu bool) (
+	[]*SearchResultItem, error,
+) {
 	if vertex.distance.Type() == T_COSINE {
 		target = Normalize(target)
-	}
-	lower, err := vertex.quantization.Lower(target)
-	if err != nil {
-		return nil, fmt.Errorf(ErrQuantizedFailed, err)
 	}
 	candidates, err := vertex.invertedIndex.SearchWithExpression(filter)
 	if err != nil {
@@ -196,7 +186,7 @@ func (vertex *f8vecSpace) FilterableVertexSearch(filter *inverted.FilterExpressi
 			vertex.verticesMu[shard].RLock()
 			for _, uid := range shardCandidates[shard] {
 				if node, ok := vertex.vertices[shard][uid]; ok {
-					sim := vertex.quantization.Similarity(lower, node.Vector, vertex.distance)
+					sim := vertex.quantization.Similarity(target, node.Vector, vertex.distance)
 					globalPQ.Add(&SearchResultItem{
 						Id:       uid,
 						Score:    sim,
@@ -211,20 +201,20 @@ func (vertex *f8vecSpace) FilterableVertexSearch(filter *inverted.FilterExpressi
 			Items []*SearchResultItem
 		}
 		results := make([]shardResult, EDGE_MAP_SHARD_COUNT)
-		var concurrenyWorker sync.WaitGroup
-		concurrenyWorker.Add(EDGE_MAP_SHARD_COUNT)
+		var wg sync.WaitGroup
+		wg.Add(EDGE_MAP_SHARD_COUNT)
 		for shard := 0; shard < EDGE_MAP_SHARD_COUNT; shard++ {
 			go func(shard int) {
-				defer concurrenyWorker.Done()
-				localpq := NewPriorityQueue(topK)
+				defer wg.Done()
+				localPQ := NewPriorityQueue(topK)
 				if len(shardCandidates[shard]) == 0 {
 					return
 				}
 				vertex.verticesMu[shard].RLock()
 				for _, uid := range shardCandidates[shard] {
 					if node, ok := vertex.vertices[shard][uid]; ok {
-						sim := vertex.quantization.Similarity(lower, node.Vector, vertex.distance)
-						globalPQ.Add(&SearchResultItem{
+						sim := vertex.quantization.Similarity(target, node.Vector, vertex.distance)
+						localPQ.Add(&SearchResultItem{
 							Id:       uid,
 							Score:    sim,
 							Metadata: node.Metadata,
@@ -232,10 +222,10 @@ func (vertex *f8vecSpace) FilterableVertexSearch(filter *inverted.FilterExpressi
 					}
 				}
 				vertex.verticesMu[shard].RUnlock()
-				results[shard].Items = localpq.ToSlice()
+				results[shard].Items = localPQ.ToSlice()
 			}(shard)
 		}
-		concurrenyWorker.Wait()
+		wg.Wait()
 		for _, res := range results {
 			for _, item := range res.Items {
 				globalPQ.Add(item)
@@ -245,11 +235,11 @@ func (vertex *f8vecSpace) FilterableVertexSearch(filter *inverted.FilterExpressi
 	return globalPQ.ToSlice(), nil
 }
 
-func (vertex *f8vecSpace) SaveVertexMetadata() ([]byte, error) {
+func (vertex *noneVecSpace) SaveVertexMetadata() ([]byte, error) {
 	return json.Marshal(vertex.vertexMetadata)
 }
 
-func (vertex *f8vecSpace) LoadVertexMetadata(collectionName string, data []byte) error {
+func (vertex *noneVecSpace) LoadVertexMetadata(collectionName string, data []byte) error {
 	var metadata Metadata
 	if err := json.Unmarshal(data, &metadata); err != nil {
 		return err
@@ -265,40 +255,40 @@ func (vertex *f8vecSpace) LoadVertexMetadata(collectionName string, data []byte)
 	return nil
 }
 
-func (vertex *f8vecSpace) SaveVertexInverted() ([]byte, error) {
+func (vertex *noneVecSpace) SaveVertexInverted() ([]byte, error) {
 	return vertex.invertedIndex.SerializeBinary()
 }
 
-func (vertex *f8vecSpace) LoadVertexInverted(data []byte) error {
+func (vertex *noneVecSpace) LoadVertexInverted(data []byte) error {
 	vertex.invertedIndex = inverted.NewBitmapIndex()
 	return vertex.invertedIndex.DeserializeBinary(data)
 }
 
-func (vertex *f8vecSpace) Quantization() edgepb.Quantization {
+func (vertex *noneVecSpace) Quantization() edgepb.Quantization {
 	return vertex.vertexMetadata.Quantizationer()
 }
 
-func (vertex *f8vecSpace) Distance() edgepb.Distance {
+func (vertex *noneVecSpace) Distance() edgepb.Distance {
 	return vertex.vertexMetadata.Distancer()
 }
 
-func (vertex *f8vecSpace) Dim() uint32 {
+func (vertex *noneVecSpace) Dim() uint32 {
 	return vertex.vertexMetadata.Dimensional()
 }
 
-func (vertex *f8vecSpace) LoadSize() int64 {
+func (vertex *noneVecSpace) LoadSize() int64 {
 	return int64(atomic.LoadUint64(&vertex.size))
 }
 
-func (vertex *f8vecSpace) Indexer() map[string]IndexFeature {
+func (vertex *noneVecSpace) Indexer() map[string]IndexFeature {
 	return vertex.vertexMetadata.IndexType
 }
 
-func (vertex *f8vecSpace) Versional() bool {
+func (vertex *noneVecSpace) Versional() bool {
 	return vertex.vertexMetadata.Versional()
 }
 
-func (n *f8vecSpace) SaveVertex() ([]byte, error) {
+func (n *noneVecSpace) SaveVertex() ([]byte, error) {
 	var buf bytes.Buffer
 
 	for i := 0; i < EDGE_MAP_SHARD_COUNT; i++ {
@@ -319,8 +309,8 @@ func (n *f8vecSpace) SaveVertex() ([]byte, error) {
 				n.verticesMu[i].RUnlock()
 				return nil, err
 			}
-			for _, elem := range node.Vector {
-				if err := binary.Write(&buf, binary.BigEndian, uint8(elem)); err != nil {
+			for _, f := range node.Vector {
+				if err := binary.Write(&buf, binary.BigEndian, f); err != nil {
 					n.verticesMu[i].RUnlock()
 					return nil, err
 				}
@@ -415,39 +405,35 @@ func (n *f8vecSpace) SaveVertex() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (n *f8vecSpace) LoadVertex(data []byte) error {
+func (n *noneVecSpace) LoadVertex(data []byte) error {
 	buf := bytes.NewReader(data)
-	var shards [EDGE_MAP_SHARD_COUNT]map[uint64]ENodeF8
+	var shards [EDGE_MAP_SHARD_COUNT]map[uint64]ENode
 
 	for i := 0; i < EDGE_MAP_SHARD_COUNT; i++ {
 		var count uint64
 		if err := binary.Read(buf, binary.BigEndian, &count); err != nil {
 			return err
 		}
-		m := make(map[uint64]ENodeF8, count)
+		m := make(map[uint64]ENode, count)
 		for j := uint64(0); j < count; j++ {
 			var key uint64
 			if err := binary.Read(buf, binary.BigEndian, &key); err != nil {
 				return err
 			}
 
-			var node ENodeF8
+			var node ENode
 
 			var vecLen uint32
 			if err := binary.Read(buf, binary.BigEndian, &vecLen); err != nil {
 				return err
 			}
-			fmt.Println(vecLen)
-			vecBytes := make([]compresshelper.Float8, vecLen)
-			for k := uint32(0); k < vecLen; k++ {
-				var b uint8
-				if err := binary.Read(buf, binary.BigEndian, &b); err != nil {
+			node.Vector = make([]float32, vecLen)
+			for d := 0; d < int(vecLen); d++ {
+				if err := binary.Read(buf, binary.BigEndian, &node.Vector[d]); err != nil {
 					return err
 				}
-				vecBytes[k] = compresshelper.Float8(b)
 			}
-			node.Vector = vecBytes
-			fmt.Println(node.Vector)
+
 			var metaCount uint32
 			if err := binary.Read(buf, binary.BigEndian, &metaCount); err != nil {
 				return err

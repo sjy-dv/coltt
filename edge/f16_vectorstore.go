@@ -1,36 +1,44 @@
 package edge
 
 import (
+	"bytes"
+	"encoding/binary"
+	"encoding/json"
 	"fmt"
+	"io"
 	"sync"
+	"sync/atomic"
 
+	"github.com/sjy-dv/coltt/gen/protoc/v4/edgepb"
+	"github.com/sjy-dv/coltt/pkg/compresshelper"
 	"github.com/sjy-dv/coltt/pkg/distance"
+	"github.com/sjy-dv/coltt/pkg/inverted"
 	"github.com/sjy-dv/coltt/pkg/sharding"
 )
 
 type f16vecSpace struct {
-	dimension      int
+	vertexMetadata Metadata
+	collectionName string
+	size           uint64
 	vertices       [EDGE_MAP_SHARD_COUNT]map[uint64]ENodeF16
 	verticesMu     [EDGE_MAP_SHARD_COUNT]*sync.RWMutex
-	collectionName string
 	distance       distance.Space
 	quantization   Float16Quantization
-	lock           sync.RWMutex
+	invertedIndex  *inverted.BitmapIndex
 }
 
-func newF16Vectorstore(config CollectionConfig) *f16vecSpace {
+func newF16Vectorstore(collectionName string, metadata Metadata) *f16vecSpace {
 	vecspace := &f16vecSpace{
-		dimension:      config.Dimension,
-		collectionName: config.CollectionName,
+		vertexMetadata: metadata,
+		collectionName: collectionName,
 		distance: func() distance.Space {
-			if config.Distance == COSINE {
+			if metadata.Distancer() == edgepb.Distance_Cosine {
 				return distance.NewCosine()
-			} else if config.Distance == EUCLIDEAN {
-				return distance.NewEuclidean()
 			}
-			return distance.NewCosine()
+			return distance.NewEuclidean()
 		}(),
-		quantization: Float16Quantization{},
+		quantization:  Float16Quantization{},
+		invertedIndex: inverted.NewBitmapIndex(),
 	}
 	for i := 0; i < EDGE_MAP_SHARD_COUNT; i++ {
 		vecspace.vertices[i] = make(map[uint64]ENodeF16)
@@ -39,67 +47,92 @@ func newF16Vectorstore(config CollectionConfig) *f16vecSpace {
 	return vecspace
 }
 
-func (qx *f16vecSpace) InsertVector(collectionName string, commitId uint64, data ENode) error {
-	if qx.distance.Type() == T_COSINE {
+func (vertex *f16vecSpace) ChangedVertex(updateId string, commitId uint64, data ENode) error {
+	if updateId != "" {
+		var primaryIndex string
+		for _, indexer := range vertex.Indexer() {
+			if indexer.PrimaryKey {
+				primaryIndex = indexer.IndexName
+				break
+			}
+		}
+		finder := inverted.NewFilter(primaryIndex, inverted.OpEqual, updateId)
+		ids, err := vertex.invertedIndex.SearchSingleFilter(finder)
+		if err != nil {
+			return err
+		}
+		if len(ids) != 0 {
+			commitId = ids[0]
+		}
+	}
+	if vertex.vertexMetadata.Dimensional() != uint32(data.Vector.Dimensions()) {
+		return fmt.Errorf("Dim Length UnmatchdError: expect dimension: [%d], but got [%d]", vertex.vertexMetadata.Dimensional(), data.Vector.Dimensions())
+	}
+	if err := standardAnalyzer(data.Metadata, vertex.Indexer()); err != nil {
+		return err
+	}
+	if err := vertex.invertedIndex.Add(commitId, data.Metadata); err != nil {
+		return fmt.Errorf("ErrInvertedIndexAddFailed: %s", err.Error())
+	}
+	if vertex.distance.Type() == T_COSINE {
 		data.Vector = Normalize(data.Vector)
 	}
-	lower, err := qx.quantization.Lower(data.Vector)
+	lower, err := vertex.quantization.Lower(data.Vector)
 	if err != nil {
 		return fmt.Errorf(ErrQuantizedFailed, err)
 	}
-
 	shardIdx := sharding.ShardVertex(commitId, uint64(EDGE_MAP_SHARD_COUNT))
-	qx.verticesMu[shardIdx].Lock()
-	defer qx.verticesMu[shardIdx].Unlock()
-	qx.vertices[shardIdx][commitId] = ENodeF16{Vector: lower, Metadata: data.Metadata}
+	vertex.verticesMu[shardIdx].Lock()
+	defer vertex.verticesMu[shardIdx].Unlock()
+	vertex.vertices[shardIdx][commitId] = ENodeF16{Vector: lower, Metadata: data.Metadata}
 	return nil
 }
 
-func (qx *f16vecSpace) UpdateVector(collectionName string, id uint64, data ENode) error {
-	if qx.distance.Type() == T_COSINE {
-		data.Vector = Normalize(data.Vector)
+func (vertex *f16vecSpace) RemoveVertex(dropFilter map[string]interface{}) error {
+	if err := dropKeyAnalyzer(dropFilter, vertex.Indexer()); err != nil {
+		return err
 	}
-	lower, err := qx.quantization.Lower(data.Vector)
+	filters := make([]*inverted.Filter, 0)
+	for index, indexValue := range dropFilter {
+		filter := inverted.NewFilter(index, inverted.OpEqual, indexValue)
+		filters = append(filters, filter)
+	}
+	dropIds, err := vertex.invertedIndex.SearchMultiFilter(filters)
 	if err != nil {
-		return fmt.Errorf(ErrQuantizedFailed, err)
+		return fmt.Errorf("InvertedIndexFindDeleteIdsError: %s", err.Error())
 	}
-	shardIdx := sharding.ShardVertex(id, uint64(EDGE_MAP_SHARD_COUNT))
-	qx.verticesMu[shardIdx].Lock()
-	defer qx.verticesMu[shardIdx].Unlock()
-	qx.vertices[shardIdx][id] = ENodeF16{Vector: lower, Metadata: data.Metadata}
+	for _, id := range dropIds {
+		shardIdx := sharding.ShardVertex(id, uint64(EDGE_MAP_SHARD_COUNT))
+		vertex.verticesMu[shardIdx].Lock()
+		vertex.invertedIndex.Remove(id, vertex.vertices[shardIdx][id].Metadata)
+		delete(vertex.vertices[shardIdx], id)
+		vertex.verticesMu[shardIdx].Unlock()
+	}
 	return nil
 }
 
-func (qx *f16vecSpace) RemoveVector(collectionName string, id uint64) error {
-	shardIdx := sharding.ShardVertex(id, uint64(EDGE_MAP_SHARD_COUNT))
-	qx.verticesMu[shardIdx].Lock()
-	defer qx.verticesMu[shardIdx].Unlock()
-	delete(qx.vertices[shardIdx], id)
-	return nil
-}
-
-func (qx *f16vecSpace) FullScan(collectionName string, target Vector, topK int, highCpu bool,
+func (vertex *f16vecSpace) VertexSearch(target Vector, topK int, highCpu bool,
 ) ([]*SearchResultItem, error) {
-	if qx.distance.Type() == T_COSINE {
+	if vertex.distance.Type() == T_COSINE {
 		target = Normalize(target)
 	}
-	lower, err := qx.quantization.Lower(target)
+	lower, err := vertex.quantization.Lower(target)
 	if err != nil {
 		return nil, fmt.Errorf(ErrQuantizedFailed, err)
 	}
 	pq := NewPriorityQueue(topK)
 	if !highCpu {
 		for shard := 0; shard < EDGE_MAP_SHARD_COUNT; shard++ {
-			qx.verticesMu[shard].RLock()
-			for uid, node := range qx.vertices[shard] {
-				sim := qx.quantization.Similarity(lower, node.Vector, qx.distance)
+			vertex.verticesMu[shard].RLock()
+			for uid, node := range vertex.vertices[shard] {
+				sim := vertex.quantization.Similarity(lower, node.Vector, vertex.distance)
 				pq.Add(&SearchResultItem{
 					Id:       uid,
 					Score:    sim,
 					Metadata: node.Metadata,
 				})
 			}
-			qx.verticesMu[shard].RUnlock()
+			vertex.verticesMu[shard].RUnlock()
 		}
 	} else {
 		type shardResult struct {
@@ -112,16 +145,16 @@ func (qx *f16vecSpace) FullScan(collectionName string, target Vector, topK int, 
 			go func(shard int) {
 				defer concurrenyWorker.Done()
 				localpq := NewPriorityQueue(topK)
-				qx.verticesMu[shard].RLock()
-				for uid, node := range qx.vertices[shard] {
-					sim := qx.quantization.Similarity(lower, node.Vector, qx.distance)
+				vertex.verticesMu[shard].RLock()
+				for uid, node := range vertex.vertices[shard] {
+					sim := vertex.quantization.Similarity(lower, node.Vector, vertex.distance)
 					localpq.Add(&SearchResultItem{
 						Id:       uid,
 						Score:    sim,
 						Metadata: node.Metadata,
 					})
 				}
-				qx.verticesMu[shard].RUnlock()
+				vertex.verticesMu[shard].RUnlock()
 				results[shard].Items = localpq.ToSlice()
 			}(shard)
 		}
@@ -133,4 +166,350 @@ func (qx *f16vecSpace) FullScan(collectionName string, target Vector, topK int, 
 		}
 	}
 	return pq.ToSlice(), nil
+}
+
+func (vertex *f16vecSpace) FilterableVertexSearch(filter *inverted.FilterExpression, target Vector, topK int, highCpu bool,
+) ([]*SearchResultItem, error) {
+	if vertex.distance.Type() == T_COSINE {
+		target = Normalize(target)
+	}
+	lower, err := vertex.quantization.Lower(target)
+	if err != nil {
+		return nil, fmt.Errorf(ErrQuantizedFailed, err)
+	}
+	candidates, err := vertex.invertedIndex.SearchWithExpression(filter)
+	if err != nil {
+		return nil, err
+	}
+	shardCandidates := make([][]uint64, EDGE_MAP_SHARD_COUNT)
+	for _, cand := range candidates {
+		shardIndex := sharding.ShardVertex(cand, uint64(EDGE_MAP_SHARD_COUNT))
+		shardCandidates[shardIndex] = append(shardCandidates[shardIndex], cand)
+	}
+	globalPQ := NewPriorityQueue(topK)
+	if !highCpu {
+		for shard := 0; shard < EDGE_MAP_SHARD_COUNT; shard++ {
+			if len(shardCandidates[shard]) == 0 {
+				continue
+			}
+			vertex.verticesMu[shard].RLock()
+			for _, uid := range shardCandidates[shard] {
+				if node, ok := vertex.vertices[shard][uid]; ok {
+					sim := vertex.quantization.Similarity(lower, node.Vector, vertex.distance)
+					globalPQ.Add(&SearchResultItem{
+						Id:       uid,
+						Score:    sim,
+						Metadata: node.Metadata,
+					})
+				}
+			}
+			vertex.verticesMu[shard].RUnlock()
+		}
+	} else {
+		type shardResult struct {
+			Items []*SearchResultItem
+		}
+		results := make([]shardResult, EDGE_MAP_SHARD_COUNT)
+		var concurrenyWorker sync.WaitGroup
+		concurrenyWorker.Add(EDGE_MAP_SHARD_COUNT)
+		for shard := 0; shard < EDGE_MAP_SHARD_COUNT; shard++ {
+			go func(shard int) {
+				defer concurrenyWorker.Done()
+				localpq := NewPriorityQueue(topK)
+				if len(shardCandidates[shard]) == 0 {
+					return
+				}
+				vertex.verticesMu[shard].RLock()
+				for _, uid := range shardCandidates[shard] {
+					if node, ok := vertex.vertices[shard][uid]; ok {
+						sim := vertex.quantization.Similarity(lower, node.Vector, vertex.distance)
+						globalPQ.Add(&SearchResultItem{
+							Id:       uid,
+							Score:    sim,
+							Metadata: node.Metadata,
+						})
+					}
+				}
+				vertex.verticesMu[shard].RUnlock()
+				results[shard].Items = localpq.ToSlice()
+			}(shard)
+		}
+		concurrenyWorker.Wait()
+		for _, res := range results {
+			for _, item := range res.Items {
+				globalPQ.Add(item)
+			}
+		}
+	}
+	return globalPQ.ToSlice(), nil
+}
+
+func (vertex *f16vecSpace) SaveVertexMetadata() ([]byte, error) {
+	return json.Marshal(vertex.vertexMetadata)
+}
+
+func (vertex *f16vecSpace) LoadVertexMetadata(collectionName string, data []byte) error {
+	var metadata Metadata
+	if err := json.Unmarshal(data, &metadata); err != nil {
+		return err
+	}
+	vertex.collectionName = collectionName
+	vertex.vertexMetadata = metadata
+	vertex.distance = func() distance.Space {
+		if metadata.Distancer() == edgepb.Distance_Cosine {
+			return distance.NewCosine()
+		}
+		return distance.NewEuclidean()
+	}()
+	return nil
+}
+
+func (vertex *f16vecSpace) SaveVertexInverted() ([]byte, error) {
+	return vertex.invertedIndex.SerializeBinary()
+}
+
+func (vertex *f16vecSpace) LoadVertexInverted(data []byte) error {
+	vertex.invertedIndex = inverted.NewBitmapIndex()
+	return vertex.invertedIndex.DeserializeBinary(data)
+}
+
+func (vertex *f16vecSpace) Quantization() edgepb.Quantization {
+	return vertex.vertexMetadata.Quantizationer()
+}
+
+func (vertex *f16vecSpace) Distance() edgepb.Distance {
+	return vertex.vertexMetadata.Distancer()
+}
+
+func (vertex *f16vecSpace) Dim() uint32 {
+	return vertex.vertexMetadata.Dimensional()
+}
+
+func (vertex *f16vecSpace) LoadSize() int64 {
+	return int64(atomic.LoadUint64(&vertex.size))
+}
+
+func (vertex *f16vecSpace) Indexer() map[string]IndexFeature {
+	return vertex.vertexMetadata.IndexType
+}
+
+func (vertex *f16vecSpace) Versional() bool {
+	return vertex.vertexMetadata.Versional()
+}
+
+func (n *f16vecSpace) SaveVertex() ([]byte, error) {
+	var buf bytes.Buffer
+
+	for i := 0; i < EDGE_MAP_SHARD_COUNT; i++ {
+		n.verticesMu[i].RLock()
+		entries := n.vertices[i]
+		if err := binary.Write(&buf, binary.BigEndian, uint64(len(entries))); err != nil {
+			n.verticesMu[i].RUnlock()
+			return nil, err
+		}
+		for key, node := range entries {
+			if err := binary.Write(&buf, binary.BigEndian, key); err != nil {
+				n.verticesMu[i].RUnlock()
+				return nil, err
+			}
+
+			vecLen := uint32(len(node.Vector))
+			if err := binary.Write(&buf, binary.BigEndian, vecLen); err != nil {
+				n.verticesMu[i].RUnlock()
+				return nil, err
+			}
+			for _, elem := range node.Vector {
+				if err := binary.Write(&buf, binary.BigEndian, uint16(elem)); err != nil {
+					n.verticesMu[i].RUnlock()
+					return nil, err
+				}
+			}
+
+			metaCount := uint32(len(node.Metadata))
+			if err := binary.Write(&buf, binary.BigEndian, metaCount); err != nil {
+				n.verticesMu[i].RUnlock()
+				return nil, err
+			}
+			for metaKey, metaVal := range node.Metadata {
+				metaKeyBytes := []byte(metaKey)
+				if len(metaKeyBytes) > 65535 {
+					n.verticesMu[i].RUnlock()
+					return nil, fmt.Errorf("metadata key too long: %s", metaKey)
+				}
+				if err := binary.Write(&buf, binary.BigEndian, uint16(len(metaKeyBytes))); err != nil {
+					n.verticesMu[i].RUnlock()
+					return nil, err
+				}
+				if _, err := buf.Write(metaKeyBytes); err != nil {
+					n.verticesMu[i].RUnlock()
+					return nil, err
+				}
+				switch v := metaVal.(type) {
+				case int64:
+					if err := buf.WriteByte(0); err != nil {
+						n.verticesMu[i].RUnlock()
+						return nil, err
+					}
+					if err := binary.Write(&buf, binary.BigEndian, v); err != nil {
+						n.verticesMu[i].RUnlock()
+						return nil, err
+					}
+				case string:
+					if err := buf.WriteByte(1); err != nil {
+						n.verticesMu[i].RUnlock()
+						return nil, err
+					}
+					strBytes := []byte(v)
+					if len(strBytes) > 65535 {
+						n.verticesMu[i].RUnlock()
+						return nil, fmt.Errorf("metadata string too long: %s", v)
+					}
+					if err := binary.Write(&buf, binary.BigEndian, uint16(len(strBytes))); err != nil {
+						n.verticesMu[i].RUnlock()
+						return nil, err
+					}
+					if _, err := buf.Write(strBytes); err != nil {
+						n.verticesMu[i].RUnlock()
+						return nil, err
+					}
+				case float32:
+					if err := buf.WriteByte(2); err != nil {
+						n.verticesMu[i].RUnlock()
+						return nil, err
+					}
+					if err := binary.Write(&buf, binary.BigEndian, float64(v)); err != nil {
+						n.verticesMu[i].RUnlock()
+						return nil, err
+					}
+				case float64:
+					if err := buf.WriteByte(2); err != nil {
+						n.verticesMu[i].RUnlock()
+						return nil, err
+					}
+					if err := binary.Write(&buf, binary.BigEndian, v); err != nil {
+						n.verticesMu[i].RUnlock()
+						return nil, err
+					}
+				case bool:
+					if err := buf.WriteByte(3); err != nil {
+						n.verticesMu[i].RUnlock()
+						return nil, err
+					}
+					var b byte = 0
+					if v {
+						b = 1
+					}
+					if err := buf.WriteByte(b); err != nil {
+						n.verticesMu[i].RUnlock()
+						return nil, err
+					}
+				default:
+					n.verticesMu[i].RUnlock()
+					return nil, fmt.Errorf("unsupported metadata type: %T", v)
+				}
+			}
+		}
+		n.verticesMu[i].RUnlock()
+	}
+	return buf.Bytes(), nil
+}
+
+func (n *f16vecSpace) LoadVertex(data []byte) error {
+	buf := bytes.NewReader(data)
+	var shards [EDGE_MAP_SHARD_COUNT]map[uint64]ENodeF16
+
+	for i := 0; i < EDGE_MAP_SHARD_COUNT; i++ {
+		var count uint64
+		if err := binary.Read(buf, binary.BigEndian, &count); err != nil {
+			return err
+		}
+		m := make(map[uint64]ENodeF16, count)
+		for j := uint64(0); j < count; j++ {
+			var key uint64
+			if err := binary.Read(buf, binary.BigEndian, &key); err != nil {
+				return err
+			}
+
+			var node ENodeF16
+
+			var vecLen uint32
+			if err := binary.Read(buf, binary.BigEndian, &vecLen); err != nil {
+				return err
+			}
+			vecBytes := make([]uint16, vecLen)
+			for k := uint32(0); k < vecLen; k++ {
+				var b uint16
+				if err := binary.Read(buf, binary.BigEndian, &b); err != nil {
+					return err
+				}
+				vecBytes[k] = b
+			}
+			vecF16 := make(float16Vec, len(vecBytes))
+			for k, b := range vecBytes {
+				vecF16[k] = compresshelper.Float16(b)
+			}
+			node.Vector = vecF16
+
+			var metaCount uint32
+			if err := binary.Read(buf, binary.BigEndian, &metaCount); err != nil {
+				return err
+			}
+			node.Metadata = make(map[string]any, metaCount)
+			for k := uint32(0); k < metaCount; k++ {
+				var metaKeyLen uint16
+				if err := binary.Read(buf, binary.BigEndian, &metaKeyLen); err != nil {
+					return err
+				}
+				metaKeyBytes := make([]byte, metaKeyLen)
+				if _, err := io.ReadFull(buf, metaKeyBytes); err != nil {
+					return err
+				}
+				metaKey := string(metaKeyBytes)
+
+				typ, err := buf.ReadByte()
+				if err != nil {
+					return err
+				}
+				switch typ {
+				case 0:
+					var val int64
+					if err := binary.Read(buf, binary.BigEndian, &val); err != nil {
+						return err
+					}
+					node.Metadata[metaKey] = val
+				case 1:
+					var strLen uint16
+					if err := binary.Read(buf, binary.BigEndian, &strLen); err != nil {
+						return err
+					}
+					strBytes := make([]byte, strLen)
+					if _, err := io.ReadFull(buf, strBytes); err != nil {
+						return err
+					}
+					node.Metadata[metaKey] = string(strBytes)
+				case 2:
+					var val float64
+					if err := binary.Read(buf, binary.BigEndian, &val); err != nil {
+						return err
+					}
+					node.Metadata[metaKey] = val
+				case 3:
+					boolByte, err := buf.ReadByte()
+					if err != nil {
+						return err
+					}
+					node.Metadata[metaKey] = boolByte != 0
+				default:
+					return fmt.Errorf("unsupported metadata type tag: %d", typ)
+				}
+			}
+			m[key] = node
+		}
+		shards[i] = m
+	}
+	for i := 0; i < EDGE_MAP_SHARD_COUNT; i++ {
+		n.vertices[i] = shards[i]
+		n.verticesMu[i] = &sync.RWMutex{}
+	}
+	return nil
 }

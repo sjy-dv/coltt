@@ -13,7 +13,7 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/rs/zerolog/log"
 	"github.com/sjy-dv/coltt/config"
-	"github.com/sjy-dv/coltt/gen/protoc/v3/edgeproto"
+	"github.com/sjy-dv/coltt/gen/protoc/v4/edgepb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -88,7 +88,7 @@ func gRpcStart() error {
 	rpcLayer := rpcLayer{}
 	rpcLayer.Eproto = &edgeProtoConn{rpcLayer: rpcLayer}
 	//rpcLayer.rootClone = xx
-	edgeproto.RegisterEdgeRpcServer(edgelites.S, rpcLayer.Eproto)
+	edgepb.RegisterEdgeRpcServer(edgelites.S, rpcLayer.Eproto)
 	log.Debug().Msgf("grpc_startup bind_addr : %s", config.Config.RootLayer.BindAddress)
 	if err := edgelites.S.Serve(lis); err != nil {
 		log.Warn().Err(err).Msg("grpc_startup failed")

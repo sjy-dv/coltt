@@ -17,7 +17,7 @@
 
 package index
 
-import roaring "github.com/RoaringBitmap/roaring/roaring64"
+import roaring "github.com/RoaringBitmap/roaring/v2/roaring64"
 
 // using hybrid search
 func (idx *BitmapIndex) SearchWitCandidates(

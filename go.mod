@@ -72,6 +72,7 @@ require (
 
 require (
 	github.com/RoaringBitmap/roaring v1.9.4
+	github.com/RoaringBitmap/roaring/v2 v2.4.5
 	github.com/dgraph-io/badger/v4 v4.3.1
 	github.com/go-kit/log v0.2.1
 	github.com/gofrs/flock v0.8.1

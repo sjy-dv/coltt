@@ -1,0 +1,16 @@
+[metadata:{
+    fields:{key:"expand" 
+    value:{bool_value:false}} 
+    fields:{key:"id" 
+    value:{string_value:"b52673bb-405d-4a54-adec-d6843b10620e"}} 
+    fields:{key:"size" value:{number_value:4}} 
+    fields:{key:"type" value:{number_value:1}} 
+    fields:{key:"volume" value:{number_value:0.3454959350256891}}} 
+    score:78.31604 metadata:{fields:{key:"expand" value:{bool_value:false}} 
+    fields:{key:"id" 
+    value:{string_value:"d66e8bad-8dda-4f52-a771-94ac4c6a0655"}} 
+    fields:{key:"size" value:{number_value:4}} 
+    fields:{key:"type" value:{number_value:7}} 
+    fields:{key:"volume" value:{number_value:0.9701935421997555}}} 
+    score:78.26621 metadata:{fields:{key:"expand" value:{bool_value:false}} 
+    fields:{key:"id" value:{string_value:"e49bdd2e-f9b1-4576-9244-0744836bbda5"}} fields:{key:"size" value:{number_value:5}} fields:{key:"type" value:{number_value:1}} fields:{key:"volume" value:{number_value:0.8565403072161338}}} score:78.23876 metadata:{fields:{key:"expand" value:{bool_value:true}} fields:{key:"id" value:{string_value:"fbd31bf3-3170-44e0-880f-6ff53f9e62d3"}} fields:{key:"size" value:{number_value:5}} fields:{key:"type" value:{number_value:2}} fields:{key:"volume" value:{number_value:0.4173615117313205}}} score:78.032455 metadata:{fields:{key:"expand" value:{bool_value:false}} fields:{key:"id" value:{string_value:"2ba436ba-a2fe-4ba0-8077-58fdf813948a"}} fields:{key:"size" value:{number_value:7}} fields:{key:"type" value:{number_value:5}} fields:{key:"volume" value:{number_value:0.8272492478066982}}} score:78.01093 metadata:{fields:{key:"expand" value:{bool_value:true}} fields:{key:"id" value:{string_value:"ec05ff56-9ba7-4334-b4d8-383cb23dc0dd"}} fields:{key:"size" value:{number_value:4}} fields:{key:"type" value:{number_value:2}} fields:{key:"volume" value:{number_value:0.44661170618649515}}} score:77.90678 metadata:{fields:{key:"expand" value:{bool_value:true}} fields:{key:"id" value:{string_value:"7b828e80-55ea-4deb-9dff-43179e5fa42f"}} fields:{key:"size" value:{number_value:3}} fields:{key:"type" value:{number_value:6}} fields:{key:"volume" value:{number_value:0.8546363788881814}}} score:77.90401 metadata:{fields:{key:"expand" value:{bool_value:false}} fields:{key:"id" value:{string_value:"8a14d681-60dc-423b-8fa4-d1e2d346c731"}} fields:{key:"size" value:{number_value:6}} fields:{key:"type" value:{number_value:5}} fields:{key:"volume" value:{number_value:0.025652894430151174}}} score:77.612045 metadata:{fields:{key:"expand" value:{bool_value:true}} fields:{key:"id" value:{string_value:"3c3b1537-304a-4e38-94d4-e269238967d6"}} fields:{key:"size" value:{number_value:7}} fields:{key:"type" value:{number_value:9}} fields:{key:"volume" value:{number_value:0.10506938786523812}}} score:77.51248 metadata:{fields:{key:"expand" value:{bool_value:false}} fields:{key:"id" value:{string_value:"5c00c641-eb75-4d27-bc46-1ec9eb7a8770"}} fields:{key:"size" value:{number_value:3}} fields:{key:"type" value:{number_value:2}} fields:{key:"volume" value:{number_value:0.26291079185862487}}} score:76.634056]

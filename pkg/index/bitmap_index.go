@@ -23,7 +23,7 @@ import (
 	"sync"
 	"time"
 
-	roaring "github.com/RoaringBitmap/roaring/roaring64"
+	roaring "github.com/RoaringBitmap/roaring/v2/roaring64"
 )
 
 type BitmapIndex struct {

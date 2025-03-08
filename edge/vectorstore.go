@@ -5,15 +5,30 @@ import (
 	"fmt"
 	"math"
 	"sync"
+
+	"github.com/sjy-dv/coltt/gen/protoc/v4/edgepb"
+	"github.com/sjy-dv/coltt/pkg/inverted"
 )
 
 type vectorspace interface {
-	// CreateCollection(config CollectionConfig) error
-	// DropCollection(collectionName string) error
-	InsertVector(collectionName string, commitId uint64, data ENode) error
-	UpdateVector(collectionName string, id uint64, data ENode) error
-	RemoveVector(collectionName string, id uint64) error
-	FullScan(collectionName string, target Vector, topK int, highCpu bool) ([]*SearchResultItem, error)
+	ChangedVertex(updateID string, Id uint64, edge ENode) error
+	RemoveVertex(dropFilter map[string]interface{}) error
+	VertexSearch(target Vector, topK int, highCpu bool) (
+		[]*SearchResultItem, error)
+	FilterableVertexSearch(filter *inverted.FilterExpression, target Vector, topK int, highCpu bool) (
+		[]*SearchResultItem, error)
+	SaveVertexMetadata() ([]byte, error)
+	LoadVertexMetadata(collectionName string, data []byte) error
+	SaveVertexInverted() ([]byte, error)
+	LoadVertexInverted(data []byte) error
+	SaveVertex() ([]byte, error)
+	LoadVertex(data []byte) error
+	Quantization() edgepb.Quantization
+	Distance() edgepb.Distance
+	Dim() uint32
+	LoadSize() int64
+	Indexer() map[string]IndexFeature
+	Versional() bool
 }
 
 type Vectorstore struct {
@@ -27,106 +42,115 @@ func NewVectorstore() *Vectorstore {
 	}
 }
 
-func (xx *Vectorstore) CreateCollection(config CollectionConfig) error {
-	xx.slock.RLock()
-	_, ok := xx.Space[config.CollectionName]
-	xx.slock.RUnlock()
+func (vs *Vectorstore) CreateCollection(collectionName string, metadata Metadata) error {
+	vs.slock.RLock()
+	_, ok := vs.Space[collectionName]
+	vs.slock.RUnlock()
 	if ok {
-		return fmt.Errorf(ErrCollectionExists, config.CollectionName)
+		return fmt.Errorf(ErrCollectionExists, collectionName)
 	}
 	var vectorstore vectorspace
-	if config.Quantization == F8_QUANTIZATION {
-		vectorstore = newF8Vectorstore(config)
-	} else if config.Quantization == F16_QUANTIZATION {
-		vectorstore = newF16Vectorstore(config)
-	} else if config.Quantization == BF16_QUANTIZATION {
-		vectorstore = newBF16Vectorstore(config)
-	} else if config.Quantization == NONE_QAUNTIZATION {
-		vectorstore = newSimpleVectorstore(config)
+	if edgepb.Quantization(metadata.Quantization) == edgepb.Quantization_F8 {
+		vectorstore = newF8Vectorstore(collectionName, metadata)
+	} else if edgepb.Quantization(metadata.Quantization) == edgepb.Quantization_F16 {
+		vectorstore = newF16Vectorstore(collectionName, metadata)
+	} else if edgepb.Quantization(metadata.Quantization) == edgepb.Quantization_BF16 {
+		vectorstore = newBF16Vectorstore(collectionName, metadata)
+	} else if edgepb.Quantization(metadata.Quantization) == edgepb.Quantization_None {
+		vectorstore = newNoneVectorstore(collectionName, metadata)
 	} else {
 		return errors.New("not support quantization type")
 	}
-	xx.slock.Lock()
-	xx.Space[config.CollectionName] = vectorstore
-	xx.slock.Unlock()
+	vs.slock.Lock()
+	vs.Space[collectionName] = vectorstore
+	vs.slock.Unlock()
 	return nil
 }
 
-func (xx *Vectorstore) DropCollection(collectionName string) error {
-	xx.slock.RLock()
-	_, ok := xx.Space[collectionName]
-	xx.slock.RUnlock()
-	if !ok {
-		return nil
-	}
-
-	xx.slock.Lock()
-	defer xx.slock.Unlock()
-	delete(xx.Space, collectionName)
-	return nil
+func (vs *Vectorstore) Quantization(collectionName string) edgepb.Quantization {
+	return vs.Space[collectionName].Quantization()
+}
+func (vs *Vectorstore) Distance(collectionName string) edgepb.Distance {
+	return vs.Space[collectionName].Distance()
+}
+func (vs *Vectorstore) Dim(collectionName string) uint32 {
+	return vs.Space[collectionName].Dim()
+}
+func (vs *Vectorstore) LoadSize(collectionName string) int64 {
+	return vs.Space[collectionName].LoadSize()
+}
+func (vs *Vectorstore) Indexer(collectionName string) map[string]IndexFeature {
+	return vs.Space[collectionName].Indexer()
 }
 
-func (xx *Vectorstore) InsertVector(collectionName string, commitId uint64, data ENode) error {
-	xx.slock.RLock()
-	basis, ok := xx.Space[collectionName]
-	xx.slock.RUnlock()
-	if !ok {
-		return fmt.Errorf(ErrCollectionNotFound, collectionName)
-	}
-	return basis.InsertVector(collectionName, commitId, data)
+func (vs *Vectorstore) Versional(collectionName string) bool {
+	return vs.Space[collectionName].Versional()
 }
 
-func (xx *Vectorstore) UpdateVector(collectionName string, id uint64, data ENode) error {
-	xx.slock.RLock()
-	basis, ok := xx.Space[collectionName]
-	xx.slock.RUnlock()
-	if !ok {
-		return fmt.Errorf(ErrCollectionNotFound, collectionName)
-	}
-	return basis.UpdateVector(collectionName, id, data)
+func (vs *Vectorstore) SavedMetadata(collectionName string) ([]byte, error) {
+	return vs.Space[collectionName].SaveVertexMetadata()
 }
 
-func (xx *Vectorstore) RemoveVector(collectionName string, id uint64) error {
-	xx.slock.RLock()
-	basis, ok := xx.Space[collectionName]
-	xx.slock.RUnlock()
-	if !ok {
-		return fmt.Errorf(ErrCollectionNotFound, collectionName)
-	}
-	return basis.RemoveVector(collectionName, id)
+func (vs *Vectorstore) SavedVertex(collectionName string) ([]byte, error) {
+	return vs.Space[collectionName].SaveVertex()
 }
 
-func (xx *Vectorstore) FullScan(collectionName string, target Vector, topK int, highCpu bool,
-) ([]*SearchResultItem, error) {
-	xx.slock.RLock()
-	basis, ok := xx.Space[collectionName]
-	xx.slock.RUnlock()
-	if !ok {
-		return nil, fmt.Errorf(ErrCollectionNotFound, collectionName)
-	}
-	return basis.FullScan(collectionName, target, topK, highCpu)
+func (vs *Vectorstore) SavedInverted(collectionName string) ([]byte, error) {
+	return vs.Space[collectionName].SaveVertexInverted()
 }
 
-func (xx *Vectorstore) Commit(collectionName string) error {
-
-	return nil
+func (vs *Vectorstore) LoadedMetadata(collectionName string, data []byte) error {
+	return vs.Space[collectionName].LoadVertexMetadata(collectionName, data)
 }
 
-func (xx *Vectorstore) Load(collectionName string, config CollectionConfig) error {
-	xx.slock.Lock()
-	defer xx.slock.Unlock()
-	if config.Quantization == F8_QUANTIZATION {
-		xx.Space[collectionName] = newF8Vectorstore(config)
-	} else if config.Quantization == F16_QUANTIZATION {
-		xx.Space[collectionName] = newF16Vectorstore(config)
-	} else if config.Quantization == BF16_QUANTIZATION {
-		xx.Space[collectionName] = newBF16Vectorstore(config)
-	} else if config.Quantization == NONE_QAUNTIZATION {
-		// xx.Space[collectionName] = newSimpleVectorstore(config)
-	} else {
-		return errors.New("not support quantization type")
+func (vs *Vectorstore) LoadedVertex(collectionName string, data []byte) error {
+	return vs.Space[collectionName].LoadVertex(data)
+}
+
+func (vs *Vectorstore) LoadedInverted(collectionName string, data []byte) error {
+	return vs.Space[collectionName].LoadVertexInverted(data)
+}
+
+func (vs *Vectorstore) DestroySpace(collectionName string) {
+	vs.slock.Lock()
+	delete(vs.Space, collectionName)
+	vs.slock.Unlock()
+}
+
+func (vs *Vectorstore) ChangedVertex(collectioName string, updateID string, Id uint64, metadata map[string]interface{}, vector Vector) error {
+	newVertex := ENode{
+		Vector:   vector,
+		Metadata: metadata,
 	}
-	return nil
+	return vs.Space[collectioName].ChangedVertex(updateID, Id, newVertex)
+}
+
+func (vs *Vectorstore) RemoveVertex(collectionName string, dropfilter map[string]interface{}) error {
+	return vs.Space[collectionName].RemoveVertex(dropfilter)
+}
+
+func (vs *Vectorstore) VertexSearch(collectioName string, topK uint64, vector Vector, highCpu bool) ([]*SearchResultItem, error) {
+	return vs.Space[collectioName].VertexSearch(vector, int(topK), highCpu)
+}
+
+func (vs *Vectorstore) FilterableVertexSearch(collectioName string, filter *inverted.FilterExpression, topK uint64, vector Vector, highCpu bool) ([]*SearchResultItem, error) {
+	return vs.Space[collectioName].FilterableVertexSearch(filter, vector, int(topK), highCpu)
+}
+
+func (vs *Vectorstore) FillEmpty(collectionName string, quantization edgepb.Quantization) {
+	vs.slock.Lock()
+	// vs.Space[collectionName] = &noneVecSpace{}
+	switch quantization {
+	case edgepb.Quantization_None:
+		vs.Space[collectionName] = &noneVecSpace{}
+	case edgepb.Quantization_F8:
+		vs.Space[collectionName] = &f8vecSpace{}
+	case edgepb.Quantization_F16:
+		vs.Space[collectionName] = &f16vecSpace{}
+	case edgepb.Quantization_BF16:
+		vs.Space[collectionName] = &bf16vecSpace{}
+	}
+	vs.slock.Unlock()
 }
 
 func Normalize(v []float32) []float32 {
