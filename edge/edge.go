@@ -81,6 +81,7 @@ func (edge *Edge) CreateCollection(ctx context.Context,
 	type reply struct {
 		Result *edgepb.CollectionResponse
 		Error  error
+		Clear  bool
 	}
 	c := make(chan reply, 1)
 	go func() {
@@ -97,10 +98,13 @@ func (edge *Edge) CreateCollection(ctx context.Context,
 					Status: false,
 					Error:  errorWrap(errMsg),
 				},
+				Clear: true,
 			}
 		}
 		if hasCollection(req.GetCollectionName()) {
-			c <- failFn(fmt.Sprintf(ErrCollectionExists, req.GetCollectionName()))
+			wrap := failFn(fmt.Sprintf(ErrCollectionExists, req.GetCollectionName()))
+			wrap.Clear = false
+			c <- wrap
 			return
 		}
 		err := edge.Storage.CreateBucket(req.GetCollectionName())
@@ -173,9 +177,11 @@ func (edge *Edge) CreateCollection(ctx context.Context,
 	}()
 	res := <-c
 	if !res.Result.Status || res.Error != nil {
-		edge.Storage.RemoveBucket(req.GetCollectionName())
-		edge.VectorStore.DestroySpace(req.GetCollectionName())
-		destroyBucketHelper(req.GetCollectionName())
+		if res.Clear {
+			edge.Storage.RemoveBucket(req.GetCollectionName())
+			edge.VectorStore.DestroySpace(req.GetCollectionName())
+			destroyBucketHelper(req.GetCollectionName())
+		}
 	}
 	return res.Result, res.Error
 }

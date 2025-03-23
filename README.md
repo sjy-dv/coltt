@@ -4,89 +4,13 @@
 
 Coltt is a database designed to be implemented from scratch to production. coltt can be deployed in edge environments and used in small-scale production settings. Through the innovative architectural approach described below, it is envisioned and developed to be used reliably in large-scale production environments as well.
 
-## 🎉 Release Update - 2025.03.08
+## 🎉 Release Update - 2025.03.23
 
 For the full update history, see [UPDATE HISTORY](./UPDATE-LOG.md).
 
 ### 🔹 Edge(Minio & Composite Filter)
 
-- **Integration with Minio Object Storage**: By combining with robust Minio, we have prioritized disaster recovery and scalability.
-
-- **Added an index structure to Edge through MultiVector validation**: Users can now model data with well-defined types, and by leveraging features such as a PrimaryKey and allowing NULL values, they can design data in a variety of formats.
-
-- **Added complex filter operators**: Comparison operators, logical operators, and more are now supported, enabling the modeling and filtering of various relational data for vector search.
-
-Below is a simple example.
-
-```go
-[case1] : like type >= 5
-
-filter := &edgepb.SearchFilter{
-		IndexName: "type",
-		Op:        edgepb.Op_GTE,
-		Value: &edgepb.SearchFilter_IntVal{
-			IntVal: 5,
-		},
-	}
-	expr := &edgepb.FilterExpression{
-		Expr: &edgepb.FilterExpression_Filter{
-			Filter: filter,
-		},
-}
-
-[case2] : like type > 5 and size < 4
-
-typeGTFilter := &edgepb.SearchFilter{
-		IndexName: "type",
-		Op:        edgepb.Op_GT,
-		Value:     &edgepb.SearchFilter_IntVal{IntVal: 5},
-	}
-	sizeLTFilter := &edgepb.SearchFilter{
-		IndexName: "size",
-		Op:        edgepb.Op_LT,
-		Value:     &edgepb.SearchFilter_IntVal{IntVal: 4},
-	}
-	mixFilter := &edgepb.CompositeFilter{
-		Op: edgepb.LogicalOperator_AND,
-		Expressions: []*edgepb.FilterExpression{
-			{Expr: &edgepb.FilterExpression_Filter{Filter: typeGTFilter}},
-			{Expr: &edgepb.FilterExpression_Filter{Filter: sizeLTFilter}},
-		},
-}
-
-[case3] : like (type > 5 and size > 1) or volume < 0.5
-
-typeGTDFilter := &edgepb.SearchFilter{
-		IndexName: "type",
-		Op:        edgepb.Op_GT,
-		Value:     &edgepb.SearchFilter_IntVal{IntVal: 5},
-	}
-sizeLTDFilter := &edgepb.SearchFilter{
-		IndexName: "size",
-		Op:        edgepb.Op_GT,
-		Value:     &edgepb.SearchFilter_IntVal{IntVal: 1},
-	}
-compositeFilter := &edgepb.CompositeFilter{
-		Op: edgepb.LogicalOperator_AND,
-		Expressions: []*edgepb.FilterExpression{
-			{Expr: &edgepb.FilterExpression_Filter{Filter: typeGTDFilter}},
-			{Expr: &edgepb.FilterExpression_Filter{Filter: sizeLTDFilter}},
-		},
-	}
-volumeFilter := &edgepb.SearchFilter{
-		IndexName: "volume",
-		Op:        edgepb.Op_LT,
-		Value:     &edgepb.SearchFilter_FloatVal{FloatVal: 0.5},
-	}
-depthCompositeFilter := &edgepb.CompositeFilter{
-		Op: edgepb.LogicalOperator_OR,
-		Expressions: []*edgepb.FilterExpression{
-			{Expr: &edgepb.FilterExpression_Composite{Composite: compositeFilter}},
-			{Expr: &edgepb.FilterExpression_Filter{Filter: volumeFilter}},
-		},
-}
-
-```
+- **Bug Fix**: Fixed an issue where if CreateCollection attempts to create a duplicate of an existing collection, the existing collection would be deleted.
 
 ---
 
